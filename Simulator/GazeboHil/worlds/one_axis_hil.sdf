@@ -1,0 +1,133 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <world name="one_axis_world">
+
+    <physics name="1ms" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin
+      filename="gz-sim-physics-system"
+      name="gz::sim::systems::Physics"/>
+
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster"/>
+
+    <model name="one_axis_rig">
+      <pose>0 0 1 0 0 0</pose>
+
+      <link name="base">
+        <inertial>
+          <mass>5.0</mass>
+          <inertia>
+            <ixx>1.0</ixx>
+            <iyy>1.0</iyy>
+            <izz>1.0</izz>
+          </inertia>
+        </inertial>
+
+        <visual name="base_visual">
+          <geometry>
+            <box>
+              <size>0.2 0.2 0.2</size>
+            </box>
+          </geometry>
+        </visual>
+
+        <collision name="base_collision">
+          <geometry>
+            <box>
+              <size>0.2 0.2 0.2</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+
+      <joint name="world_to_base" type="fixed">
+        <parent>world</parent>
+        <child>base</child>
+      </joint>
+
+      <link name="beam">
+        <pose>0 0 0 0 0 0</pose>
+
+        <inertial>
+          <mass>0.5</mass>
+          <inertia>
+            <ixx>0.02</ixx>
+            <iyy>0.02</iyy>
+            <izz>0.02</izz>
+          </inertia>
+        </inertial>
+
+        <visual name="beam_visual">
+          <geometry>
+            <box>
+              <size>0.08 1.0 0.08</size>
+            </box>
+          </geometry>
+        </visual>
+
+        <visual name="tip_visual">
+          <pose>0 0.5 0 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.12 0.12 0.12</size>
+            </box>
+          </geometry>
+        </visual>
+
+        <collision name="beam_collision">
+          <geometry>
+            <box>
+              <size>0.08 1.0 0.08</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+
+      <joint name="roll_joint" type="revolute">
+        <parent>base</parent>
+        <child>beam</child>
+
+        <axis>
+          <xyz>1 0 0</xyz>
+          <limit>
+            <lower>-1.5708</lower>
+            <upper>1.5708</upper>
+            <effort>10.0</effort>
+            <velocity>20.0</velocity>
+          </limit>
+          <dynamics>
+            <damping>0.02</damping>
+          </dynamics>
+        </axis>
+      </joint>
+
+      <plugin
+        filename="libOneAxisHilPlugin"
+        name="one_axis_hil::OneAxisHilPlugin">
+
+        <joint_name>roll_joint</joint_name>
+        <serial_port>/dev/cu.usbmodem103</serial_port>
+        <baud>115200</baud>
+
+        <!-- Torque scale applied from motor difference -->
+        <max_torque>0.15</max_torque>
+
+        <!-- If angle runs away, set this to -1 -->
+        <torque_sign>1.0</torque_sign>
+
+        <!-- MAVLink HIL_SENSOR send rate -->
+        <hil_rate_hz>100</hil_rate_hz>
+
+        <disturbance_torque>0.08</disturbance_torque>
+        <disturbance_start>0.2</disturbance_start>
+        <disturbance_end>0.6</disturbance_end>
+      </plugin>
+
+    </model>
+  </world>
+</sdf>
