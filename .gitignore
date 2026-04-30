@@ -1,69 +1,52 @@
-# Prerequisites
-*.d
+# OS
+.DS_Store
+Thumbs.db
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+# JetBrains
+.idea/
+*.iml
 
-# Precompiled Headers
-*.gch
-*.pch
+# VS Code
+.vscode/*.log
+.vscode/ipch
 
-# Linker files
-*.ilk
+# CMake
+**/build/
+**/cmake-build-*/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/compile_commands.json
+**/Makefile
 
-# Debugger Files
-*.pdb
+# Binaries / libs
+**/*.o
+**/*.obj
+**/*.a
+**/*.so
+**/*.dylib
+**/*.dll
+**/*.exe
+**/*.elf
+**/*.bin
+**/*.hex
+**/*.map
+**/*.list
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-*.so.*
+# STM32 / CubeIDE / generated build outputs
+**/Debug/
+**/Release/
+**/.settings/
+**/.mxproject
+**/*.launch
 
+# Logs
+**/*.log
 
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# Build directories
-build/
-Build/
-build-*/
-
-# CMake generated files
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-install_manifest.txt
-compile_commands.json
+# Python
+**/__pycache__/
+**/*.pyc
+**/.venv/
 
 # Temporary files
-*.tmp
-*.log
-*.bak
-*.swp
-
-# vcpkg
-vcpkg_installed/
-
-# debug information files
-*.dwo
-
-# test output & cache
-Testing/
-.cache/
+**/*.tmp
+**/*.swp
