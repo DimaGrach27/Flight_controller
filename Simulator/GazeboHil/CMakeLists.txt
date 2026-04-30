@@ -29,10 +29,14 @@ endif()
 find_package(gz-plugin2 REQUIRED COMPONENTS register)
 
 add_library(OneAxisHilPlugin SHARED
-        src/OneAxisHilPlugin.cpp
+        core/src/OneAxisHilPlugin.cpp
+        core/src/SerialPort.cpp
+        core/src/MavlinkBridge.cpp
+        core/src/CsvLogger.cpp
 )
 
 target_include_directories(OneAxisHilPlugin PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/inc
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party
 )
 
