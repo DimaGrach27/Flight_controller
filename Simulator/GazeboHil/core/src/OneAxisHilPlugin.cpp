@@ -11,6 +11,14 @@
 #include <gz/plugin/Register.hh>
 
 NAMESPACE_BEGIN
+OneAxisHilPlugin::~OneAxisHilPlugin()
+{
+    if (logger_.IsOpen())
+    {
+        logger_.Close();
+    }
+}
+
 void OneAxisHilPlugin::Configure(
     const gz::sim::Entity& entity,
     const std::shared_ptr<const sdf::Element>& sdf,

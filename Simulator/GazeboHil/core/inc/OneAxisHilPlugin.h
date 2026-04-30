@@ -25,6 +25,8 @@ class OneAxisHilPlugin:
     public gz::sim::ISystemPostUpdate
 {
 public:
+    ~OneAxisHilPlugin() override;
+
     void Configure(
         const gz::sim::Entity& entity,
         const std::shared_ptr<const sdf::Element>& sdf,
