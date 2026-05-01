@@ -36,4 +36,5 @@ private:
     PID m_pitchPID = {};
 
     bool m_estimatorInitialized = false;
+    float m_estimatedRollDeg = 0.0f;
 };

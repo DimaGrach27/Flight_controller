@@ -23,7 +23,7 @@
 FlightController::FlightController()
 {
     m_rollPID = {
-        .kp = 0.016f,
+        .kp = 0.008f,
         .ki = 0.0f,
         .kd = 0.0045f,
         .integrator = 0.0f,
@@ -54,24 +54,23 @@ void FlightController::Update(float dt)
     }
 
     float targetRollDeg = 0.0f;
-    float estimatedRollDeg = 0.0f;
     float gyroRollDegPerSec = m_simImu.gyro.x * 57.2957795f;
 
     float accelRollDeg = atan2f(m_simImu.accel.y, m_simImu.accel.z) * 57.2957795f;
 
     if (!m_estimatorInitialized)
     {
-        estimatedRollDeg = accelRollDeg;
+        m_estimatedRollDeg = accelRollDeg;
         m_estimatorInitialized = true;
     }
     else
     {
-        estimatedRollDeg =
-            0.98f * (estimatedRollDeg + gyroRollDegPerSec * dt)
+        m_estimatedRollDeg =
+            0.98f * (m_estimatedRollDeg + gyroRollDegPerSec * dt)
           + 0.02f * accelRollDeg;
     }
 
-    float correction = PID_Controller::UpdateAngleWithGyroD(&m_rollPID, targetRollDeg, estimatedRollDeg, gyroRollDegPerSec, dt);
+    float correction = PID_Controller::UpdateAngleWithGyroD(&m_rollPID, targetRollDeg, m_estimatedRollDeg, gyroRollDegPerSec, dt);
 
     correction = MathUtils::Clamp(correction, -0.25f, 0.25f);
 
