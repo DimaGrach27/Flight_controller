@@ -1,12 +1,12 @@
 //
-// Created by Dmytro Hrachov on 29.04.2026.
+// Created by Dmytro Hrachov on 01.05.2026.
 //
 
-#include "FlightController/pid.h"
+#include "FlightController/PID.h"
 
-#include "FlightController/helpers.h"
+#include "FlightController/mathutils.h"
 
-float PID_Update(PID *pid, float target, float measured, float dt)
+float PID_Controller::Update(PID *pid, float target, float measured, float dt)
 {
     if (dt <= 0.000001f)
     {
@@ -16,7 +16,7 @@ float PID_Update(PID *pid, float target, float measured, float dt)
     float error = target - measured;
 
     pid->integrator += error * dt;
-    pid->integrator = clamp(pid->integrator, -pid->integratorLimit, pid->integratorLimit);
+    pid->integrator = MathUtils::Clamp(pid->integrator, -pid->integratorLimit, pid->integratorLimit);
 
     float derivative = (error - pid->previousError) / dt;
     pid->previousError = error;
@@ -26,12 +26,14 @@ float PID_Update(PID *pid, float target, float measured, float dt)
          + pid->kd * derivative;
 }
 
-float PID_UpdateAngleWithGyroD(PID *pid, float targetAngleDeg, float measuredAngleDeg, float gyroDegPerSec, float dt)
+float PID_Controller::UpdateAngleWithGyroD(PID *pid,
+    float targetAngleDeg, float measuredAngleDeg, float gyroDegPerSec,
+    float dt)
 {
     float error = targetAngleDeg - measuredAngleDeg;
 
     pid->integrator += error * dt;
-    pid->integrator = clamp(
+    pid->integrator = MathUtils::Clamp(
         pid->integrator,
         -pid->integratorLimit,
         pid->integratorLimit

@@ -23,7 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 
-#include "FlightController/flight_controller.h"
+#include "FlightController/flightcontroller_entry.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -92,7 +92,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  flight_controller_Init(&huart2);
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
   /* USER CODE END 2 */
 
@@ -108,7 +108,7 @@ int main(void)
     HAL_StatusTypeDef status = HAL_UART_Receive(&huart2, &byte, 1, 0);
     if (status == HAL_OK)
     {
-      MavlinkParseByte(byte);
+      flight_controller_MavlinkParseByte(byte);
     }
     /* USER CODE END WHILE */
 
@@ -117,7 +117,7 @@ int main(void)
     if (now - lastHeartbeatMs >= 1000)
     {
       lastHeartbeatMs = now;
-      heartbeat();
+      flight_controller_Heartbeat();
     }
 
     if (now - lastFlightMs >= 10)
@@ -125,7 +125,7 @@ int main(void)
       float dt = (now - lastFlightMs) * 0.001f;
       lastFlightMs = now;
 
-      flight_Update(dt);
+      flight_controller_Update(dt);
     }
   }
   /* USER CODE END 3 */
