@@ -7,6 +7,7 @@
 #include "MathUtils.h"
 
 #include <cmath>
+#include <iostream>
 
 NAMESPACE_BEGIN
 bool MavlinkBridge::Open(const std::string& port, int baud)
@@ -40,8 +41,10 @@ void MavlinkBridge::Poll()
 
 void MavlinkBridge::SendHilSensor(
     uint64_t timeUsec,
-    double angleRad,
-    double angularVelocityRad
+    double rollRad,
+    double pitchRad,
+    double rollRateRad,
+    double pitchRateRad
 )
 {
     if (!serial_.IsOpen())
@@ -49,12 +52,22 @@ void MavlinkBridge::SendHilSensor(
 
     constexpr double g = 9.80665;
 
-    float xacc = 0.0f;
-    float yacc = static_cast<float>(std::sin(angleRad) * g);
-    float zacc = static_cast<float>(std::cos(angleRad) * g);
+    /*
+    Спрощена модель gravity vector для roll/pitch.
 
-    float xgyro = static_cast<float>(angularVelocityRad);
-    float ygyro = 0.0f;
+    STM32 зазвичай рахує:
+    roll  = atan2(accel.y, accel.z)
+    pitch = atan2(-accel.x, sqrt(accel.y^2 + accel.z^2))
+
+    Тому даємо сумісні accel:
+    */
+
+    float xacc = static_cast<float>(-std::sin(pitchRad) * g);
+    float yacc = static_cast<float>( std::sin(rollRad) * std::cos(pitchRad) * g);
+    float zacc = static_cast<float>( std::cos(rollRad) * std::cos(pitchRad) * g);
+
+    float xgyro = static_cast<float>(rollRateRad);
+    float ygyro = static_cast<float>(pitchRateRad);
     float zgyro = 0.0f;
 
     mavlink_message_t msg;
@@ -83,6 +96,7 @@ void MavlinkBridge::SendHilSensor(
     );
 
     uint16_t len = mavlink_msg_to_send_buffer(txBuffer, &msg);
+
     serial_.Write(txBuffer, len);
 }
 
@@ -100,8 +114,10 @@ void MavlinkBridge::HandleMessage(const mavlink_message_t& msg)
             mavlink_servo_output_raw_t servo{};
             mavlink_msg_servo_output_raw_decode(&msg, &servo);
 
-            motors_.left = PwmToMotor(servo.servo1_raw);
-            motors_.right = PwmToMotor(servo.servo2_raw);
+            motors_.m1 = PwmToMotor(servo.servo1_raw);
+            motors_.m2 = PwmToMotor(servo.servo2_raw);
+            motors_.m3 = PwmToMotor(servo.servo3_raw);
+            motors_.m4 = PwmToMotor(servo.servo4_raw);
 
             break;
         }

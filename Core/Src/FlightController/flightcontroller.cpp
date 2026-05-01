@@ -55,40 +55,50 @@ void FlightController::Update(float dt)
 
     float targetRollDeg = 0.0f;
     float gyroRollDegPerSec = m_simImu.gyro.x * 57.2957795f;
-
     float accelRollDeg = atan2f(m_simImu.accel.y, m_simImu.accel.z) * 57.2957795f;
+
+    float targetPitchDeg = 0.0f;
+    float gyroPitchDegPerSec = m_simImu.gyro.y * 57.2957795f;
+    float accelPitchDeg = atan2f(
+                                -m_simImu.accel.x,
+                                sqrtf(m_simImu.accel.y * m_simImu.accel.y + m_simImu.accel.z * m_simImu.accel.z)
+                            ) * 57.2957795f;
 
     if (!m_estimatorInitialized)
     {
         m_estimatedRollDeg = accelRollDeg;
+        m_estimatedPitchDeg = accelPitchDeg;
         m_estimatorInitialized = true;
     }
     else
     {
+        m_estimatedPitchDeg =
+            0.98f * (m_estimatedPitchDeg + gyroPitchDegPerSec * dt)
+          + 0.02f * accelPitchDeg;
+
         m_estimatedRollDeg =
             0.98f * (m_estimatedRollDeg + gyroRollDegPerSec * dt)
           + 0.02f * accelRollDeg;
     }
 
-    float correction = PID_Controller::UpdateAngleWithGyroD(&m_rollPID, targetRollDeg, m_estimatedRollDeg, gyroRollDegPerSec, dt);
+    float rollCorrection = PID_Controller::UpdateAngleWithGyroD(&m_rollPID, targetRollDeg, m_estimatedRollDeg, gyroRollDegPerSec, dt);
+    rollCorrection = MathUtils::Clamp(rollCorrection, -0.25f, 0.25f);
 
-    correction = MathUtils::Clamp(correction, -0.25f, 0.25f);
+    float pitchCorrection = PID_Controller::UpdateAngleWithGyroD(&m_pitchPID, targetPitchDeg, m_estimatedPitchDeg, gyroPitchDegPerSec, dt);
+    pitchCorrection = MathUtils::Clamp(pitchCorrection, -0.25f, 0.25f);
 
     float throttle = 0.5f;
 
-    float leftMotorFront = throttle - correction;
-    float rightMotorFront = throttle + correction;
-    float leftMotorBack = 0;
-    float rightMotorBack = 0;
-
-    leftMotorFront = MathUtils::Clamp(leftMotorFront, 0.0f, 1.0f);
-    rightMotorFront = MathUtils::Clamp(rightMotorFront, 0.0f, 1.0f);
-
     MotorOutputs motor_outputs{};
-    motor_outputs.m1 = leftMotorFront;
-    motor_outputs.m2 = rightMotorFront;
-    motor_outputs.m3 = rightMotorBack;
-    motor_outputs.m4 = leftMotorBack;
+    motor_outputs.m1 = throttle + rollCorrection + pitchCorrection;
+    motor_outputs.m2 = throttle - rollCorrection + pitchCorrection;
+    motor_outputs.m3 = throttle - rollCorrection - pitchCorrection;
+    motor_outputs.m4 = throttle + rollCorrection - pitchCorrection;
+
+    motor_outputs.m1 = MathUtils::Clamp(motor_outputs.m1, 0.0f, 1.0f);
+    motor_outputs.m2 = MathUtils::Clamp(motor_outputs.m2, 0.0f, 1.0f);
+    motor_outputs.m3 = MathUtils::Clamp(motor_outputs.m3, 0.0f, 1.0f);
+    motor_outputs.m4 = MathUtils::Clamp(motor_outputs.m4, 0.0f, 1.0f);
 
     SendServoOutputRaw(motor_outputs);
 }

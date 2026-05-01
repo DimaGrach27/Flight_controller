@@ -13,8 +13,10 @@
 NAMESPACE_BEGIN
 struct MotorOutputs
 {
-    double left = 0.5;
-    double right = 0.5;
+    double m1 = 0.5;
+    double m2 = 0.5;
+    double m3 = 0.5;
+    double m4 = 0.5;
 };
 
 class MavlinkBridge
@@ -26,8 +28,10 @@ public:
 
     void SendHilSensor(
         uint64_t timeUsec,
-        double angleRad,
-        double angularVelocityRad
+        double rollRad,
+        double pitchRad,
+        double rollRateRad,
+        double pitchRateRad
     );
 
     const MotorOutputs& Motors() const;

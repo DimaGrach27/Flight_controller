@@ -107,11 +107,11 @@
       </joint>
 
       <plugin
-        filename="libOneAxisHilPlugin"
-        name="one_axis_hil::OneAxisHilPlugin">
+        filename="libHilPlugin"
+        name="hil_plugin::HilPlugin">
 
         <joint_name>roll_joint</joint_name>
-        <serial_port>/dev/cu.usbmodem103</serial_port>
+        <serial_port>/dev/cu.usbmodem1103</serial_port>
         <baud>115200</baud>
 
         <!-- Torque scale applied from motor difference -->

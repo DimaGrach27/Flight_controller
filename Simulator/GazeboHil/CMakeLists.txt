@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(OneAxisHilPlugin LANGUAGES CXX)
+project(HilPlugin LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -28,31 +28,31 @@ endif()
 
 find_package(gz-plugin2 REQUIRED COMPONENTS register)
 
-add_library(OneAxisHilPlugin SHARED
-        core/src/OneAxisHilPlugin.cpp
+add_library(HilPlugin SHARED
+        core/src/HilPlugin.cpp
         core/src/SerialPort.cpp
         core/src/MavlinkBridge.cpp
         core/src/CsvLogger.cpp
 )
 
-target_include_directories(OneAxisHilPlugin PRIVATE
+target_include_directories(HilPlugin PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/core/inc
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party
 )
 
-target_link_libraries(OneAxisHilPlugin PRIVATE
+target_link_libraries(HilPlugin PRIVATE
         ${GZ_SIM_TARGET}
         gz-plugin2::register
 )
 
-target_compile_options(OneAxisHilPlugin PRIVATE
+target_compile_options(HilPlugin PRIVATE
         -Wall
         -Wextra
         -Wpedantic
 )
 
-set_target_properties(OneAxisHilPlugin PROPERTIES
-        OUTPUT_NAME "OneAxisHilPlugin"
+set_target_properties(HilPlugin PROPERTIES
+        OUTPUT_NAME "HilPlugin"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins"
 )
 # On macOS/Linux, termios is part of libc, no extra lib needed.

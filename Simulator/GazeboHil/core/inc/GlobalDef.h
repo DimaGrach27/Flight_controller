@@ -4,5 +4,5 @@
 
 #pragma once
 
-#define NAMESPACE_BEGIN namespace one_axis_hil {
+#define NAMESPACE_BEGIN namespace hil_plugin {
 #define NAMESPACE_END }

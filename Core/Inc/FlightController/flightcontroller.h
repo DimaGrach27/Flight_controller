@@ -37,4 +37,5 @@ private:
 
     bool m_estimatorInitialized = false;
     float m_estimatedRollDeg = 0.0f;
+    float m_estimatedPitchDeg = 0.0f;
 };
