@@ -101,6 +101,7 @@ void MavlinkBridge::SendHilSensor(
 }
 
 void MavlinkBridge::SendManualControl(
+    bool armStatus,
     double roll,
     double pitch,
     double throttle,
@@ -113,6 +114,11 @@ void MavlinkBridge::SendManualControl(
     int16_t y = static_cast<int16_t>(Clamp(roll, -1.0, 1.0) * 1000.0);
     int16_t z = static_cast<int16_t>(Clamp(throttle, 0.0, 1.0) * 1000.0);
     int16_t r = static_cast<int16_t>(Clamp(yaw, -1.0, 1.0) * 1000.0);
+    uint16_t buttons = 0;
+    if (armStatus)
+    {
+        buttons |= (1u << 6);
+    }
 
     mavlink_msg_manual_control_pack(
         255,
@@ -123,7 +129,7 @@ void MavlinkBridge::SendManualControl(
         y,
         z,
         r,
-        0,
+        buttons,
         0,
         0,
         0,

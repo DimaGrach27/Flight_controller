@@ -35,6 +35,7 @@ public:
     );
 
     void SendManualControl(
+        bool armStatus,
         double roll,
         double pitch,
         double throttle,

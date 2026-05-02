@@ -59,6 +59,12 @@ void FlightController::Init(UART_HandleTypeDef& huart2)
 
 void FlightController::Update(float dt)
 {
+    if (!m_armed)
+    {
+        SendServoOutputRaw({0,0,0,0});
+        return;
+    }
+
     if (!m_simImu.valid)
     {
         return;
@@ -176,7 +182,8 @@ void FlightController::MavlinkHandleMessage(const mavlink_message_t *msg)
             m_rcCommand.pitch = MathUtils::Clamp(m_rcCommand.pitch, -1.0f, 1.0f);
             m_rcCommand.throttle = MathUtils::Clamp(m_rcCommand.throttle, 0.0f, 1.0f);
             m_rcCommand.yaw = MathUtils::Clamp(m_rcCommand.yaw, -1.0f, 1.0f);
-
+            m_rcCommand.armed = (manual.buttons & (1u << 6)) != 0;
+            m_armed = m_rcCommand.armed;
             m_rcCommand.valid = true;
             break;
         }

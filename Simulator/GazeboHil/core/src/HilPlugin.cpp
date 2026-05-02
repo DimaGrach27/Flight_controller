@@ -269,7 +269,9 @@ void HilPlugin::PostUpdate(
             const ManualControl& control = m_joystickInput.Control();
 
             // std::cout
-            // << "[Joystick] roll=" << control.roll
+            // << "[Joystick] "
+            // <<  "arm=" << control.arm
+            // << "roll=" << control.roll
             // << " pitch=" << control.pitch
             // << " throttle=" << control.throttle
             // << " yaw=" << control.yaw
@@ -278,6 +280,7 @@ void HilPlugin::PostUpdate(
             if (control.valid)
             {
                 mavlink_.SendManualControl(
+                    control.arm,
                     control.roll,
                     control.pitch,
                     control.throttle,

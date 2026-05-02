@@ -31,5 +31,6 @@ struct RcCommand
     float roll;     // -1..1
     float pitch;    // -1..1
     float yaw;      // -1..1
+    bool armed;
     bool valid;
 };

@@ -28,8 +28,9 @@ public:
 
 private:
     double Axis(int index) const;
-    static double ApplyDeadzone(double value, double deadzone);
-    static double NormalizeThrottle(double value);
+    double ApplyDeadzone(double value, double deadzone);
+    double ApplyExpo(double value, double expo);
+    double NormalizeThrottle(double value);
 
 private:
     void* m_joystick = nullptr;

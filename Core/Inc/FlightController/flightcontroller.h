@@ -37,6 +37,8 @@ private:
     PID m_rollPID = {};
     PID m_pitchPID = {};
 
+    bool m_armed = false;
+
     bool m_estimatorInitialized = false;
     float m_estimatedRollDeg = 0.0f;
     float m_estimatedPitchDeg = 0.0f;
