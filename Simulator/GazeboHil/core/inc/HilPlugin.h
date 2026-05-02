@@ -16,6 +16,7 @@
 #include "CsvLogger.h"
 #include "MavlinkBridge.h"
 #include "GlobalDef.h"
+#include "JoystickInput.h"
 
 NAMESPACE_BEGIN
 class HilPlugin:
@@ -57,6 +58,7 @@ private:
 
     MavlinkBridge mavlink_;
     CsvLogger logger_;
+    JoystickInput m_joystickInput;
 
     std::string m_rollJointName = "roll_joint";
     std::string m_pitchJointName = "pitch_joint";
@@ -64,6 +66,12 @@ private:
     std::string logPath_ = "one_axis_hil_log.csv";
 
     int baud_ = 115200;
+
+    bool m_useJoystick = true;
+    int m_joystickIndex = 0;
+
+    double m_manualRateHz = 50.0;
+    double m_lastManualSendSec = -1.0;
 
     double m_maxRollTorque = 0.15;
     double m_maxPitchTorque = 0.15;

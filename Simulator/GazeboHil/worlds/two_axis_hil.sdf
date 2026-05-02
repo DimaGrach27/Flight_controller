@@ -153,6 +153,10 @@
 
                 <hil_rate_hz>100</hil_rate_hz>
 
+                <use_joystick>true</use_joystick>
+                <joystick_index>0</joystick_index>
+                <manual_rate_hz>50</manual_rate_hz>
+
                 <disturbance_roll_torque>0.05</disturbance_roll_torque>
                 <disturbance_pitch_torque>-0.08</disturbance_pitch_torque>
                 <disturbance_start>0.2</disturbance_start>

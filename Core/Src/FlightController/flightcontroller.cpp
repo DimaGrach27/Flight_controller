@@ -22,7 +22,8 @@
 // };
 FlightController::FlightController()
 {
-    m_rollPID = {
+    m_rollPID =
+    {
         .kp = 0.008f,
         .ki = 0.0f,
         .kd = 0.0045f,
@@ -31,13 +32,23 @@ FlightController::FlightController()
         .integratorLimit = 50.0f
     };
 
-    m_pitchPID = {
+    m_pitchPID =
+    {
         .kp = 0.008f,
         .ki = 0.0f,
         .kd = 0.0045f,
         .integrator = 0.0f,
         .previousError = 0.0f,
         .integratorLimit = 50.0f
+    };
+
+    m_rcCommand =
+    {
+        .throttle = 0.5f,
+        .roll = 0.0f,
+        .pitch = 0.0f,
+        .yaw = 0.0f,
+        .valid = false
     };
 }
 
@@ -53,11 +64,21 @@ void FlightController::Update(float dt)
         return;
     }
 
-    float targetRollDeg = 0.0f;
+    float maxAngleDeg = 20.0f;
+    float throttle = m_rcCommand.throttle;
+    float targetRollDeg = m_rcCommand.roll * maxAngleDeg;
+    float targetPitchDeg = m_rcCommand.pitch * maxAngleDeg;
+
+    if (!m_rcCommand.valid)
+    {
+        throttle = 0.5f;
+        targetRollDeg = 0.0f;
+        targetPitchDeg = 0.0f;
+    }
+
     float gyroRollDegPerSec = m_simImu.gyro.x * 57.2957795f;
     float accelRollDeg = atan2f(m_simImu.accel.y, m_simImu.accel.z) * 57.2957795f;
 
-    float targetPitchDeg = 0.0f;
     float gyroPitchDegPerSec = m_simImu.gyro.y * 57.2957795f;
     float accelPitchDeg = atan2f(
                                 -m_simImu.accel.x,
@@ -86,8 +107,6 @@ void FlightController::Update(float dt)
 
     float pitchCorrection = PID_Controller::UpdateAngleWithGyroD(&m_pitchPID, targetPitchDeg, m_estimatedPitchDeg, gyroPitchDegPerSec, dt);
     pitchCorrection = MathUtils::Clamp(pitchCorrection, -0.25f, 0.25f);
-
-    float throttle = 0.5f;
 
     MotorOutputs motor_outputs{};
     motor_outputs.m1 = throttle + rollCorrection + pitchCorrection;
@@ -142,7 +161,25 @@ void FlightController::MavlinkHandleMessage(const mavlink_message_t *msg)
         case MAVLINK_MSG_ID_HIL_SENSOR:
             HandleHilSensor(msg);
             break;
+        case MAVLINK_MSG_ID_MANUAL_CONTROL:
+        {
+            mavlink_manual_control_t manual;
+            mavlink_msg_manual_control_decode(msg, &manual);
 
+            // x/y/r зазвичай -1000..1000, z 0..1000
+            m_rcCommand.pitch = manual.x / 1000.0f;
+            m_rcCommand.roll = manual.y / 1000.0f;
+            m_rcCommand.throttle = manual.z / 1000.0f;
+            m_rcCommand.yaw = manual.r / 1000.0f;
+
+            m_rcCommand.roll = MathUtils::Clamp(m_rcCommand.roll, -1.0f, 1.0f);
+            m_rcCommand.pitch = MathUtils::Clamp(m_rcCommand.pitch, -1.0f, 1.0f);
+            m_rcCommand.throttle = MathUtils::Clamp(m_rcCommand.throttle, 0.0f, 1.0f);
+            m_rcCommand.yaw = MathUtils::Clamp(m_rcCommand.yaw, -1.0f, 1.0f);
+
+            m_rcCommand.valid = true;
+            break;
+        }
         default:
             break;
     }

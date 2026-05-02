@@ -100,6 +100,46 @@ void MavlinkBridge::SendHilSensor(
     serial_.Write(txBuffer, len);
 }
 
+void MavlinkBridge::SendManualControl(
+    double roll,
+    double pitch,
+    double throttle,
+    double yaw)
+{
+    mavlink_message_t msg;
+    uint8_t txBuffer[MAVLINK_MAX_PACKET_LEN];
+
+    int16_t x = static_cast<int16_t>(Clamp(pitch, -1.0, 1.0) * 1000.0);
+    int16_t y = static_cast<int16_t>(Clamp(roll, -1.0, 1.0) * 1000.0);
+    int16_t z = static_cast<int16_t>(Clamp(throttle, 0.0, 1.0) * 1000.0);
+    int16_t r = static_cast<int16_t>(Clamp(yaw, -1.0, 1.0) * 1000.0);
+
+    mavlink_msg_manual_control_pack(
+        255,
+        1,
+        &msg,
+        1,      // target system: Nucleo system_id
+        x,
+        y,
+        z,
+        r,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    );
+
+    uint16_t len = mavlink_msg_to_send_buffer(txBuffer, &msg);
+    serial_.Write(txBuffer, len);
+}
+
 const MotorOutputs& MavlinkBridge::Motors() const
 {
     return motors_;

@@ -34,6 +34,13 @@ public:
         double pitchRateRad
     );
 
+    void SendManualControl(
+        double roll,
+        double pitch,
+        double throttle,
+        double yaw
+    );
+
     const MotorOutputs& Motors() const;
 
 private:

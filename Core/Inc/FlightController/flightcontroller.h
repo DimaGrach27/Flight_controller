@@ -31,7 +31,9 @@ private:
 private:
     UART_HandleTypeDef* m_huart2 = nullptr;
 
+    RcCommand m_rcCommand = {};
     SimImuSample m_simImu = {};
+
     PID m_rollPID = {};
     PID m_pitchPID = {};
 

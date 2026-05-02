@@ -24,3 +24,12 @@ struct MotorOutputs
     float m3; //RIGHT_BACK
     float m4; //LEFT_BACK
 };
+
+struct RcCommand
+{
+    float throttle; // 0..1
+    float roll;     // -1..1
+    float pitch;    // -1..1
+    float yaw;      // -1..1
+    bool valid;
+};

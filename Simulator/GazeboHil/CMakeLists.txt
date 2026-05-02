@@ -27,22 +27,26 @@ else()
 endif()
 
 find_package(gz-plugin2 REQUIRED COMPONENTS register)
+find_package(SDL2 REQUIRED)
 
 add_library(HilPlugin SHARED
         core/src/HilPlugin.cpp
         core/src/SerialPort.cpp
         core/src/MavlinkBridge.cpp
         core/src/CsvLogger.cpp
+        core/src/JoystickInput.cpp
 )
 
 target_include_directories(HilPlugin PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/core/inc
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party
+        ${SDL2_INCLUDE_DIRS}
 )
 
 target_link_libraries(HilPlugin PRIVATE
         ${GZ_SIM_TARGET}
         gz-plugin2::register
+        SDL2::SDL2
 )
 
 target_compile_options(HilPlugin PRIVATE

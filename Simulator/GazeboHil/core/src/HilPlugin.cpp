@@ -42,6 +42,11 @@ void HilPlugin::Configure(
         std::cout << "[HilPlugin] Mavlink opened on " << serialPortPath_ << std::endl;
     }
 
+    if (m_useJoystick)
+    {
+        m_joystickInput.Init(m_joystickIndex);
+    }
+
     if (logger_.Open(logPath_))
     {
         std::cout << "[HilPlugin] Logging to: " << logPath_ << std::endl;
@@ -106,6 +111,15 @@ void HilPlugin::LoadConfig(const std::shared_ptr<const sdf::Element>& sdf)
 
     if (sdf->HasElement("disturbance_end"))
         disturbanceEndSec_ = sdf->Get<double>("disturbance_end");
+
+    if (sdf->HasElement("use_joystick"))
+        m_useJoystick = sdf->Get<bool>("use_joystick");
+
+    if (sdf->HasElement("joystick_index"))
+        m_joystickIndex = sdf->Get<int>("joystick_index");
+
+    if (sdf->HasElement("manual_rate_hz"))
+        m_manualRateHz = sdf->Get<double>("manual_rate_hz");
 }
 
 void HilPlugin::ConfigureJoint(gz::sim::EntityComponentManager& ecm, const std::string& jointName, gz::sim::Joint& joint)
@@ -241,6 +255,36 @@ void HilPlugin::PostUpdate(
             rollRateRad,
             pitchRateRad
         );
+    }
+
+    if (m_useJoystick)
+    {
+        m_joystickInput.Poll();
+
+        if (m_lastManualSendSec < 0.0 ||
+            simTimeSec - m_lastManualSendSec >= 1.0 / m_manualRateHz)
+        {
+            m_lastManualSendSec = simTimeSec;
+
+            const ManualControl& control = m_joystickInput.Control();
+
+            // std::cout
+            // << "[Joystick] roll=" << control.roll
+            // << " pitch=" << control.pitch
+            // << " throttle=" << control.throttle
+            // << " yaw=" << control.yaw
+            // << std::endl;
+
+            if (control.valid)
+            {
+                mavlink_.SendManualControl(
+                    control.roll,
+                    control.pitch,
+                    control.throttle,
+                    control.yaw
+                );
+            }
+        }
     }
 
     // LogSample(simTimeSec, angleRadY, angularVelocityRadY);
