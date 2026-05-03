@@ -36,6 +36,7 @@ public:
 
     void SendManualControl(
         bool armStatus,
+        bool acroMode,
         double roll,
         double pitch,
         double throttle,

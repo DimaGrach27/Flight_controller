@@ -127,7 +127,10 @@ void JoystickInput::Poll()
         //     << " BTN_4=" << btn_4
         // << std::endl;
 
+        //arm button it is B on controller and 6 axis in code 1 = 32768
+        //acro mode it is E on controller and 5 axis in code 1 = 32768
         m_control.arm = SDL_JoystickGetAxis(js, 6) > 16000;
+        m_control.acroMode = SDL_JoystickGetAxis(js, 5) > 16000;
     }
 }
 

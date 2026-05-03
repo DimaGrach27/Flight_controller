@@ -80,8 +80,8 @@
                 <axis>
                     <xyz>1 0 0</xyz>
                     <limit>
-                        <lower>-1.5708</lower>
-                        <upper>1.5708</upper>
+                        <lower>-3.14159</lower>
+                        <upper>3.14159</upper>
                         <effort>10.0</effort>
                         <velocity>20.0</velocity>
                     </limit>
@@ -124,8 +124,8 @@
                 <axis>
                     <xyz>0 1 0</xyz>
                     <limit>
-                        <lower>-1.5708</lower>
-                        <upper>1.5708</upper>
+                        <lower>-3.14159</lower>
+                        <upper>3.14159</upper>
                         <effort>10.0</effort>
                         <velocity>20.0</velocity>
                     </limit>
@@ -142,7 +142,7 @@
                 <roll_joint_name>roll_joint</roll_joint_name>
                 <pitch_joint_name>pitch_joint</pitch_joint_name>
 
-                <serial_port>/dev/cu.usbmodem1103</serial_port>
+                <serial_port>/dev/cu.usbmodem103</serial_port>
                 <baud>115200</baud>
 
                 <max_roll_torque>0.15</max_roll_torque>

@@ -24,9 +24,9 @@ FlightController::FlightController()
 {
     m_rollPID =
     {
-        .kp = 0.008f,
+        .kp = 0.004f,
         .ki = 0.0f,
-        .kd = 0.0045f,
+        .kd = 0.0f,
         .integrator = 0.0f,
         .previousError = 0.0f,
         .integratorLimit = 50.0f
@@ -34,9 +34,9 @@ FlightController::FlightController()
 
     m_pitchPID =
     {
-        .kp = 0.008f,
+        .kp = 0.004f,
         .ki = 0.0f,
-        .kd = 0.0045f,
+        .kd = 0.0f,
         .integrator = 0.0f,
         .previousError = 0.0f,
         .integratorLimit = 50.0f
@@ -59,9 +59,11 @@ void FlightController::Init(UART_HandleTypeDef& huart2)
 
 void FlightController::Update(float dt)
 {
+    MotorOutputs motors = {0};
+
     if (!m_armed)
     {
-        SendServoOutputRaw({0,0,0,0});
+        SendServoOutputRaw(motors);
         return;
     }
 
@@ -70,62 +72,21 @@ void FlightController::Update(float dt)
         return;
     }
 
-    float maxAngleDeg = 20.0f;
-    float throttle = m_rcCommand.throttle;
-    float targetRollDeg = m_rcCommand.roll * maxAngleDeg;
-    float targetPitchDeg = m_rcCommand.pitch * maxAngleDeg;
+    ControlOutput control = {0};
 
-    if (!m_rcCommand.valid)
+    switch (m_flightMode)
     {
-        throttle = 0.5f;
-        targetRollDeg = 0.0f;
-        targetPitchDeg = 0.0f;
+        case FlightMode::FLIGHT_MODE_ACRO:
+            control = UpdateAcroController(dt);
+            break;
+        case FlightMode::FLIGHT_MODE_ANGLE:
+            control = UpdateAngleController(dt);
+            break;
     }
 
-    float gyroRollDegPerSec = m_simImu.gyro.x * 57.2957795f;
-    float accelRollDeg = atan2f(m_simImu.accel.y, m_simImu.accel.z) * 57.2957795f;
+    motors = MixQuadX(m_rcCommand.throttle, control);
 
-    float gyroPitchDegPerSec = m_simImu.gyro.y * 57.2957795f;
-    float accelPitchDeg = atan2f(
-                                -m_simImu.accel.x,
-                                sqrtf(m_simImu.accel.y * m_simImu.accel.y + m_simImu.accel.z * m_simImu.accel.z)
-                            ) * 57.2957795f;
-
-    if (!m_estimatorInitialized)
-    {
-        m_estimatedRollDeg = accelRollDeg;
-        m_estimatedPitchDeg = accelPitchDeg;
-        m_estimatorInitialized = true;
-    }
-    else
-    {
-        m_estimatedPitchDeg =
-            0.98f * (m_estimatedPitchDeg + gyroPitchDegPerSec * dt)
-          + 0.02f * accelPitchDeg;
-
-        m_estimatedRollDeg =
-            0.98f * (m_estimatedRollDeg + gyroRollDegPerSec * dt)
-          + 0.02f * accelRollDeg;
-    }
-
-    float rollCorrection = PID_Controller::UpdateAngleWithGyroD(&m_rollPID, targetRollDeg, m_estimatedRollDeg, gyroRollDegPerSec, dt);
-    rollCorrection = MathUtils::Clamp(rollCorrection, -0.25f, 0.25f);
-
-    float pitchCorrection = PID_Controller::UpdateAngleWithGyroD(&m_pitchPID, targetPitchDeg, m_estimatedPitchDeg, gyroPitchDegPerSec, dt);
-    pitchCorrection = MathUtils::Clamp(pitchCorrection, -0.25f, 0.25f);
-
-    MotorOutputs motor_outputs{};
-    motor_outputs.m1 = throttle + rollCorrection + pitchCorrection;
-    motor_outputs.m2 = throttle - rollCorrection + pitchCorrection;
-    motor_outputs.m3 = throttle - rollCorrection - pitchCorrection;
-    motor_outputs.m4 = throttle + rollCorrection - pitchCorrection;
-
-    motor_outputs.m1 = MathUtils::Clamp(motor_outputs.m1, 0.0f, 1.0f);
-    motor_outputs.m2 = MathUtils::Clamp(motor_outputs.m2, 0.0f, 1.0f);
-    motor_outputs.m3 = MathUtils::Clamp(motor_outputs.m3, 0.0f, 1.0f);
-    motor_outputs.m4 = MathUtils::Clamp(motor_outputs.m4, 0.0f, 1.0f);
-
-    SendServoOutputRaw(motor_outputs);
+    SendServoOutputRaw(motors);
 }
 
 void FlightController::Heartbeat()
@@ -182,8 +143,22 @@ void FlightController::MavlinkHandleMessage(const mavlink_message_t *msg)
             m_rcCommand.pitch = MathUtils::Clamp(m_rcCommand.pitch, -1.0f, 1.0f);
             m_rcCommand.throttle = MathUtils::Clamp(m_rcCommand.throttle, 0.0f, 1.0f);
             m_rcCommand.yaw = MathUtils::Clamp(m_rcCommand.yaw, -1.0f, 1.0f);
-            m_rcCommand.armed = (manual.buttons & (1u << 6)) != 0;
+
+            constexpr uint8_t armedInputMask = 1u << 1;
+            constexpr uint8_t flightModeInputMask = 1u << 2;
+            m_rcCommand.armed = (manual.buttons & armedInputMask) != 0;
+            m_rcCommand.acroMode = (manual.buttons & flightModeInputMask) != 0;
             m_armed = m_rcCommand.armed;
+
+            if (m_rcCommand.acroMode)
+            {
+                m_flightMode = FlightMode::FLIGHT_MODE_ACRO;
+            }
+            else
+            {
+                m_flightMode = FlightMode::FLIGHT_MODE_ANGLE;
+            }
+
             m_rcCommand.valid = true;
             break;
         }
@@ -244,4 +219,109 @@ void FlightController::SendServoOutputRaw(const MotorOutputs motor_outputs)
 
     uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
     HAL_UART_Transmit(m_huart2, buffer, len, 100);
+}
+
+ControlOutput FlightController::UpdateAngleController(float dt)
+{
+    float maxAngleDeg = 20.0f;
+    float throttle = m_rcCommand.throttle;
+    float targetRollDeg = m_rcCommand.roll * maxAngleDeg;
+    float targetPitchDeg = m_rcCommand.pitch * maxAngleDeg;
+
+    if (!m_rcCommand.valid)
+    {
+        throttle = 0.5f;
+        targetRollDeg = 0.0f;
+        targetPitchDeg = 0.0f;
+    }
+
+    float gyroRollDegPerSec = m_simImu.gyro.x * 57.2957795f;
+    float accelRollDeg = atan2f(m_simImu.accel.y, m_simImu.accel.z) * 57.2957795f;
+
+    float gyroPitchDegPerSec = m_simImu.gyro.y * 57.2957795f;
+    float accelPitchDeg = atan2f(
+                                -m_simImu.accel.x,
+                                sqrtf(m_simImu.accel.y * m_simImu.accel.y + m_simImu.accel.z * m_simImu.accel.z)
+                            ) * 57.2957795f;
+
+    if (!m_estimatorInitialized)
+    {
+        m_estimatedRollDeg = accelRollDeg;
+        m_estimatedPitchDeg = accelPitchDeg;
+        m_estimatorInitialized = true;
+    }
+    else
+    {
+        m_estimatedPitchDeg =
+            0.98f * (m_estimatedPitchDeg + gyroPitchDegPerSec * dt)
+          + 0.02f * accelPitchDeg;
+
+        m_estimatedRollDeg =
+            0.98f * (m_estimatedRollDeg + gyroRollDegPerSec * dt)
+          + 0.02f * accelRollDeg;
+    }
+
+    float rollCorrection = PID_Controller::UpdateAngleWithGyroD(&m_rollPID, targetRollDeg, m_estimatedRollDeg, gyroRollDegPerSec, dt);
+    rollCorrection = MathUtils::Clamp(rollCorrection, -0.25f, 0.25f);
+
+    float pitchCorrection = PID_Controller::UpdateAngleWithGyroD(&m_pitchPID, targetPitchDeg, m_estimatedPitchDeg, gyroPitchDegPerSec, dt);
+    pitchCorrection = MathUtils::Clamp(pitchCorrection, -0.25f, 0.25f);
+
+    const ControlOutput out =
+    {
+        rollCorrection,
+        pitchCorrection,
+    };
+
+    return out;
+}
+
+ControlOutput FlightController::UpdateAcroController(float dt)
+{
+    ControlOutput out = {0};
+
+    const float maxRollRateDegSec = 180.0f;
+    const float maxPitchRateDegSec = 180.0f;
+
+    float gyroRollDegPerSec = m_simImu.gyro.x * 57.2957795f;
+    float gyroPitchDegPerSec = m_simImu.gyro.y * 57.2957795f;
+
+    float targetRollRateDegSec = m_rcCommand.roll * maxRollRateDegSec;
+    float targetPitchRateDegSec = m_rcCommand.pitch * maxPitchRateDegSec;
+
+    out.roll = PID_Controller::Update(
+        &m_rollPID,
+        targetRollRateDegSec,
+        gyroRollDegPerSec,
+        dt
+    );
+
+    out.pitch = PID_Controller::Update(
+        &m_pitchPID,
+        targetPitchRateDegSec,
+        gyroPitchDegPerSec,
+        dt
+    );
+
+    out.roll = MathUtils::Clamp(out.roll, -0.25f, 0.25f);
+    out.pitch = MathUtils::Clamp(out.pitch, -0.25f, 0.25f);
+
+    return out;
+}
+
+MotorOutputs FlightController::MixQuadX(const float throttle, const ControlOutput& control_output)
+{
+    MotorOutputs motor_outputs{};
+
+    motor_outputs.m1 = throttle + control_output.roll + control_output.pitch;
+    motor_outputs.m2 = throttle - control_output.roll + control_output.pitch;
+    motor_outputs.m3 = throttle - control_output.roll - control_output.pitch;
+    motor_outputs.m4 = throttle + control_output.roll - control_output.pitch;
+
+    motor_outputs.m1 = MathUtils::Clamp(motor_outputs.m1, 0.0f, 1.0f);
+    motor_outputs.m2 = MathUtils::Clamp(motor_outputs.m2, 0.0f, 1.0f);
+    motor_outputs.m3 = MathUtils::Clamp(motor_outputs.m3, 0.0f, 1.0f);
+    motor_outputs.m4 = MathUtils::Clamp(motor_outputs.m4, 0.0f, 1.0f);
+
+    return motor_outputs;
 }

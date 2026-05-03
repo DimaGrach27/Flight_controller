@@ -12,6 +12,12 @@
 #include "structs.h"
 #include "PID.h"
 
+enum class FlightMode
+{
+    FLIGHT_MODE_ANGLE = 0,
+    FLIGHT_MODE_ACRO = 1,
+};
+
 class FlightController
 {
 public:
@@ -27,6 +33,9 @@ private:
     void MavlinkHandleMessage(const mavlink_message_t* msg);
     void HandleHilSensor(const mavlink_message_t* msg);
     void SendServoOutputRaw(MotorOutputs motor_outputs);
+    ControlOutput UpdateAngleController(float dt);
+    ControlOutput UpdateAcroController(float dt);
+    MotorOutputs MixQuadX(const float throttle, const ControlOutput& control_output);
 
 private:
     UART_HandleTypeDef* m_huart2 = nullptr;
@@ -36,6 +45,8 @@ private:
 
     PID m_rollPID = {};
     PID m_pitchPID = {};
+
+    FlightMode m_flightMode = FlightMode::FLIGHT_MODE_ANGLE;
 
     bool m_armed = false;
 

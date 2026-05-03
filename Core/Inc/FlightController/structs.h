@@ -32,5 +32,13 @@ struct RcCommand
     float pitch;    // -1..1
     float yaw;      // -1..1
     bool armed;
+    bool acroMode;
     bool valid;
+};
+
+struct ControlOutput
+{
+    float roll;
+    float pitch;
+    float yaw;
 };

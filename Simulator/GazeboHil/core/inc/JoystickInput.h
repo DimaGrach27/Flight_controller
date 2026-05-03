@@ -13,6 +13,8 @@ struct ManualControl
     double throttle = 0.5;  // 0..1
     double yaw = 0.0;       // -1..1
     bool arm = false;
+    bool acroMode = false;
+
     bool valid = false;
 };
 

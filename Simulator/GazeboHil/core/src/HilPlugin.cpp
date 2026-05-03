@@ -281,6 +281,7 @@ void HilPlugin::PostUpdate(
             {
                 mavlink_.SendManualControl(
                     control.arm,
+                    control.acroMode,
                     control.roll,
                     control.pitch,
                     control.throttle,
