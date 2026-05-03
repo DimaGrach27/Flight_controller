@@ -30,8 +30,10 @@ public:
         uint64_t timeUsec,
         double rollRad,
         double pitchRad,
+        double yawRad,
         double rollRateRad,
-        double pitchRateRad
+        double pitchRateRad,
+        double yawRateRad
     );
 
     void SendManualControl(

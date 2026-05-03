@@ -43,23 +43,28 @@ void MavlinkBridge::SendHilSensor(
     uint64_t timeUsec,
     double rollRad,
     double pitchRad,
+    double yawRad,
     double rollRateRad,
-    double pitchRateRad
+    double pitchRateRad,
+    double yawRateRad
 )
 {
+    (void)yawRad; // Поки yaw angle не потрібен для accel gravity vector
+
     if (!serial_.IsOpen())
         return;
 
     constexpr double g = 9.80665;
 
     /*
-    Спрощена модель gravity vector для roll/pitch.
+        Спрощена модель gravity vector для roll/pitch.
 
-    STM32 зазвичай рахує:
-    roll  = atan2(accel.y, accel.z)
-    pitch = atan2(-accel.x, sqrt(accel.y^2 + accel.z^2))
+        STM32 зазвичай рахує:
+        roll  = atan2(accel.y, accel.z)
+        pitch = atan2(-accel.x, sqrt(accel.y^2 + accel.z^2))
 
-    Тому даємо сумісні accel:
+        Yaw не змінює напрямок гравітації в body frame для цих формул,
+        тому accel лишається залежним тільки від roll/pitch.
     */
 
     float xacc = static_cast<float>(-std::sin(pitchRad) * g);
@@ -68,7 +73,7 @@ void MavlinkBridge::SendHilSensor(
 
     float xgyro = static_cast<float>(rollRateRad);
     float ygyro = static_cast<float>(pitchRateRad);
-    float zgyro = 0.0f;
+    float zgyro = static_cast<float>(yawRateRad);
 
     mavlink_message_t msg;
     uint8_t txBuffer[MAVLINK_MAX_PACKET_LEN];

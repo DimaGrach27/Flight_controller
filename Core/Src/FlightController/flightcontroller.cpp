@@ -42,12 +42,24 @@ FlightController::FlightController()
         .integratorLimit = 50.0f
     };
 
+    m_yawPID =
+    {
+        .kp = 0.003f,
+        .ki = 0.0f,
+        .kd = 0.0f,
+        .integrator = 0.0f,
+        .previousError = 0.0f,
+        .integratorLimit = 100.0f
+    };
+
     m_rcCommand =
     {
-        .throttle = 0.5f,
+        .throttle = 0.0f,
         .roll = 0.0f,
         .pitch = 0.0f,
         .yaw = 0.0f,
+        .armed = false,
+        .acroMode = false,
         .valid = false
     };
 }
@@ -282,12 +294,17 @@ ControlOutput FlightController::UpdateAcroController(float dt)
 
     const float maxRollRateDegSec = 180.0f;
     const float maxPitchRateDegSec = 180.0f;
+    const float maxYawRateDegSec = 120.0f;
 
-    float gyroRollDegPerSec = m_simImu.gyro.x * 57.2957795f;
-    float gyroPitchDegPerSec = m_simImu.gyro.y * 57.2957795f;
+    constexpr float RADIAN_ANGLE_MULTIPLIER = 57.2957795f;
+
+    float gyroRollDegPerSec = m_simImu.gyro.x * RADIAN_ANGLE_MULTIPLIER;
+    float gyroPitchDegPerSec = m_simImu.gyro.y * RADIAN_ANGLE_MULTIPLIER;
+    float gyroYawDegPerSec = m_simImu.gyro.z * RADIAN_ANGLE_MULTIPLIER;
 
     float targetRollRateDegSec = m_rcCommand.roll * maxRollRateDegSec;
     float targetPitchRateDegSec = m_rcCommand.pitch * maxPitchRateDegSec;
+    float targetTawRateDegSec = m_rcCommand.yaw * maxYawRateDegSec;
 
     out.roll = PID_Controller::Update(
         &m_rollPID,
@@ -303,8 +320,16 @@ ControlOutput FlightController::UpdateAcroController(float dt)
         dt
     );
 
+    out.yaw = PID_Controller::Update(
+        &m_yawPID,
+        targetTawRateDegSec,
+        gyroYawDegPerSec,
+        dt
+    );
+
     out.roll = MathUtils::Clamp(out.roll, -0.25f, 0.25f);
     out.pitch = MathUtils::Clamp(out.pitch, -0.25f, 0.25f);
+    out.yaw = MathUtils::Clamp(out.yaw, -0.20f, 0.20f);
 
     return out;
 }
@@ -313,10 +338,25 @@ MotorOutputs FlightController::MixQuadX(const float throttle, const ControlOutpu
 {
     MotorOutputs motor_outputs{};
 
-    motor_outputs.m1 = throttle + control_output.roll + control_output.pitch;
-    motor_outputs.m2 = throttle - control_output.roll + control_output.pitch;
-    motor_outputs.m3 = throttle - control_output.roll - control_output.pitch;
-    motor_outputs.m4 = throttle + control_output.roll - control_output.pitch;
+    /*
+    Motor layout:
+
+          front
+
+      M1       M2
+         \   /
+          \ /
+          / \
+         /   \
+      M4       M3
+
+          back
+    */
+
+    motor_outputs.m1 = throttle + control_output.roll + control_output.pitch - control_output.yaw;
+    motor_outputs.m2 = throttle - control_output.roll + control_output.pitch + control_output.yaw;
+    motor_outputs.m3 = throttle - control_output.roll - control_output.pitch - control_output.yaw;
+    motor_outputs.m4 = throttle + control_output.roll - control_output.pitch + control_output.yaw;
 
     motor_outputs.m1 = MathUtils::Clamp(motor_outputs.m1, 0.0f, 1.0f);
     motor_outputs.m2 = MathUtils::Clamp(motor_outputs.m2, 0.0f, 1.0f);

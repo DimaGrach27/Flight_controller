@@ -53,8 +53,10 @@ private:
 
 private:
     gz::sim::Model model_{gz::sim::kNullEntity};
+
     gz::sim::Joint m_rollJoint{gz::sim::kNullEntity};
     gz::sim::Joint m_pitchJoint{gz::sim::kNullEntity};
+    gz::sim::Joint m_yawJoint{gz::sim::kNullEntity};
 
     MavlinkBridge mavlink_;
     CsvLogger logger_;
@@ -62,6 +64,8 @@ private:
 
     std::string m_rollJointName = "roll_joint";
     std::string m_pitchJointName = "pitch_joint";
+    std::string m_yawJointName = "yaw_joint";
+
     std::string serialPortPath_ = "/dev/cu.usbmodem1103";
     std::string logPath_ = "one_axis_hil_log.csv";
 
@@ -75,19 +79,26 @@ private:
 
     double m_maxRollTorque = 0.15;
     double m_maxPitchTorque = 0.15;
+    double m_maxYawTorque = 0.15;
     double m_rollTorqueSign = 1.0;
     double m_pitchTorqueSign = 1.0;
+    double m_yawTorqueSign = 1.0;
+
     double hilRateHz_ = 100.0;
     double logRateHz_ = 50.0;
 
     double m_disturbanceRollTorque = 0.06;
     double m_disturbancePitchTorque = -0.05;
+    double m_disturbanceYawTorque = -0.05;
+
     double disturbanceStartSec_ = 0.2;
     double disturbanceEndSec_ = 0.6;
 
     double lastHilSendSec_ = -1.0;
     double lastLogSec_ = -1.0;
+
     double m_lastRollTorque = 0.0;
     double m_lastPitchTorque = 0.0;
+    double m_lastYawTorque = 0.0;
 };
 NAMESPACE_END

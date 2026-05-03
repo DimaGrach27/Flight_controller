@@ -36,6 +36,7 @@ void HilPlugin::Configure(
     LoadConfig(sdf);
     ConfigureJoint(ecm, m_rollJointName, m_rollJoint);
     ConfigureJoint(ecm, m_pitchJointName, m_pitchJoint);
+    ConfigureJoint(ecm, m_yawJointName, m_yawJoint);
 
     if (mavlink_.Open(serialPortPath_, baud_))
     {
@@ -56,12 +57,15 @@ void HilPlugin::Configure(
         << "[HilPlugin] Configured"
         << " jointRoll=" << m_rollJointName
         << " jointPitch=" << m_pitchJointName
+        << " jointYaw=" << m_yawJointName
         << " serial=" << serialPortPath_
         << " baud=" << baud_
         << " maxTorqueRoll=" << m_maxRollTorque
         << " maxTorquePitch=" << m_maxPitchTorque
+        << " maxTorqueYaw=" << m_maxYawTorque
         << " torqueSignRoll=" << m_rollTorqueSign
         << " torqueSignPitch=" << m_pitchTorqueSign
+        << " torqueSignYaw=" << m_yawTorqueSign
         << std::endl;
 }
 
@@ -72,6 +76,9 @@ void HilPlugin::LoadConfig(const std::shared_ptr<const sdf::Element>& sdf)
 
     if (sdf->HasElement("pitch_joint_name"))
         m_pitchJointName = sdf->Get<std::string>("pitch_joint_name");
+
+    if (sdf->HasElement("yaw_joint_name"))
+        m_yawJointName = sdf->Get<std::string>("yaw_joint_name");
 
     if (sdf->HasElement("serial_port"))
         serialPortPath_ = sdf->Get<std::string>("serial_port");
@@ -85,11 +92,17 @@ void HilPlugin::LoadConfig(const std::shared_ptr<const sdf::Element>& sdf)
     if (sdf->HasElement("max_pitch_torque"))
         m_maxPitchTorque = sdf->Get<double>("max_pitch_torque");
 
+    if (sdf->HasElement("max_yaw_torque"))
+        m_maxYawTorque = sdf->Get<double>("max_yaw_torque");
+
     if (sdf->HasElement("roll_torque_sign"))
         m_rollTorqueSign = sdf->Get<double>("roll_torque_sign");
 
     if (sdf->HasElement("pitch_torque_sign"))
         m_pitchTorqueSign = sdf->Get<double>("pitch_torque_sign");
+
+    if (sdf->HasElement("pitch_yaw_sign"))
+        m_yawTorqueSign = sdf->Get<double>("pitch_yaw_sign");
 
     if (sdf->HasElement("hil_rate_hz"))
         hilRateHz_ = sdf->Get<double>("hil_rate_hz");
@@ -105,6 +118,9 @@ void HilPlugin::LoadConfig(const std::shared_ptr<const sdf::Element>& sdf)
 
     if (sdf->HasElement("disturbance_pitch_torque"))
         m_disturbancePitchTorque = sdf->Get<double>("disturbance_pitch_torque");
+
+    if (sdf->HasElement("disturbance_yaw_torque"))
+        m_disturbanceYawTorque = sdf->Get<double>("disturbance_yaw_torque");
 
     if (sdf->HasElement("disturbance_start"))
         disturbanceStartSec_ = sdf->Get<double>("disturbance_start");
@@ -162,31 +178,37 @@ void HilPlugin::PreUpdate(
     */
 
     double rollCmd = (-(m.m2 + m.m3) + (m.m1 + m.m4)) * 0.5;
-
     double pitchCmd = ((m.m1 + m.m2) - (m.m3 + m.m4)) * 0.5;
+    double yawCmd = ((m.m2 + m.m4) - (m.m1 + m.m3)) * 0.5;
 
     double rollTorque = m_rollTorqueSign * rollCmd * m_maxRollTorque;
-
     double pitchTorque = m_pitchTorqueSign * pitchCmd * m_maxPitchTorque;
+    double yawTorque = m_yawTorqueSign * yawCmd * m_maxYawTorque;
 
     if (simTimeSec > disturbanceStartSec_ &&
         simTimeSec < disturbanceEndSec_)
     {
         rollTorque += m_disturbanceRollTorque;
         pitchTorque += m_disturbancePitchTorque;
+        yawTorque += m_disturbanceYawTorque;
     }
 
     rollTorque = Clamp(rollTorque, -m_maxRollTorque, m_maxRollTorque);
     pitchTorque = Clamp(pitchTorque, -m_maxPitchTorque, m_maxPitchTorque);
+    yawTorque = Clamp(yawTorque, -m_maxYawTorque, m_maxYawTorque);
 
     m_lastRollTorque = rollTorque;
     m_lastPitchTorque = pitchTorque;
+    m_lastYawTorque = yawTorque;
 
     if (m_rollJoint.Valid(ecm))
         m_rollJoint.SetForce(ecm, {rollTorque});
 
     if (m_pitchJoint.Valid(ecm))
         m_pitchJoint.SetForce(ecm, {pitchTorque});
+
+    if (m_yawJoint.Valid(ecm))
+        m_yawJoint.SetForce(ecm, {yawTorque});
 
     // static double lastPrintSec = 0.0;
     // if (simTimeSec - lastPrintSec > 0.2)
@@ -212,7 +234,7 @@ void HilPlugin::PostUpdate(
     if (info.paused)
         return;
 
-    if (!m_rollJoint.Valid(ecm) || !m_pitchJoint.Valid(ecm))
+    if (!m_rollJoint.Valid(ecm) || !m_pitchJoint.Valid(ecm) || !m_yawJoint.Valid(ecm))
         return;
 
     auto rollPos = m_rollJoint.Position(ecm);
@@ -221,10 +243,16 @@ void HilPlugin::PostUpdate(
     auto pitchPos = m_pitchJoint.Position(ecm);
     auto pitchVel = m_pitchJoint.Velocity(ecm);
 
+    auto yawPos = m_yawJoint.Position(ecm);
+    auto yawVel = m_yawJoint.Velocity(ecm);
+
     if (!rollPos || !rollVel || rollPos->empty() || rollVel->empty())
         return;
 
     if (!pitchPos || !pitchVel || pitchPos->empty() || pitchVel->empty())
+        return;
+
+    if (!yawPos || !yawVel || yawPos->empty() || yawVel->empty())
         return;
 
     double rollRad = (*rollPos)[0];
@@ -232,6 +260,9 @@ void HilPlugin::PostUpdate(
 
     double pitchRad = (*pitchPos)[0];
     double pitchRateRad = (*pitchVel)[0];
+
+    double yawRad = (*yawPos)[0];
+    double yawRateRad = (*yawVel)[0];
 
     double simTimeSec = std::chrono::duration<double>(info.simTime).count();
 
@@ -252,8 +283,10 @@ void HilPlugin::PostUpdate(
             SimTimeUsec(info),
             rollRad,
             pitchRad,
+            yawRad,
             rollRateRad,
-            pitchRateRad
+            pitchRateRad,
+            yawRateRad
         );
     }
 

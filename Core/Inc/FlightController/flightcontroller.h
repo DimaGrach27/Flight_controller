@@ -45,6 +45,7 @@ private:
 
     PID m_rollPID = {};
     PID m_pitchPID = {};
+    PID m_yawPID = {};
 
     FlightMode m_flightMode = FlightMode::FLIGHT_MODE_ANGLE;
 

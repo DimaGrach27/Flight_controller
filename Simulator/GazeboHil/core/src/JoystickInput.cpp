@@ -75,7 +75,7 @@ void JoystickInput::Poll()
 
     m_control.roll = ApplyExpo(ApplyDeadzone(axisRoll, 0.04), 0.3);
     m_control.pitch = ApplyExpo(ApplyDeadzone(axisPitch, 0.04), 0.3);
-    m_control.yaw = ApplyExpo(ApplyDeadzone(axisYaw, 0.04), 0.3);
+    m_control.yaw = -ApplyExpo(ApplyDeadzone(axisYaw, 0.04), 0.3);
     m_control.throttle = NormalizeThrottle(axisThrottle);
 
     m_control.valid = true;
