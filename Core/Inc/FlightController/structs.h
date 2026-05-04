@@ -19,10 +19,10 @@ struct SimImuSample
 
 struct MotorOutputs
 {
-    float m1; //LEFT_FRONT
-    float m2; //RIGHT_FRONT
-    float m3; //RIGHT_BACK
-    float m4; //LEFT_BACK
+    float m1;
+    float m2;
+    float m3;
+    float m4;
 };
 
 struct RcCommand

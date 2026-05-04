@@ -6,4 +6,5 @@
 namespace MathUtils
 {
     float Clamp(const float value, const float minValue, const float maxValue);
+    float Clamp01(const float value);
 }

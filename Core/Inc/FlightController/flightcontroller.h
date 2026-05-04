@@ -80,4 +80,7 @@ private:
     uint32_t m_imuSequence = 0;
     uint32_t m_lastProcessedImuSequence = 0;
     uint64_t m_lastImuTimeUsec = 0;
+
+    const float m_idleArmedThrottle = 0.08f;
+    const float m_idleThrottleThreshold = 0.05f;
 };

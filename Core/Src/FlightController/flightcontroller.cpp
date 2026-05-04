@@ -86,6 +86,17 @@ void FlightController::Update(float dt)
         return;
     }
 
+    if (m_rcCommand.throttle <= m_idleThrottleThreshold)
+    {
+        ResetRatePidState();
+        m_filteredGyroRollDegPerSec = 0.0f;
+        m_filteredGyroPitchDegPerSec = 0.0f;
+        m_filteredGyroYawDegPerSec = 0.0f;
+
+        SendServoOutputRaw({m_idleArmedThrottle, m_idleArmedThrottle, m_idleArmedThrottle, m_idleArmedThrottle});
+        return;
+    }
+
     if (m_lastProcessedImuSequence == m_imuSequence)
     {
         return; // не рахувати PID повторно на старому IMU
@@ -337,9 +348,9 @@ ControlOutput FlightController::UpdateAcroController(float dt)
 
     constexpr float RADIAN_ANGLE_MULTIPLIER = 57.2957795f;
 
-    float gyroX = ApplyDeadband(m_simImu.gyro.x, 3.00);
-    float gyroY = ApplyDeadband(m_simImu.gyro.y, 3.02);
-    float gyroZ = ApplyDeadband(m_simImu.gyro.z, 3.02);
+    float gyroX = ApplyDeadband(m_simImu.gyro.x, 0.02);
+    float gyroY = ApplyDeadband(m_simImu.gyro.y, 0.02);
+    float gyroZ = ApplyDeadband(m_simImu.gyro.z, 0.02);
     float gyroRollDegPerSec = gyroX * RADIAN_ANGLE_MULTIPLIER;
     float gyroPitchDegPerSec = gyroY * RADIAN_ANGLE_MULTIPLIER;
     float gyroYawDegPerSec = gyroZ * RADIAN_ANGLE_MULTIPLIER;
@@ -391,7 +402,7 @@ ControlOutput FlightController::UpdateAcroController(float dt)
 
     // out.roll = out.roll;
     // out.pitch = 0.0;
-    // out.yaw = 0.0;
+    out.yaw = 0.0;
 
     SendAcroDebug(targetRollRateDegSec, targetPitchRateDegSec, targetYawRateDegSec,
                     gyroRollDegPerSec, gyroPitchDegPerSec, gyroYawDegPerSec,
@@ -452,6 +463,11 @@ void FlightController::SendAcroDebug(float targetRollRateDegSec, float targetPit
 
 }
 
+void FlightController::ResetRatePidState()
+{
+
+}
+
 MotorOutputs FlightController::MixQuadX(const float throttle, const ControlOutput& controlOutput)
 {
     MotorOutputs motorOutputs{};
@@ -470,19 +486,15 @@ MotorOutputs FlightController::MixQuadX(const float throttle, const ControlOutpu
           back
     */
 
-    constexpr float idleThreshold = 0.05f;
     constexpr float correctionFullAtThrottle = 0.35f;
 
-    if (throttle <= idleThreshold)
+    if (throttle <= m_idleThrottleThreshold)
     {
         return motorOutputs;
     }
 
-    const float correctionScale = MathUtils::Clamp(
-    (throttle - idleThreshold) / (correctionFullAtThrottle - idleThreshold),
-    0.0f,
-    1.0f
-        );
+    const float correctionScale = MathUtils::Clamp01(
+        (throttle - m_idleThrottleThreshold) / (correctionFullAtThrottle - m_idleThrottleThreshold));
 
     const float roll = controlOutput.roll * correctionScale;
     const float pitch = controlOutput.pitch * correctionScale;
@@ -499,10 +511,10 @@ MotorOutputs FlightController::MixQuadX(const float throttle, const ControlOutpu
     // motorOutputs.m4 = throttle - pitch;
 
     motorOutputs = DesaturateMotors(motorOutputs);
-    // motorOutputs.m1 = MathUtils::Clamp(motorOutputs.m1, 0.0f, 1.0f);
-    // motorOutputs.m2 = MathUtils::Clamp(motorOutputs.m2, 0.0f, 1.0f);
-    // motorOutputs.m3 = MathUtils::Clamp(motorOutputs.m3, 0.0f, 1.0f);
-    // motorOutputs.m4 = MathUtils::Clamp(motorOutputs.m4, 0.0f, 1.0f);
+    // motorOutputs.m1 = MathUtils::Clamp01(motorOutputs.m1);
+    // motorOutputs.m2 = MathUtils::Clamp01(motorOutputs.m2);
+    // motorOutputs.m3 = MathUtils::Clamp01(motorOutputs.m3);
+    // motorOutputs.m4 = MathUtils::Clamp01(motorOutputs.m4);
 
     return motorOutputs;
 }
@@ -539,10 +551,10 @@ MotorOutputs FlightController::DesaturateMotors(MotorOutputs motorOutputs)
         motorOutputs.m4 += deficit;
     }
 
-    motorOutputs.m1 = MathUtils::Clamp(motorOutputs.m1, 0.0f, 1.0f);
-    motorOutputs.m2 = MathUtils::Clamp(motorOutputs.m2, 0.0f, 1.0f);
-    motorOutputs.m3 = MathUtils::Clamp(motorOutputs.m3, 0.0f, 1.0f);
-    motorOutputs.m4 = MathUtils::Clamp(motorOutputs.m4, 0.0f, 1.0f);
+    motorOutputs.m1 = MathUtils::Clamp01(motorOutputs.m1);
+    motorOutputs.m2 = MathUtils::Clamp01(motorOutputs.m2);
+    motorOutputs.m3 = MathUtils::Clamp01(motorOutputs.m3);
+    motorOutputs.m4 = MathUtils::Clamp01(motorOutputs.m4);
 
     return motorOutputs;
 }

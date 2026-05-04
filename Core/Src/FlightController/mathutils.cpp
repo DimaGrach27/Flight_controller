@@ -15,4 +15,18 @@ namespace MathUtils
 
         return value;
     }
+
+    float Clamp01(const float value)
+    {
+        constexpr float minValue = 0.0f;
+        constexpr float maxValue = 1.0f;
+
+        if (value < minValue)
+            return minValue;
+
+        if (value > maxValue)
+            return maxValue;
+
+        return value;
+    }
 }
