@@ -26,7 +26,7 @@ FlightController::FlightController()
 {
     m_rollPID =
     {
-        .kp = 0.004f,
+        .kp = 0.0004f,
         .ki = 0.0f,
         .kd = 0.0f,
         .integrator = 0.0f,
@@ -36,7 +36,7 @@ FlightController::FlightController()
 
     m_pitchPID =
     {
-        .kp = 0.004f,
+        .kp = 0.0004f,
         .ki = 0.0f,
         .kd = 0.0f,
         .integrator = 0.0f,
@@ -46,7 +46,7 @@ FlightController::FlightController()
 
     m_yawPID =
     {
-        .kp = 0.003f,
+        .kp = 0.0001f,
         .ki = 0.0f,
         .kd = 0.0f,
         .integrator = 0.0f,
@@ -85,6 +85,13 @@ void FlightController::Update(float dt)
     {
         return;
     }
+
+    if (m_lastProcessedImuSequence == m_imuSequence)
+    {
+        return; // не рахувати PID повторно на старому IMU
+    }
+
+    m_lastProcessedImuSequence = m_imuSequence;
 
     ControlOutput control = {0};
 
@@ -194,6 +201,9 @@ void FlightController::HandleHilSensor(const mavlink_message_t *msg)
     m_simImu.gyro.y = sensor.ygyro;
     m_simImu.gyro.z = sensor.zgyro;
 
+    m_lastImuTimeUsec = sensor.time_usec;
+    ++m_imuSequence;
+
     m_simImu.valid = true;
 }
 
@@ -298,6 +308,25 @@ ControlOutput FlightController::UpdateAngleController(float dt)
     return out;
 }
 
+float FlightController::FilterGyroRollForDebug(float gyroRollDegSec)
+{
+    constexpr float maxReasonableStepDegSec = 40.0f;
+    constexpr float maxAbsGyroDegSec = 120.0f;
+
+    if (fabsf(gyroRollDegSec) > maxAbsGyroDegSec)
+    {
+        return m_lastGoodGyroRollDegSec;
+    }
+
+    if (fabsf(gyroRollDegSec - m_lastGoodGyroRollDegSec) > maxReasonableStepDegSec)
+    {
+        return m_lastGoodGyroRollDegSec;
+    }
+
+    m_lastGoodGyroRollDegSec = gyroRollDegSec;
+    return gyroRollDegSec;
+}
+
 ControlOutput FlightController::UpdateAcroController(float dt)
 {
     ControlOutput out = {0};
@@ -308,16 +337,24 @@ ControlOutput FlightController::UpdateAcroController(float dt)
 
     constexpr float RADIAN_ANGLE_MULTIPLIER = 57.2957795f;
 
-    float gyroX = ApplyDeadband(m_simImu.gyro.x, 0.02);
-    float gyroY = ApplyDeadband(m_simImu.gyro.y, 0.02);
-    float gyroZ = ApplyDeadband(m_simImu.gyro.z, 0.02);
+    float gyroX = ApplyDeadband(m_simImu.gyro.x, 3.00);
+    float gyroY = ApplyDeadband(m_simImu.gyro.y, 3.02);
+    float gyroZ = ApplyDeadband(m_simImu.gyro.z, 3.02);
     float gyroRollDegPerSec = gyroX * RADIAN_ANGLE_MULTIPLIER;
     float gyroPitchDegPerSec = gyroY * RADIAN_ANGLE_MULTIPLIER;
     float gyroYawDegPerSec = gyroZ * RADIAN_ANGLE_MULTIPLIER;
 
     float targetRollRateDegSec = m_rcCommand.roll * maxRollRateDegSec;
     float targetPitchRateDegSec = m_rcCommand.pitch * maxPitchRateDegSec;
-    float targetTawRateDegSec = m_rcCommand.yaw * maxYawRateDegSec;
+    float targetYawRateDegSec = m_rcCommand.yaw * maxYawRateDegSec;
+
+    // float filteredGyroRollDegPerSec = FilterGyroRollForDebug(gyroRollDegPerSec);
+    //
+    // constexpr float alpha = 0.85f;
+    //
+    // m_filteredGyroRollDegPerSec =
+    //     alpha * m_filteredGyroRollDegPerSec +
+    //     (1.0f - alpha) * filteredGyroRollDegPerSec;
 
     out.roll = PID_Controller::Update(
         &m_rollPID,
@@ -335,24 +372,89 @@ ControlOutput FlightController::UpdateAcroController(float dt)
 
     out.yaw = PID_Controller::Update(
         &m_yawPID,
-        targetTawRateDegSec,
+        targetYawRateDegSec,
         gyroYawDegPerSec,
         dt
     );
 
+
     // out.roll = MathUtils::Clamp(out.roll, -0.25f, 0.25f);
     // out.pitch = MathUtils::Clamp(out.pitch, -0.25f, 0.25f);
     // out.yaw = MathUtils::Clamp(out.yaw, -0.20f, 0.20f);
+
+    // float throttleScale = MathUtils::Clamp(m_rcCommand.throttle / 0.6f, 0.0f, 1.0f);
+    // out.roll *= throttleScale;
+
     out.roll = MathUtils::Clamp(out.roll, -0.05f, 0.05f);
     out.pitch = MathUtils::Clamp(out.pitch, -0.05f, 0.05f);
     out.yaw = MathUtils::Clamp(out.yaw, -0.20f, 0.20f);
 
+    // out.roll = out.roll;
+    // out.pitch = 0.0;
+    // out.yaw = 0.0;
+
+    SendAcroDebug(targetRollRateDegSec, targetPitchRateDegSec, targetYawRateDegSec,
+                    gyroRollDegPerSec, gyroPitchDegPerSec, gyroYawDegPerSec,
+                    out, m_rcCommand.throttle);
+
     return out;
 }
 
-MotorOutputs FlightController::MixQuadX(const float throttle, const ControlOutput& control_output)
+void FlightController::SendAcroDebug(float targetRollRateDegSec, float targetPitchRateDegSec, float targetYawRateDegSec,
+                                     float gyroRollDegPerSec, float gyroPitchDegPerSec, float gyroYawDegPerSec,
+                                     // float accelRollDeg, float accelPitchDeg, float throttleAuthority,
+                                     ControlOutput control_output, float throttle)
 {
-    MotorOutputs motor_outputs{};
+    const uint32_t nowMs = HAL_GetTick();
+
+    if (nowMs - m_lastDebugMs < 100)
+    {
+        return;
+    }
+
+    m_lastDebugMs = nowMs;
+
+    mavlink_message_t msg;
+    uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+
+    auto sendNamed = [&](const char* name, float value)
+    {
+        mavlink_msg_named_value_float_pack(
+            1,
+            1,
+            &msg,
+            nowMs,
+            name,
+            value
+        );
+
+        const uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
+        HAL_UART_Transmit(m_huart2, buffer, len, 100);
+    };
+
+    sendNamed("=======", 1);
+    sendNamed("tick", static_cast<float>(m_lastProcessedImuSequence));
+    sendNamed("t_roll", targetRollRateDegSec);
+    sendNamed("raw_g_roll", gyroRollDegPerSec);
+    sendNamed("filtered_g_roll", m_filteredGyroRollDegPerSec);
+    // sendNamed("t_pitch", targetPitchRateDegSec);
+    // sendNamed("g_pitch", gyroPitchDegPerSec);
+    // sendNamed("t_yaw", targetYawRateDegSec);
+    // sendNamed("g_yaw", gyroYawDegPerSec);
+    // sendNamed("a_roll", accelRollDeg);
+    // sendNamed("a_pitch", accelPitchDeg);
+    // sendNamed("auth", throttleAuthority);
+    sendNamed("throttle", throttle);
+    sendNamed("c_roll", control_output.roll);
+    // sendNamed("c_pitch", control_output.pitch);
+    // sendNamed("c_yaw", control_output.yaw);
+    sendNamed("_______", 0);
+
+}
+
+MotorOutputs FlightController::MixQuadX(const float throttle, const ControlOutput& controlOutput)
+{
+    MotorOutputs motorOutputs{};
 
     /*
     Motor layout:
@@ -368,61 +470,79 @@ MotorOutputs FlightController::MixQuadX(const float throttle, const ControlOutpu
           back
     */
 
-    motor_outputs.m1 = throttle + control_output.roll + control_output.pitch - control_output.yaw;
-    motor_outputs.m2 = throttle - control_output.roll - control_output.pitch - control_output.yaw;
-    motor_outputs.m3 = throttle - control_output.roll + control_output.pitch + control_output.yaw;
-    motor_outputs.m4 = throttle + control_output.roll - control_output.pitch + control_output.yaw;
+    constexpr float idleThreshold = 0.05f;
+    constexpr float correctionFullAtThrottle = 0.35f;
 
-    // motor_outputs.m1 = throttle + control_output.pitch;
-    // motor_outputs.m2 = throttle - control_output.pitch;
-    // motor_outputs.m3 = throttle + control_output.pitch;
-    // motor_outputs.m4 = throttle - control_output.pitch;
+    if (throttle <= idleThreshold)
+    {
+        return motorOutputs;
+    }
 
-    motor_outputs = DesaturateMotors(motor_outputs);
-    // motor_outputs.m1 = MathUtils::Clamp(motor_outputs.m1, 0.0f, 1.0f);
-    // motor_outputs.m2 = MathUtils::Clamp(motor_outputs.m2, 0.0f, 1.0f);
-    // motor_outputs.m3 = MathUtils::Clamp(motor_outputs.m3, 0.0f, 1.0f);
-    // motor_outputs.m4 = MathUtils::Clamp(motor_outputs.m4, 0.0f, 1.0f);
+    const float correctionScale = MathUtils::Clamp(
+    (throttle - idleThreshold) / (correctionFullAtThrottle - idleThreshold),
+    0.0f,
+    1.0f
+        );
 
-    return motor_outputs;
+    const float roll = controlOutput.roll * correctionScale;
+    const float pitch = controlOutput.pitch * correctionScale;
+    const float yaw = controlOutput.yaw * correctionScale;
+
+    motorOutputs.m1 = throttle + roll + pitch - yaw;
+    motorOutputs.m2 = throttle - roll - pitch - yaw;
+    motorOutputs.m3 = throttle - roll + pitch + yaw;
+    motorOutputs.m4 = throttle + roll - pitch + yaw;
+
+    // motorOutputs.m1 = throttle + pitch;
+    // motorOutputs.m2 = throttle - pitch;
+    // motorOutputs.m3 = throttle + pitch;
+    // motorOutputs.m4 = throttle - pitch;
+
+    motorOutputs = DesaturateMotors(motorOutputs);
+    // motorOutputs.m1 = MathUtils::Clamp(motorOutputs.m1, 0.0f, 1.0f);
+    // motorOutputs.m2 = MathUtils::Clamp(motorOutputs.m2, 0.0f, 1.0f);
+    // motorOutputs.m3 = MathUtils::Clamp(motorOutputs.m3, 0.0f, 1.0f);
+    // motorOutputs.m4 = MathUtils::Clamp(motorOutputs.m4, 0.0f, 1.0f);
+
+    return motorOutputs;
 }
 
-MotorOutputs FlightController::DesaturateMotors(MotorOutputs motor_outputs)
+MotorOutputs FlightController::DesaturateMotors(MotorOutputs motorOutputs)
 {
     float maxMotor = std::max(
-        std::max(motor_outputs.m1, motor_outputs.m2),
-        std::max(motor_outputs.m3, motor_outputs.m4)
+        std::max(motorOutputs.m1, motorOutputs.m2),
+        std::max(motorOutputs.m3, motorOutputs.m4)
     );
 
     float minMotor = std::min(
-        std::min(motor_outputs.m1, motor_outputs.m2),
-        std::min(motor_outputs.m3, motor_outputs.m4)
+        std::min(motorOutputs.m1, motorOutputs.m2),
+        std::min(motorOutputs.m3, motorOutputs.m4)
     );
 
     if (maxMotor > 1.0f)
     {
         float excess = maxMotor - 1.0f;
 
-        motor_outputs.m1 -= excess;
-        motor_outputs.m2 -= excess;
-        motor_outputs.m3 -= excess;
-        motor_outputs.m4 -= excess;
+        motorOutputs.m1 -= excess;
+        motorOutputs.m2 -= excess;
+        motorOutputs.m3 -= excess;
+        motorOutputs.m4 -= excess;
     }
 
     if (minMotor < 0.0f)
     {
         float deficit = -minMotor;
 
-        motor_outputs.m1 += deficit;
-        motor_outputs.m2 += deficit;
-        motor_outputs.m3 += deficit;
-        motor_outputs.m4 += deficit;
+        motorOutputs.m1 += deficit;
+        motorOutputs.m2 += deficit;
+        motorOutputs.m3 += deficit;
+        motorOutputs.m4 += deficit;
     }
 
-    motor_outputs.m1 = MathUtils::Clamp(motor_outputs.m1, 0.0f, 1.0f);
-    motor_outputs.m2 = MathUtils::Clamp(motor_outputs.m2, 0.0f, 1.0f);
-    motor_outputs.m3 = MathUtils::Clamp(motor_outputs.m3, 0.0f, 1.0f);
-    motor_outputs.m4 = MathUtils::Clamp(motor_outputs.m4, 0.0f, 1.0f);
+    motorOutputs.m1 = MathUtils::Clamp(motorOutputs.m1, 0.0f, 1.0f);
+    motorOutputs.m2 = MathUtils::Clamp(motorOutputs.m2, 0.0f, 1.0f);
+    motorOutputs.m3 = MathUtils::Clamp(motorOutputs.m3, 0.0f, 1.0f);
+    motorOutputs.m4 = MathUtils::Clamp(motorOutputs.m4, 0.0f, 1.0f);
 
-    return motor_outputs;
+    return motorOutputs;
 }

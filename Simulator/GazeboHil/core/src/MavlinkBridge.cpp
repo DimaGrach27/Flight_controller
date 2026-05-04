@@ -113,6 +113,9 @@ void MavlinkBridge::SendHilSensorFromImu(uint64_t timeUsec, const ImuData& imuDa
     mavlink_message_t msg;
     uint8_t txBuffer[MAVLINK_MAX_PACKET_LEN];
 
+    // printf("[MavlinkBridge]Hil IMU accelX = %f; accelY = %f; accelZ = %f; gyroX = %f; gyroY = %f; gyroZ = %f\n",
+    //     imuData.accelX, imuData.accelY, imuData.accelZ, imuData.gyroX, imuData.gyroY, imuData.gyroZ);
+
     mavlink_msg_hil_sensor_pack(
         255,
         1,
@@ -212,6 +215,14 @@ void MavlinkBridge::HandleMessage(const mavlink_message_t& msg)
             motors_.m3 = PwmToMotor(servo.servo3_raw);
             motors_.m4 = PwmToMotor(servo.servo4_raw);
 
+            break;
+        }
+        case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:
+        {
+            mavlink_named_value_float_t named_value_float{};
+            mavlink_msg_named_value_float_decode(&msg, &named_value_float);
+
+            printf("[MavlinkBridge] %s %f\n", named_value_float.name, named_value_float.value);
             break;
         }
 

@@ -41,6 +41,15 @@ private:
     MotorOutputs MixQuadX(const float throttle, const ControlOutput& control_output);
     MotorOutputs DesaturateMotors(MotorOutputs motor_outputs);
 
+    void SendAcroDebug(float targetRollRateDegSec, float targetPitchRateDegSec, float targetYawRateDegSec,
+                       float gyroRollDegPerSec, float gyroPitchDegPerSec, float gyroYawDegPerSec,
+                       // float accelRollDeg, float accelPitchDeg, float throttleAuthority,
+                       ControlOutput control_output, float throttle);
+
+    void ResetRatePidState();
+
+    float FilterGyroRollForDebug(float gyroRollDegSec);
+
 private:
     UART_HandleTypeDef* m_huart2 = nullptr;
 
@@ -58,4 +67,17 @@ private:
     bool m_estimatorInitialized = false;
     float m_estimatedRollDeg = 0.0f;
     float m_estimatedPitchDeg = 0.0f;
+
+    uint32_t m_lastDebugMs = 0;
+
+    float m_lastGoodGyroRollDegSec = 0.0f;
+
+    float m_filteredGyroRollDegPerSec = 0.0f;
+    float m_filteredGyroPitchDegPerSec = 0.0f;
+    float m_filteredGyroYawDegPerSec = 0.0f;
+    bool m_gyroFilterInitialized = false;
+
+    uint32_t m_imuSequence = 0;
+    uint32_t m_lastProcessedImuSequence = 0;
+    uint64_t m_lastImuTimeUsec = 0;
 };

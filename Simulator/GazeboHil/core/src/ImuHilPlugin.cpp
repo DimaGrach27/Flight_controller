@@ -205,7 +205,7 @@ void ImuHilPlugin::PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::En
         m_lastHilSendSec = simTimeSec;
 
         m_mavlinkBridge.SendHilSensorFromImu(
-            static_cast<uint64_t>(simTimeSec),
+            static_cast<uint64_t>(simTimeSec * 1000000.0),
             imu
         );
     }
@@ -320,7 +320,7 @@ void ImuHilPlugin::SendMotorSpeeds(double m0, double m1, double m2, double m3)
     msg.add_velocity(m2);
     msg.add_velocity(m3);
 
-    printf("[ImuHilPlugin] SendMotorSpeeds: %f %f %f %f\n", m0, m1, m2, m3);
+    // printf("[ImuHilPlugin] SendMotorSpeeds: %f %f %f %f\n", m0, m1, m2, m3);
     m_motorPublisher.Publish(msg);
 }
 
