@@ -78,9 +78,16 @@ void FlightController::Update(float dt)
         return;
     }
 
+    if (m_lastProcessedImuSequence == m_imuSequence)
+    {
+        return; // не рахувати PID повторно на старому IMU
+    }
+
+    m_lastProcessedImuSequence = m_imuSequence;
+
     MotorOutputs motors = {0};
 
-    UpdateAttitudeEstimator(dt);
+    UpdateAttitudeEstimator(GetImuDtSec());
 
     if (!m_armed)
     {
@@ -105,13 +112,6 @@ void FlightController::Update(float dt)
         return;
     }
 
-    if (m_lastProcessedImuSequence == m_imuSequence)
-    {
-        return; // не рахувати PID повторно на старому IMU
-    }
-
-    m_lastProcessedImuSequence = m_imuSequence;
-
     ControlOutput control = {0};
 
     switch (m_flightMode)
@@ -126,11 +126,45 @@ void FlightController::Update(float dt)
 
     motors = MixQuadX(m_rcCommand.throttle, control);
 
-    SendAcroDebug(0, 0, 0,
-    0, 0, 0,
-    {}, m_rcCommand.throttle, motors);
+    // SendAcroDebug(0, 0, 0,
+    // 0, 0, 0,
+    // {}, m_rcCommand.throttle, motors);
 
     SendServoOutputRaw(motors);
+
+    FlightLogSample log{};
+
+    log.timeMs = HAL_GetTick();
+    log.imuSeq = m_imuSequence;
+    log.dt = dt;
+    log.imuDt = GetImuDtSec();
+
+    log.rcThrottle = m_rcCommand.throttle;
+    log.rcRoll = m_rcCommand.roll;
+    log.rcPitch = m_rcCommand.pitch;
+    log.rcYaw = m_rcCommand.yaw;
+
+    log.estimatedRollDeg = m_estimatedRollDeg;
+    log.estimatedPitchDeg = m_estimatedPitchDeg;
+
+    log.controlRoll = control.roll;
+    log.controlPitch = control.pitch;
+    log.controlYaw = control.yaw;
+
+    log.motorM1 = motors.m1;
+    log.motorM2 = motors.m2;
+    log.motorM3 = motors.m3;
+    log.motorM4 = motors.m4;
+
+    log.targetRollRateDegSec = m_lastControlDebug.targetRollRateDegSec;
+    log.targetPitchRateDegSec = m_lastControlDebug.targetPitchRateDegSec;
+    log.targetYawRateDegSec = m_lastControlDebug.targetYawRateDegSec;
+
+    log.gyroRollDegSec = m_lastControlDebug.gyroRollDegSec;
+    log.gyroPitchDegSec = m_lastControlDebug.gyroPitchDegSec;
+    log.gyroYawDegSec = m_lastControlDebug.gyroYawDegSec;
+
+    SendFlightLogCsv(log);
 }
 
 void FlightController::Heartbeat()
@@ -343,6 +377,83 @@ float FlightController::FilterGyroRollForDebug(float gyroRollDegSec)
     return gyroRollDegSec;
 }
 
+void FlightController::SendFlightLogCsv(const FlightLogSample &sample)
+{
+    const uint32_t nowMs = HAL_GetTick();
+
+    constexpr uint32_t logPeriodMs = 20; // 50 Hz
+    if (nowMs - m_lastDebugMs < logPeriodMs)
+    {
+        return;
+    }
+
+    m_lastDebugMs = nowMs;
+
+    mavlink_message_t msg;
+    uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+
+    auto sendNamed = [&](const char* name, float value)
+    {
+        mavlink_msg_named_value_float_pack(
+            1,
+            1,
+            &msg,
+            nowMs,
+            name,
+            value
+        );
+
+        const uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
+        HAL_UART_Transmit(m_huart2, buffer, len, 100);
+    };
+
+    sendNamed("+++++", 1); //start log
+    sendNamed("time_ms", static_cast<float>(sample.timeMs));
+    sendNamed("imu_seq", static_cast<float>(sample.imuSeq));
+    sendNamed("dt", sample.dt);
+    sendNamed("imu_dt", sample.imuDt);
+    sendNamed("rc_thr", sample.rcThrottle);
+    sendNamed("rc_roll", sample.rcRoll);
+    sendNamed("rc_pitch", sample.rcPitch);
+    sendNamed("rc_yaw", sample.rcYaw);
+    sendNamed("t_roll", sample.targetRollRateDegSec);
+    sendNamed("t_pitch", sample.targetPitchRateDegSec);
+    sendNamed("t_yaw", sample.targetYawRateDegSec);
+    sendNamed("g_roll", sample.gyroRollDegSec);
+    sendNamed("g_pitch", sample.gyroPitchDegSec);
+    sendNamed("g_yaw", sample.gyroYawDegSec);
+    sendNamed("est_roll", sample.estimatedRollDeg);
+    sendNamed("est_pitch", sample.estimatedPitchDeg);
+    sendNamed("c_roll", sample.controlRoll);
+    sendNamed("c_pitch", sample.controlPitch);
+    sendNamed("c_yaw", sample.controlYaw);
+    sendNamed("m1", sample.motorM1);
+    sendNamed("m2", sample.motorM2);
+    sendNamed("m3", sample.motorM3);
+    sendNamed("m4", sample.motorM4);
+    sendNamed("-----", 0); //end log
+
+    // if (len > 0)
+    // {
+        // HAL_UART_Transmit(m_huart2, reinterpret_cast<uint8_t*>(buffer), len, 10);
+    // }
+}
+
+float FlightController::GetImuDtSec()
+{
+    if (m_previousImuTimeUsec == 0)
+    {
+        m_previousImuTimeUsec = m_lastImuTimeUsec;
+        return 0.01f;
+    }
+
+    const uint64_t diffUsec = m_lastImuTimeUsec - m_previousImuTimeUsec;
+    m_previousImuTimeUsec = m_lastImuTimeUsec;
+
+    const float dt = static_cast<float>(diffUsec) * 1e-6f;
+    return MathUtils::Clamp(dt, 0.001f, 0.05f);
+}
+
 ControlOutput FlightController::UpdateAcroController(float dt)
 {
     ControlOutput out = {0};
@@ -413,6 +524,14 @@ ControlOutput FlightController::UpdateAcroController(float dt)
     //                 gyroRollDegPerSec, gyroPitchDegPerSec, gyroYawDegPerSec,
     //                 out, m_rcCommand.throttle);
 
+    m_lastControlDebug.targetRollRateDegSec = targetRollRateDegSec;
+    m_lastControlDebug.targetPitchRateDegSec = targetPitchRateDegSec;
+    m_lastControlDebug.targetYawRateDegSec = targetYawRateDegSec;
+
+    m_lastControlDebug.gyroRollDegSec = gyroRollDegPerSec;
+    m_lastControlDebug.gyroPitchDegSec = gyroPitchDegPerSec;
+    m_lastControlDebug.gyroYawDegSec = gyroYawDegPerSec;
+
     return out;
 }
 
@@ -452,65 +571,72 @@ void FlightController::UpdateAttitudeEstimator(float dt)
       + (1.0f - alpha) * accelPitchDeg;
 }
 
-void FlightController::SendAcroDebug(float targetRollRateDegSec, float targetPitchRateDegSec, float targetYawRateDegSec,
-                                     float gyroRollDegPerSec, float gyroPitchDegPerSec, float gyroYawDegPerSec,
-                                     // float accelRollDeg, float accelPitchDeg, float throttleAuthority,
-                                     ControlOutput control_output, float throttle, MotorOutputs motors)
-{
-    const uint32_t nowMs = HAL_GetTick();
-
-    if (nowMs - m_lastDebugMs < 100)
-    {
-        return;
-    }
-
-    m_lastDebugMs = nowMs;
-
-    mavlink_message_t msg;
-    uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
-
-    auto sendNamed = [&](const char* name, float value)
-    {
-        mavlink_msg_named_value_float_pack(
-            1,
-            1,
-            &msg,
-            nowMs,
-            name,
-            value
-        );
-
-        const uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
-        HAL_UART_Transmit(m_huart2, buffer, len, 100);
-    };
-
-    sendNamed("=======", 1);
-    sendNamed("tick", static_cast<float>(m_lastProcessedImuSequence));
-    // sendNamed("t_roll", targetRollRateDegSec);
-    // sendNamed("raw_g_roll", gyroRollDegPerSec);
-    // sendNamed("filtered_g_roll", m_filteredGyroRollDegPerSec);
-    // sendNamed("t_pitch", targetPitchRateDegSec);
-    // sendNamed("g_pitch", gyroPitchDegPerSec);
-    // sendNamed("t_yaw", targetYawRateDegSec);
-    // sendNamed("g_yaw", gyroYawDegPerSec);
-    // sendNamed("a_roll", accelRollDeg);
-    // sendNamed("a_pitch", accelPitchDeg);
-    // sendNamed("auth", throttleAuthority);
-    sendNamed("throttle", throttle);
-    // sendNamed("c_roll", control_output.roll);
-    sendNamed("motor.m1", motors.m1);
-    sendNamed("motor.m2", motors.m2);
-    sendNamed("motor.m3", motors.m3);
-    sendNamed("motor.m4", motors.m4);
-    // sendNamed("c_pitch", control_output.pitch);
-    // sendNamed("c_yaw", control_output.yaw);
-    sendNamed("_______", 0);
-
-}
+// void FlightController::SendAcroDebug(float targetRollRateDegSec, float targetPitchRateDegSec, float targetYawRateDegSec,
+//                                      float gyroRollDegPerSec, float gyroPitchDegPerSec, float gyroYawDegPerSec,
+//                                      // float accelRollDeg, float accelPitchDeg, float throttleAuthority,
+//                                      ControlOutput control_output, float throttle, MotorOutputs motors)
+// {
+//     const uint32_t nowMs = HAL_GetTick();
+//
+//     if (nowMs - m_lastDebugMs < 100)
+//     {
+//         return;
+//     }
+//
+//     m_lastDebugMs = nowMs;
+//
+//     mavlink_message_t msg;
+//     uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+//
+//     auto sendNamed = [&](const char* name, float value)
+//     {
+//         mavlink_msg_named_value_float_pack(
+//             1,
+//             1,
+//             &msg,
+//             nowMs,
+//             name,
+//             value
+//         );
+//
+//         const uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
+//         HAL_UART_Transmit(m_huart2, buffer, len, 100);
+//     };
+//
+//     // sendNamed("=======", 1);
+//     // sendNamed("tick", static_cast<float>(m_lastProcessedImuSequence));
+//     // sendNamed("t_roll", targetRollRateDegSec);
+//     // sendNamed("raw_g_roll", gyroRollDegPerSec);
+//     // sendNamed("filtered_g_roll", m_filteredGyroRollDegPerSec);
+//     // sendNamed("t_pitch", targetPitchRateDegSec);
+//     // sendNamed("g_pitch", gyroPitchDegPerSec);
+//     // sendNamed("t_yaw", targetYawRateDegSec);
+//     // sendNamed("g_yaw", gyroYawDegPerSec);
+//     // sendNamed("a_roll", accelRollDeg);
+//     // sendNamed("a_pitch", accelPitchDeg);
+//     // sendNamed("auth", throttleAuthority);
+//     // sendNamed("throttle", throttle);
+//     // sendNamed("c_roll", control_output.roll);
+//     // sendNamed("motor.m1", motors.m1);
+//     // sendNamed("motor.m2", motors.m2);
+//     // sendNamed("motor.m3", motors.m3);
+//     // sendNamed("motor.m4", motors.m4);
+//     // sendNamed("c_pitch", control_output.pitch);
+//     // sendNamed("c_yaw", control_output.yaw);
+//     // sendNamed("_______", 0);
+//
+// }
 
 void FlightController::ResetRatePidState()
 {
+    m_rollPID.integrator = 0.0f;
+    m_rollPID.previousError = 0.0f;
 
+    m_pitchPID.integrator = 0.0f;
+    m_pitchPID.previousError = 0.0f;
+
+    m_yawPID.integrator = 0.0f;
+    m_yawPID.previousError = 0.0f;
 }
 
 void FlightController::CalibrateGyroBias()

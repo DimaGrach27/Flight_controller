@@ -12,7 +12,10 @@
 NAMESPACE_BEGIN
 bool MavlinkBridge::Open(const std::string& port, int baud)
 {
+    m_csvLogger.Open("imu_hil_log.csv", m_csvLogger.HEADER_LOG_FLIGHT_SAMPLE);
+
     return serial_.Open(port, baud);
+
 }
 
 void MavlinkBridge::Poll()
@@ -222,6 +225,7 @@ void MavlinkBridge::HandleMessage(const mavlink_message_t& msg)
             mavlink_named_value_float_t named_value_float{};
             mavlink_msg_named_value_float_decode(&msg, &named_value_float);
 
+            HandleNamedValueFloat(named_value_float);
             printf("[MavlinkBridge] %s %f\n", named_value_float.name, named_value_float.value);
             break;
         }
@@ -236,4 +240,37 @@ double MavlinkBridge::PwmToMotor(uint16_t pwm)
     double value = (static_cast<double>(pwm) - 1000.0) / 1000.0;
     return Clamp(value, 0.0, 1.0);
 }
+
+void MavlinkBridge::HandleNamedValueFloat(const mavlink_named_value_float_t& value)
+{
+    std::string name(value.name, strnlen(value.name, sizeof(value.name)));
+
+    // static FlightLogSample flightLogSample{};
+    if (name == "+++++")
+    {
+        m_currentLogFields = {};
+        // flightLogSample = {};
+        m_isCollectingLogSample = true;
+        return;
+    }
+
+    if (name == "-----")
+    {
+        if (m_isCollectingLogSample)
+        {
+            m_csvLogger.Log(m_currentLogFields);
+        }
+
+        m_isCollectingLogSample = false;
+        return;
+    }
+
+    if (!m_isCollectingLogSample)
+    {
+        return;
+    }
+
+    m_currentLogFields[name] = value.value;
+}
+
 NAMESPACE_END

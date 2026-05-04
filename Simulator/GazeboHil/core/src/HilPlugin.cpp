@@ -48,7 +48,7 @@ void HilPlugin::Configure(
         m_joystickInput.Init(m_joystickIndex);
     }
 
-    if (logger_.Open(logPath_))
+    if (logger_.Open(logPath_, logger_.HEADER_LOG_SHORT))
     {
         std::cout << "[HilPlugin] Logging to: " << logPath_ << std::endl;
     }

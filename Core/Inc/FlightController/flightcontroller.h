@@ -42,15 +42,19 @@ private:
     MotorOutputs MixQuadX(const float throttle, const ControlOutput& control_output);
     MotorOutputs DesaturateMotors(MotorOutputs motor_outputs);
 
-    void SendAcroDebug(float targetRollRateDegSec, float targetPitchRateDegSec, float targetYawRateDegSec,
-                       float gyroRollDegPerSec, float gyroPitchDegPerSec, float gyroYawDegPerSec,
-                       // float accelRollDeg, float accelPitchDeg, float throttleAuthority,
-                       ControlOutput control_output, float throttle, MotorOutputs motors);
+    // void SendAcroDebug(float targetRollRateDegSec, float targetPitchRateDegSec, float targetYawRateDegSec,
+    //                    float gyroRollDegPerSec, float gyroPitchDegPerSec, float gyroYawDegPerSec,
+    //                    // float accelRollDeg, float accelPitchDeg, float throttleAuthority,
+    //                    ControlOutput control_output, float throttle, MotorOutputs motors);
 
     void ResetRatePidState();
     void CalibrateGyroBias();
 
     float FilterGyroRollForDebug(float gyroRollDegSec);
+
+    void SendFlightLogCsv(const FlightLogSample& sample);
+
+    float GetImuDtSec();
 
 private:
     UART_HandleTypeDef* m_huart2 = nullptr;
@@ -88,4 +92,8 @@ private:
 
     Vector3 m_gyroBias = {};
     bool m_gyroBiasReady = false;
+
+    ControlDebug m_lastControlDebug{};
+
+    uint64_t m_previousImuTimeUsec = 0;
 };
