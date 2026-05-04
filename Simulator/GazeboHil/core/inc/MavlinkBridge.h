@@ -8,6 +8,7 @@
 
 #include "mavlink/common/mavlink.h"
 #include "GlobalDef.h"
+#include "Structs.h"
 #include "SerialPort.h"
 
 NAMESPACE_BEGIN
@@ -34,6 +35,11 @@ public:
         double rollRateRad,
         double pitchRateRad,
         double yawRateRad
+    );
+
+    void SendHilSensorFromImu(
+        uint64_t timeUsec,
+        const ImuData& imuData
     );
 
     void SendManualControl(

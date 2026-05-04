@@ -31,6 +31,7 @@ find_package(SDL2 REQUIRED)
 
 add_library(HilPlugin SHARED
         core/src/HilPlugin.cpp
+        core/src/ImuHilPlugin.cpp
         core/src/SerialPort.cpp
         core/src/MavlinkBridge.cpp
         core/src/CsvLogger.cpp

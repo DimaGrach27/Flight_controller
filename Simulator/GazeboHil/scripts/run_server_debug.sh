@@ -4,7 +4,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUILD_DIR="$PROJECT_DIR/build/debug"
-WORLD_FILE="$PROJECT_DIR/worlds/three_axis_hil.sdf"
+WORLD_FILE="$PROJECT_DIR/worlds/quadcopter_hil.sdf"
 
 PLUGIN_DIR="$BUILD_DIR/plugins"
 
@@ -20,6 +20,7 @@ if [ ! -f "$WORLD_FILE" ]; then
 fi
 
 export GZ_SIM_SYSTEM_PLUGIN_PATH="$PLUGIN_DIR:$GZ_SIM_SYSTEM_PLUGIN_PATH"
+#export GZ_SIM_RESOURCE_PATH=$PROJECT_DIR/models
 
 echo "[server] Plugin path: $GZ_SIM_SYSTEM_PLUGIN_PATH"
 echo "[server] World:       $WORLD_FILE"

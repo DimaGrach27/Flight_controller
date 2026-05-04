@@ -33,9 +33,13 @@ private:
     void MavlinkHandleMessage(const mavlink_message_t* msg);
     void HandleHilSensor(const mavlink_message_t* msg);
     void SendServoOutputRaw(MotorOutputs motor_outputs);
+
+    float ApplyDeadband(float input, float deadband);
+
     ControlOutput UpdateAngleController(float dt);
     ControlOutput UpdateAcroController(float dt);
     MotorOutputs MixQuadX(const float throttle, const ControlOutput& control_output);
+    MotorOutputs DesaturateMotors(MotorOutputs motor_outputs);
 
 private:
     UART_HandleTypeDef* m_huart2 = nullptr;

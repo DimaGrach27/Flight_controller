@@ -4,7 +4,9 @@
 
 #include "FlightController/flightcontroller.h"
 
-#include "stm32f4xx_hal_uart.h"
+#include <algorithm>
+
+#include "main.h"
 #include "FlightController/mathutils.h"
 #include "FlightController/PID.h"
 
@@ -233,6 +235,14 @@ void FlightController::SendServoOutputRaw(const MotorOutputs motor_outputs)
     HAL_UART_Transmit(m_huart2, buffer, len, 100);
 }
 
+float FlightController::ApplyDeadband(float input, float deadband)
+{
+    if (std::abs(input) < deadband)
+        return 0.0f;
+
+    return input;
+}
+
 ControlOutput FlightController::UpdateAngleController(float dt)
 {
     float maxAngleDeg = 20.0f;
@@ -298,9 +308,12 @@ ControlOutput FlightController::UpdateAcroController(float dt)
 
     constexpr float RADIAN_ANGLE_MULTIPLIER = 57.2957795f;
 
-    float gyroRollDegPerSec = m_simImu.gyro.x * RADIAN_ANGLE_MULTIPLIER;
-    float gyroPitchDegPerSec = m_simImu.gyro.y * RADIAN_ANGLE_MULTIPLIER;
-    float gyroYawDegPerSec = m_simImu.gyro.z * RADIAN_ANGLE_MULTIPLIER;
+    float gyroX = ApplyDeadband(m_simImu.gyro.x, 0.02);
+    float gyroY = ApplyDeadband(m_simImu.gyro.y, 0.02);
+    float gyroZ = ApplyDeadband(m_simImu.gyro.z, 0.02);
+    float gyroRollDegPerSec = gyroX * RADIAN_ANGLE_MULTIPLIER;
+    float gyroPitchDegPerSec = gyroY * RADIAN_ANGLE_MULTIPLIER;
+    float gyroYawDegPerSec = gyroZ * RADIAN_ANGLE_MULTIPLIER;
 
     float targetRollRateDegSec = m_rcCommand.roll * maxRollRateDegSec;
     float targetPitchRateDegSec = m_rcCommand.pitch * maxPitchRateDegSec;
@@ -327,8 +340,11 @@ ControlOutput FlightController::UpdateAcroController(float dt)
         dt
     );
 
-    out.roll = MathUtils::Clamp(out.roll, -0.25f, 0.25f);
-    out.pitch = MathUtils::Clamp(out.pitch, -0.25f, 0.25f);
+    // out.roll = MathUtils::Clamp(out.roll, -0.25f, 0.25f);
+    // out.pitch = MathUtils::Clamp(out.pitch, -0.25f, 0.25f);
+    // out.yaw = MathUtils::Clamp(out.yaw, -0.20f, 0.20f);
+    out.roll = MathUtils::Clamp(out.roll, -0.05f, 0.05f);
+    out.pitch = MathUtils::Clamp(out.pitch, -0.05f, 0.05f);
     out.yaw = MathUtils::Clamp(out.yaw, -0.20f, 0.20f);
 
     return out;
@@ -340,23 +356,68 @@ MotorOutputs FlightController::MixQuadX(const float throttle, const ControlOutpu
 
     /*
     Motor layout:
-
           front
 
-      M1       M2
+      M3       M1
          \   /
           \ /
           / \
          /   \
-      M4       M3
+      M2       M4
 
           back
     */
 
     motor_outputs.m1 = throttle + control_output.roll + control_output.pitch - control_output.yaw;
-    motor_outputs.m2 = throttle - control_output.roll + control_output.pitch + control_output.yaw;
-    motor_outputs.m3 = throttle - control_output.roll - control_output.pitch - control_output.yaw;
+    motor_outputs.m2 = throttle - control_output.roll - control_output.pitch - control_output.yaw;
+    motor_outputs.m3 = throttle - control_output.roll + control_output.pitch + control_output.yaw;
     motor_outputs.m4 = throttle + control_output.roll - control_output.pitch + control_output.yaw;
+
+    // motor_outputs.m1 = throttle + control_output.pitch;
+    // motor_outputs.m2 = throttle - control_output.pitch;
+    // motor_outputs.m3 = throttle + control_output.pitch;
+    // motor_outputs.m4 = throttle - control_output.pitch;
+
+    motor_outputs = DesaturateMotors(motor_outputs);
+    // motor_outputs.m1 = MathUtils::Clamp(motor_outputs.m1, 0.0f, 1.0f);
+    // motor_outputs.m2 = MathUtils::Clamp(motor_outputs.m2, 0.0f, 1.0f);
+    // motor_outputs.m3 = MathUtils::Clamp(motor_outputs.m3, 0.0f, 1.0f);
+    // motor_outputs.m4 = MathUtils::Clamp(motor_outputs.m4, 0.0f, 1.0f);
+
+    return motor_outputs;
+}
+
+MotorOutputs FlightController::DesaturateMotors(MotorOutputs motor_outputs)
+{
+    float maxMotor = std::max(
+        std::max(motor_outputs.m1, motor_outputs.m2),
+        std::max(motor_outputs.m3, motor_outputs.m4)
+    );
+
+    float minMotor = std::min(
+        std::min(motor_outputs.m1, motor_outputs.m2),
+        std::min(motor_outputs.m3, motor_outputs.m4)
+    );
+
+    if (maxMotor > 1.0f)
+    {
+        float excess = maxMotor - 1.0f;
+
+        motor_outputs.m1 -= excess;
+        motor_outputs.m2 -= excess;
+        motor_outputs.m3 -= excess;
+        motor_outputs.m4 -= excess;
+    }
+
+    if (minMotor < 0.0f)
+    {
+        float deficit = -minMotor;
+
+        motor_outputs.m1 += deficit;
+        motor_outputs.m2 += deficit;
+        motor_outputs.m3 += deficit;
+        motor_outputs.m4 += deficit;
+    }
 
     motor_outputs.m1 = MathUtils::Clamp(motor_outputs.m1, 0.0f, 1.0f);
     motor_outputs.m2 = MathUtils::Clamp(motor_outputs.m2, 0.0f, 1.0f);

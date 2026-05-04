@@ -8,7 +8,7 @@
 #include <chrono>
 #include <iostream>
 
-#include <gz/plugin/Register.hh>
+// #include <gz/plugin/Register.hh>
 
 NAMESPACE_BEGIN
 HilPlugin::~HilPlugin()
@@ -371,15 +371,15 @@ uint64_t HilPlugin::SimTimeUsec(const gz::sim::UpdateInfo& info) const
 
 NAMESPACE_END
 
-GZ_ADD_PLUGIN(
-    hil_plugin::HilPlugin,
-    gz::sim::System,
-    hil_plugin::HilPlugin::ISystemConfigure,
-    hil_plugin::HilPlugin::ISystemPreUpdate,
-    hil_plugin::HilPlugin::ISystemPostUpdate
-)
-
-GZ_ADD_PLUGIN_ALIAS(
-    hil_plugin::HilPlugin,
-    "one_axis_hil::OneAxisHilPlugin"
-)
+// GZ_ADD_PLUGIN(
+//     hil_plugin::HilPlugin,
+//     gz::sim::System,
+//     hil_plugin::HilPlugin::ISystemConfigure,
+//     hil_plugin::HilPlugin::ISystemPreUpdate,
+//     hil_plugin::HilPlugin::ISystemPostUpdate
+// )
+//
+// GZ_ADD_PLUGIN_ALIAS(
+//     hil_plugin::HilPlugin,
+//     "hil_plugin::hil_plugin"
+// )

@@ -105,6 +105,41 @@ void MavlinkBridge::SendHilSensor(
     serial_.Write(txBuffer, len);
 }
 
+void MavlinkBridge::SendHilSensorFromImu(uint64_t timeUsec, const ImuData& imuData)
+{
+    if (!serial_.IsOpen())
+        return;
+
+    mavlink_message_t msg;
+    uint8_t txBuffer[MAVLINK_MAX_PACKET_LEN];
+
+    mavlink_msg_hil_sensor_pack(
+        255,
+        1,
+        &msg,
+        timeUsec,
+        static_cast<float>(imuData.accelX),
+        static_cast<float>(imuData.accelY),
+        static_cast<float>(imuData.accelZ),
+        static_cast<float>(imuData.gyroX),
+        static_cast<float>(imuData.gyroY),
+        static_cast<float>(imuData.gyroZ),
+        0.0f,
+        0.0f,
+        0.0f,
+        1013.25f,
+        0.0f,
+        0.0f,
+        25.0f,
+        0xFFFF,
+        0
+    );
+
+    uint16_t len = mavlink_msg_to_send_buffer(txBuffer, &msg);
+
+    serial_.Write(txBuffer, len);
+}
+
 void MavlinkBridge::SendManualControl(
     bool armStatus,
     bool acroMode,
