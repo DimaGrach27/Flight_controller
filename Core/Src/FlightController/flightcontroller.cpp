@@ -27,7 +27,7 @@ FlightController::FlightController()
     m_rollPID =
     {
         .kp = 0.0004f,
-        .ki = 0.0f,
+        .ki = 0.0001f,
         .kd = 0.0f,
         .integrator = 0.0f,
         .previousError = 0.0f,
@@ -37,7 +37,7 @@ FlightController::FlightController()
     m_pitchPID =
     {
         .kp = 0.0004f,
-        .ki = 0.0f,
+        .ki = 0.0001f,
         .kd = 0.0f,
         .integrator = 0.0f,
         .previousError = 0.0f,
@@ -73,7 +73,14 @@ void FlightController::Init(UART_HandleTypeDef& huart2)
 
 void FlightController::Update(float dt)
 {
+    if (!m_simImu.valid)
+    {
+        return;
+    }
+
     MotorOutputs motors = {0};
+
+    UpdateAttitudeEstimator(dt);
 
     if (!m_armed)
     {
@@ -81,8 +88,9 @@ void FlightController::Update(float dt)
         return;
     }
 
-    if (!m_simImu.valid)
+    if (!m_gyroBiasReady)
     {
+        CalibrateGyroBias();
         return;
     }
 
@@ -117,6 +125,10 @@ void FlightController::Update(float dt)
     }
 
     motors = MixQuadX(m_rcCommand.throttle, control);
+
+    SendAcroDebug(0, 0, 0,
+    0, 0, 0,
+    {}, m_rcCommand.throttle, motors);
 
     SendServoOutputRaw(motors);
 }
@@ -266,55 +278,48 @@ float FlightController::ApplyDeadband(float input, float deadband)
 
 ControlOutput FlightController::UpdateAngleController(float dt)
 {
-    float maxAngleDeg = 20.0f;
-    float throttle = m_rcCommand.throttle;
-    float targetRollDeg = m_rcCommand.roll * maxAngleDeg;
-    float targetPitchDeg = m_rcCommand.pitch * maxAngleDeg;
+    ControlOutput out{};
 
-    if (!m_rcCommand.valid)
-    {
-        throttle = 0.5f;
-        targetRollDeg = 0.0f;
-        targetPitchDeg = 0.0f;
-    }
+    constexpr float maxRollAngleDeg = 25.0f;
+    constexpr float maxPitchAngleDeg = 25.0f;
 
-    float gyroRollDegPerSec = m_simImu.gyro.x * 57.2957795f;
-    float accelRollDeg = atan2f(m_simImu.accel.y, m_simImu.accel.z) * 57.2957795f;
+    constexpr float RADIAN_ANGLE_MULTIPLIER = 57.2957795f;
 
-    float gyroPitchDegPerSec = m_simImu.gyro.y * 57.2957795f;
-    float accelPitchDeg = atan2f(
-                                -m_simImu.accel.x,
-                                sqrtf(m_simImu.accel.y * m_simImu.accel.y + m_simImu.accel.z * m_simImu.accel.z)
-                            ) * 57.2957795f;
+    constexpr float angleP = 4.0f; // deg error -> deg/s target
 
-    if (!m_estimatorInitialized)
-    {
-        m_estimatedRollDeg = accelRollDeg;
-        m_estimatedPitchDeg = accelPitchDeg;
-        m_estimatorInitialized = true;
-    }
-    else
-    {
-        m_estimatedPitchDeg =
-            0.98f * (m_estimatedPitchDeg + gyroPitchDegPerSec * dt)
-          + 0.02f * accelPitchDeg;
+    const float targetRollAngleDeg = m_rcCommand.roll * maxRollAngleDeg;
+    const float targetPitchAngleDeg = m_rcCommand.pitch * maxPitchAngleDeg;
 
-        m_estimatedRollDeg =
-            0.98f * (m_estimatedRollDeg + gyroRollDegPerSec * dt)
-          + 0.02f * accelRollDeg;
-    }
+    const float rollAngleError = targetRollAngleDeg - m_estimatedRollDeg;
+    const float pitchAngleError = targetPitchAngleDeg - m_estimatedPitchDeg;
 
-    float rollCorrection = PID_Controller::UpdateAngleWithGyroD(&m_rollPID, targetRollDeg, m_estimatedRollDeg, gyroRollDegPerSec, dt);
-    rollCorrection = MathUtils::Clamp(rollCorrection, -0.25f, 0.25f);
+    float targetRollRateDegSec = rollAngleError * angleP;
+    float targetPitchRateDegSec = pitchAngleError * angleP;
 
-    float pitchCorrection = PID_Controller::UpdateAngleWithGyroD(&m_pitchPID, targetPitchDeg, m_estimatedPitchDeg, gyroPitchDegPerSec, dt);
-    pitchCorrection = MathUtils::Clamp(pitchCorrection, -0.25f, 0.25f);
+    targetRollRateDegSec = MathUtils::Clamp(targetRollRateDegSec, -120.0f, 120.0f);
+    targetPitchRateDegSec = MathUtils::Clamp(targetPitchRateDegSec, -120.0f, 120.0f);
 
-    const ControlOutput out =
-    {
-        rollCorrection,
-        pitchCorrection,
-    };
+    const float gyroRollDegSec = m_simImu.gyro.x * RADIAN_ANGLE_MULTIPLIER;
+    const float gyroPitchDegSec = m_simImu.gyro.y * RADIAN_ANGLE_MULTIPLIER;
+
+    out.roll = PID_Controller::Update(
+        &m_rollPID,
+        targetRollRateDegSec,
+        gyroRollDegSec,
+        dt
+    );
+
+    out.pitch = PID_Controller::Update(
+        &m_pitchPID,
+        targetPitchRateDegSec,
+        gyroPitchDegSec,
+        dt
+    );
+
+    out.yaw = 0.0f;
+
+    out.roll = MathUtils::Clamp(out.roll, -0.03f, 0.03f);
+    out.pitch = MathUtils::Clamp(out.pitch, -0.03f, 0.03f);
 
     return out;
 }
@@ -348,9 +353,9 @@ ControlOutput FlightController::UpdateAcroController(float dt)
 
     constexpr float RADIAN_ANGLE_MULTIPLIER = 57.2957795f;
 
-    float gyroX = ApplyDeadband(m_simImu.gyro.x, 0.02);
-    float gyroY = ApplyDeadband(m_simImu.gyro.y, 0.02);
-    float gyroZ = ApplyDeadband(m_simImu.gyro.z, 0.02);
+    float gyroX = ApplyDeadband(m_simImu.gyro.x - m_gyroBias.x, 0.02);
+    float gyroY = ApplyDeadband(m_simImu.gyro.y - m_gyroBias.y, 0.02);
+    float gyroZ = ApplyDeadband(m_simImu.gyro.z - m_gyroBias.z, 0.02);
     float gyroRollDegPerSec = gyroX * RADIAN_ANGLE_MULTIPLIER;
     float gyroPitchDegPerSec = gyroY * RADIAN_ANGLE_MULTIPLIER;
     float gyroYawDegPerSec = gyroZ * RADIAN_ANGLE_MULTIPLIER;
@@ -404,17 +409,53 @@ ControlOutput FlightController::UpdateAcroController(float dt)
     // out.pitch = 0.0;
     out.yaw = 0.0;
 
-    SendAcroDebug(targetRollRateDegSec, targetPitchRateDegSec, targetYawRateDegSec,
-                    gyroRollDegPerSec, gyroPitchDegPerSec, gyroYawDegPerSec,
-                    out, m_rcCommand.throttle);
+    // SendAcroDebug(targetRollRateDegSec, targetPitchRateDegSec, targetYawRateDegSec,
+    //                 gyroRollDegPerSec, gyroPitchDegPerSec, gyroYawDegPerSec,
+    //                 out, m_rcCommand.throttle);
 
     return out;
+}
+
+void FlightController::UpdateAttitudeEstimator(float dt)
+{
+    constexpr float radToDeg = 57.2957795f;
+
+    const float gyroRollDegPerSec = m_simImu.gyro.x * radToDeg;
+    const float gyroPitchDegPerSec = m_simImu.gyro.y * radToDeg;
+
+    const float accelRollDeg =
+        atan2f(m_simImu.accel.y, m_simImu.accel.z) * radToDeg;
+
+    const float accelPitchDeg =
+        atan2f(
+            -m_simImu.accel.x,
+            sqrtf(m_simImu.accel.y * m_simImu.accel.y +
+                  m_simImu.accel.z * m_simImu.accel.z)
+        ) * radToDeg;
+
+    if (!m_estimatorInitialized)
+    {
+        m_estimatedRollDeg = accelRollDeg;
+        m_estimatedPitchDeg = accelPitchDeg;
+        m_estimatorInitialized = true;
+        return;
+    }
+
+    constexpr float alpha = 0.98f;
+
+    m_estimatedRollDeg =
+        alpha * (m_estimatedRollDeg + gyroRollDegPerSec * dt)
+      + (1.0f - alpha) * accelRollDeg;
+
+    m_estimatedPitchDeg =
+        alpha * (m_estimatedPitchDeg + gyroPitchDegPerSec * dt)
+      + (1.0f - alpha) * accelPitchDeg;
 }
 
 void FlightController::SendAcroDebug(float targetRollRateDegSec, float targetPitchRateDegSec, float targetYawRateDegSec,
                                      float gyroRollDegPerSec, float gyroPitchDegPerSec, float gyroYawDegPerSec,
                                      // float accelRollDeg, float accelPitchDeg, float throttleAuthority,
-                                     ControlOutput control_output, float throttle)
+                                     ControlOutput control_output, float throttle, MotorOutputs motors)
 {
     const uint32_t nowMs = HAL_GetTick();
 
@@ -445,9 +486,9 @@ void FlightController::SendAcroDebug(float targetRollRateDegSec, float targetPit
 
     sendNamed("=======", 1);
     sendNamed("tick", static_cast<float>(m_lastProcessedImuSequence));
-    sendNamed("t_roll", targetRollRateDegSec);
-    sendNamed("raw_g_roll", gyroRollDegPerSec);
-    sendNamed("filtered_g_roll", m_filteredGyroRollDegPerSec);
+    // sendNamed("t_roll", targetRollRateDegSec);
+    // sendNamed("raw_g_roll", gyroRollDegPerSec);
+    // sendNamed("filtered_g_roll", m_filteredGyroRollDegPerSec);
     // sendNamed("t_pitch", targetPitchRateDegSec);
     // sendNamed("g_pitch", gyroPitchDegPerSec);
     // sendNamed("t_yaw", targetYawRateDegSec);
@@ -456,7 +497,11 @@ void FlightController::SendAcroDebug(float targetRollRateDegSec, float targetPit
     // sendNamed("a_pitch", accelPitchDeg);
     // sendNamed("auth", throttleAuthority);
     sendNamed("throttle", throttle);
-    sendNamed("c_roll", control_output.roll);
+    // sendNamed("c_roll", control_output.roll);
+    sendNamed("motor.m1", motors.m1);
+    sendNamed("motor.m2", motors.m2);
+    sendNamed("motor.m3", motors.m3);
+    sendNamed("motor.m4", motors.m4);
     // sendNamed("c_pitch", control_output.pitch);
     // sendNamed("c_yaw", control_output.yaw);
     sendNamed("_______", 0);
@@ -466,6 +511,30 @@ void FlightController::SendAcroDebug(float targetRollRateDegSec, float targetPit
 void FlightController::ResetRatePidState()
 {
 
+}
+
+void FlightController::CalibrateGyroBias()
+{
+    constexpr int sampleCount = 500;
+    static int currentSampleCount = 0;
+
+    static Vector3 sum{};
+
+    if (currentSampleCount < sampleCount)
+    {
+        sum.x += m_simImu.gyro.x;
+        sum.y += m_simImu.gyro.y;
+        sum.z += m_simImu.gyro.z;
+
+        currentSampleCount++;
+        return;
+    }
+
+    m_gyroBias.x = sum.x / sampleCount;
+    m_gyroBias.y = sum.y / sampleCount;
+    m_gyroBias.z = sum.z / sampleCount;
+
+    m_gyroBiasReady = true;
 }
 
 MotorOutputs FlightController::MixQuadX(const float throttle, const ControlOutput& controlOutput)

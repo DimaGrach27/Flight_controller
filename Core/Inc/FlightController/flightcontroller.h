@@ -38,15 +38,17 @@ private:
 
     ControlOutput UpdateAngleController(float dt);
     ControlOutput UpdateAcroController(float dt);
+    void UpdateAttitudeEstimator(float dt);
     MotorOutputs MixQuadX(const float throttle, const ControlOutput& control_output);
     MotorOutputs DesaturateMotors(MotorOutputs motor_outputs);
 
     void SendAcroDebug(float targetRollRateDegSec, float targetPitchRateDegSec, float targetYawRateDegSec,
                        float gyroRollDegPerSec, float gyroPitchDegPerSec, float gyroYawDegPerSec,
                        // float accelRollDeg, float accelPitchDeg, float throttleAuthority,
-                       ControlOutput control_output, float throttle);
+                       ControlOutput control_output, float throttle, MotorOutputs motors);
 
     void ResetRatePidState();
+    void CalibrateGyroBias();
 
     float FilterGyroRollForDebug(float gyroRollDegSec);
 
@@ -83,4 +85,7 @@ private:
 
     const float m_idleArmedThrottle = 0.08f;
     const float m_idleThrottleThreshold = 0.05f;
+
+    Vector3 m_gyroBias = {};
+    bool m_gyroBiasReady = false;
 };
