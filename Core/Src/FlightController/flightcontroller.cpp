@@ -46,12 +46,12 @@ FlightController::FlightController()
 
     m_yawPID =
     {
-        .kp = 0.0001f,
+        .kp = 1.6f,
         .ki = 0.0f,
         .kd = 0.0f,
         .integrator = 0.0f,
         .previousError = 0.0f,
-        .integratorLimit = 100.0f
+        .integratorLimit = 50.0f
     };
 
     m_rcCommand =
@@ -415,7 +415,7 @@ ControlOutput FlightController::UpdateAngleController(float dt)
         dt
     );
 
-    constexpr float maxYawRateDegSec = 120.0f;
+    constexpr float maxYawRateDegSec = 90.0f;
     const float targetYawRateDegSec = yawStick * maxYawRateDegSec;
 
     out.yaw = PID_Controller::Update(
@@ -427,7 +427,7 @@ ControlOutput FlightController::UpdateAngleController(float dt)
 
     out.roll = MathUtils::Clamp(out.roll, -20, 20);
     out.pitch = MathUtils::Clamp(out.pitch, -20, 20);
-    out.yaw = MathUtils::Clamp(out.yaw, -100, 100);
+    out.yaw = MathUtils::Clamp(out.yaw, -30, 30);
 
     constexpr float controlDeadband = 1.5f;
 
@@ -439,6 +439,11 @@ ControlOutput FlightController::UpdateAngleController(float dt)
     if (fabsf(out.pitch) < controlDeadband)
     {
         out.pitch = 0.0f;
+    }
+
+    if (fabsf(out.yaw) < controlDeadband)
+    {
+        out.yaw = 0.0f;
     }
 
     m_lastControlDebug.targetRollRateDegSec = targetRollRateDegSec;
@@ -500,7 +505,7 @@ ControlOutput FlightController::UpdateAcroController(float dt)
 
     constexpr float maxRollRateDegSec = 180.0f;
     constexpr float maxPitchRateDegSec = 180.0f;
-    constexpr float maxYawRateDegSec = 120.0f;
+    constexpr float maxYawRateDegSec = 90.0f;
 
     constexpr float radToDeg = 57.2957795f;
 
@@ -615,7 +620,7 @@ ControlOutput FlightController::UpdateAcroController(float dt)
 
     out.roll = MathUtils::Clamp(out.roll, -20.0f, 20.0f);
     out.pitch = MathUtils::Clamp(out.pitch, -20.0f, 20.0f);
-    out.yaw = MathUtils::Clamp(out.yaw, -100.0f, 100.0f);
+    out.yaw = MathUtils::Clamp(out.yaw, -30.0f, 30.0f);
 
     constexpr float acroControlDeadband = 1.5f;
 
