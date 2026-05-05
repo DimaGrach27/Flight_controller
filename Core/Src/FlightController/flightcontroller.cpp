@@ -26,22 +26,22 @@ FlightController::FlightController()
 {
     m_rollPID =
     {
-        .kp = 0.0004f,
-        .ki = 0.0001f,
-        .kd = 0.0f,
+        .kp = 0.8f,
+        .ki = 0.05f,
+        .kd = 0.02f,
         .integrator = 0.0f,
         .previousError = 0.0f,
-        .integratorLimit = 50.0f
+        .integratorLimit = 100.0f
     };
 
     m_pitchPID =
     {
-        .kp = 0.0004f,
-        .ki = 0.0001f,
-        .kd = 0.0f,
+        .kp = 0.8f,
+        .ki = 0.05f,
+        .kd = 0.02f,
         .integrator = 0.0f,
         .previousError = 0.0f,
-        .integratorLimit = 50.0f
+        .integratorLimit = 100.0f
     };
 
     m_yawPID =
