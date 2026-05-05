@@ -57,9 +57,10 @@
 
         <include>
             <uri>
-                https://fuel.gazebosim.org/1.0/OpenRobotics/models/X3 UAV Config 3
+                model://X3
+<!--                https://fuel.gazebosim.org/1.0/OpenRobotics/models/X3 UAV Config 3-->
             </uri>
-            <name>X3</name>
+<!--            <name>X3</name>-->
 <!--            <pose>0 0 0 0 0 0</pose>-->
             <plugin
                     filename="gz-sim-imu-system"
@@ -156,6 +157,15 @@
                 <manual_rate_hz>10</manual_rate_hz>
                 <throttle>1</throttle>
 
+            </plugin>
+            <plugin
+                    filename="gz-sim-odometry-publisher-system"
+                    name="gz::sim::systems::OdometryPublisher">
+                <odom_topic>/X3/odometry</odom_topic>
+                <odom_publish_frequency>100</odom_publish_frequency>
+                <dimensions>3</dimensions>
+                <odom_frame>world</odom_frame>
+                <robot_base_frame>X3/base_link</robot_base_frame>
             </plugin>
         </include>
     </world>

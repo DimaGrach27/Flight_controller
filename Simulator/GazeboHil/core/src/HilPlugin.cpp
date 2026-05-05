@@ -38,7 +38,7 @@ void HilPlugin::Configure(
     ConfigureJoint(ecm, m_pitchJointName, m_pitchJoint);
     ConfigureJoint(ecm, m_yawJointName, m_yawJoint);
 
-    if (mavlink_.Open(serialPortPath_, baud_))
+    if (mavlink_.Open(serialPortPath_, baud_, nullptr))
     {
         std::cout << "[HilPlugin] Mavlink opened on " << serialPortPath_ << std::endl;
     }

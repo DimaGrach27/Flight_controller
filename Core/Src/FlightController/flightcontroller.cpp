@@ -27,8 +27,8 @@ FlightController::FlightController()
     m_rollPID =
     {
         .kp = 0.8f,
-        .ki = 0.05f,
-        .kd = 0.02f,
+        .ki = 0.0f, //0.05
+        .kd = 0.0f, //0.02
         .integrator = 0.0f,
         .previousError = 0.0f,
         .integratorLimit = 100.0f
@@ -37,8 +37,8 @@ FlightController::FlightController()
     m_pitchPID =
     {
         .kp = 0.8f,
-        .ki = 0.05f,
-        .kd = 0.02f,
+        .ki = 0.0f,
+        .kd = 0.0f,
         .integrator = 0.0f,
         .previousError = 0.0f,
         .integratorLimit = 100.0f
@@ -144,10 +144,10 @@ void FlightController::UpdateFormNewImuSample()
 
     motors = MixQuadX(m_rcCommand.throttle, control);
 
-    // motors.m1 = 700;
-    // motors.m2 = 700;
-    // motors.m3 = 700;
-    // motors.m4 = 700;
+    // motors.m1 = m_rcCommand.throttle;
+    // motors.m2 = m_rcCommand.throttle;
+    // motors.m3 = m_rcCommand.throttle;
+    // motors.m4 = m_rcCommand.throttle;
 
     SendServoOutputRaw(motors);
 
@@ -367,11 +367,15 @@ ControlOutput FlightController::UpdateAngleController(float dt)
     if (fabsf(rollAngleError) < angleErrorDeadbandDeg)
     {
         rollAngleError = 0.0f;
+        m_rollPID.previousError = 0.0f;
+        m_rollPID.integrator = 0.0f;
     }
 
     if (fabsf(pitchAngleError) < angleErrorDeadbandDeg)
     {
         pitchAngleError = 0.0f;
+        m_pitchPID.previousError = 0.0f;
+        m_pitchPID.integrator = 0.0f;
     }
 
     float targetRollRateDegSec = rollAngleError * angleP;
@@ -421,8 +425,8 @@ ControlOutput FlightController::UpdateAngleController(float dt)
         dt
     );
 
-    out.roll = MathUtils::Clamp(out.roll, -50, 50);
-    out.pitch = MathUtils::Clamp(out.pitch, -50, 50);
+    out.roll = MathUtils::Clamp(out.roll, -20, 20);
+    out.pitch = MathUtils::Clamp(out.pitch, -20, 20);
     out.yaw = MathUtils::Clamp(out.yaw, -100, 100);
 
     m_lastControlDebug.targetRollRateDegSec = targetRollRateDegSec;

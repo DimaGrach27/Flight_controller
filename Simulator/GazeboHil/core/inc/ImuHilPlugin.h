@@ -5,6 +5,7 @@
 #include <gz/sim/System.hh>
 #include <gz/msgs/imu.pb.h>
 #include <gz/transport/Node.hh>
+#include <gz/msgs/odometry.pb.h>
 
 #include "GlobalDef.h"
 #include "JoystickInput.h"
@@ -46,8 +47,11 @@ public:
         const gz::sim::EntityComponentManager& ecm
     ) override;
 
+    void HandleNamedValueFloat(const mavlink_named_value_float_t& value);
+
 private:
     void OnImu(const gz::msgs::IMU& msg);
+    void OnOdometry(const gz::msgs::Odometry& msg);
 
     ImuData GetLatestImu() const;
 
@@ -74,10 +78,12 @@ private:
     gz::transport::Node::Publisher m_motorPublisher;
 
     std::string m_imuTopic = "/world/quadcopter/model/X3/link/base_link/sensor/imu_sensor/imu";
+    std::string m_groundTruthTopic = "/X3/odometry";
     std::string m_motorTopic = "/X3/gazebo/command/motor_speed";
 
     mutable std::mutex m_imuMutex;
     ImuData m_latestImu;
+    GroundTruthState m_latestGroundTruth;
 
     AttitudeEstimate m_attitude;
 
@@ -115,5 +121,9 @@ private:
 
     double m_hilDtMin = 999.0;
     double m_hilDtMax = 0.0;
+
+    CsvLogger m_csvLogger;
+    std::unordered_map<std::string, float> m_currentLogFields;
+    bool m_isCollectingLogSample = false;
 };
 NAMESPACE_END

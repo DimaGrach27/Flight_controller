@@ -70,25 +70,34 @@ void ImuHilPlugin::Configure(const gz::sim::Entity &entity, const std::shared_pt
             << "\n";
     }
 
-    const bool subscribed = m_node.Subscribe(
+    const bool subscribedImu = m_node.Subscribe(
         m_imuTopic,
         &ImuHilPlugin::OnImu,
         this
     );
 
-    if (!subscribed)
+    const bool subscribedOdometry = m_node.Subscribe(
+        m_groundTruthTopic,
+        &ImuHilPlugin::OnOdometry,
+        this
+);
+
+    if (!subscribedImu)
     {
-        std::cerr
-            << "[ImuHilPlugin] Failed to subscribe to IMU topic: "
-            << m_imuTopic
-            << "\n";
+        printf("[ImuHilPlugin] Failed to subscribe IMU topic: %s\n", m_imuTopic.c_str());
     }
     else
     {
-        std::cout
-            << "[ImuHilPlugin] Subscribed to IMU topic: "
-            << m_imuTopic
-            << "\n";
+        printf("[ImuHilPlugin] Subscribed to IMU topic: %s\n", m_imuTopic.c_str());
+    }
+
+    if (!subscribedOdometry)
+    {
+        printf("[ImuHilPlugin] Failed to subscribe Odometry topic: %s\n", m_groundTruthTopic.c_str());
+    }
+    else
+    {
+        printf("[ImuHilPlugin] Subscribed to Odometry topic: %s\n", m_groundTruthTopic.c_str());
     }
 
     if (m_useJoystick)
@@ -96,10 +105,16 @@ void ImuHilPlugin::Configure(const gz::sim::Entity &entity, const std::shared_pt
         m_joystickInput.Init(m_joystickIndex);
     }
 
-    if (m_mavlinkBridge.Open(m_serialPortPath, m_baud))
+    if (m_mavlinkBridge.Open(m_serialPortPath, m_baud,
+        [this](const mavlink_named_value_float_t& value)
+                    {
+                        HandleNamedValueFloat(value);
+                    }))
     {
         printf("[ImuHilPlugin] Mavlink opened on %s", m_serialPortPath.c_str());
     }
+
+    m_csvLogger.Open("imu_hil_log.csv", m_csvLogger.HEADER_LOG_FLIGHT_SAMPLE);
 }
 
 void ImuHilPlugin::PreUpdate(const gz::sim::UpdateInfo &info, gz::sim::EntityComponentManager &ecm)
@@ -271,6 +286,46 @@ void ImuHilPlugin::PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::En
     }
 }
 
+void ImuHilPlugin::HandleNamedValueFloat(const mavlink_named_value_float_t &value)
+{
+    std::string name(value.name, strnlen(value.name, sizeof(value.name)));
+
+    if (name == "+++++")
+    {
+        m_currentLogFields = {};
+        m_isCollectingLogSample = true;
+        return;
+    }
+
+    if (name == "-----")
+    {
+        if (m_isCollectingLogSample)
+        {
+            if (m_latestGroundTruth.valid)
+            {
+                m_currentLogFields["truth_x"] = m_latestGroundTruth.x;
+                m_currentLogFields["truth_y"] = m_latestGroundTruth.y;
+                m_currentLogFields["truth_z"] = m_latestGroundTruth.z;
+                m_currentLogFields["truth_vx"] = m_latestGroundTruth.vx;
+                m_currentLogFields["truth_vy"] = m_latestGroundTruth.vy;
+                m_currentLogFields["truth_vz"] = m_latestGroundTruth.vz;
+            }
+
+            m_csvLogger.Log(m_currentLogFields);
+        }
+
+        m_isCollectingLogSample = false;
+        return;
+    }
+
+    if (!m_isCollectingLogSample)
+    {
+        return;
+    }
+
+    m_currentLogFields[name] = value.value;
+}
+
 void ImuHilPlugin::OnImu(const gz::msgs::IMU &msg)
 {
     ImuData data;
@@ -289,6 +344,19 @@ void ImuHilPlugin::OnImu(const gz::msgs::IMU &msg)
         std::lock_guard<std::mutex> lock(m_imuMutex);
         m_latestImu = data;
     }
+}
+
+void ImuHilPlugin::OnOdometry(const gz::msgs::Odometry &msg)
+{
+    m_latestGroundTruth.x = msg.pose().position().x();
+    m_latestGroundTruth.y = msg.pose().position().y();
+    m_latestGroundTruth.z = msg.pose().position().z();
+
+    m_latestGroundTruth.vx = msg.twist().linear().x();
+    m_latestGroundTruth.vy = msg.twist().linear().y();
+    m_latestGroundTruth.vz = msg.twist().linear().z();
+
+    m_latestGroundTruth.valid = true;
 }
 
 ImuData ImuHilPlugin::GetLatestImu() const

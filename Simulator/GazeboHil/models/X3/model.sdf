@@ -16,6 +16,10 @@
                   <izz>0.033</izz>
                 </inertia>
             </inertial>
+            <velocity_decay>
+                <linear>0.10</linear>
+                <angular>0.05</angular>
+            </velocity_decay>
             <collision name="base_link_inertia_collision">
                 <pose frame="">0 0 0 0 -0 0</pose>
                 <geometry>

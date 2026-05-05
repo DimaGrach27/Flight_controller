@@ -24,7 +24,7 @@ struct MotorOutputs
 class MavlinkBridge
 {
 public:
-    bool Open(const std::string& port, int baud);
+    bool Open(const std::string& port, int baud, std::function<void(const mavlink_named_value_float_t&)> callback);
 
     void Poll();
 
@@ -65,13 +65,10 @@ private:
 
     static double PwmToMotor(uint16_t pwm);
 
-    void HandleNamedValueFloat(const mavlink_named_value_float_t& value);
 private:
     SerialPort serial_;
     MotorOutputs motors_;
-    CsvLogger m_csvLogger;
 
-    std::unordered_map<std::string, float> m_currentLogFields;
-    bool m_isCollectingLogSample = false;
+    std::function<void(const mavlink_named_value_float_t&)> m_callback;
 };
 NAMESPACE_END
