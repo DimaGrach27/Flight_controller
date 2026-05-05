@@ -429,6 +429,18 @@ ControlOutput FlightController::UpdateAngleController(float dt)
     out.pitch = MathUtils::Clamp(out.pitch, -20, 20);
     out.yaw = MathUtils::Clamp(out.yaw, -100, 100);
 
+    constexpr float controlDeadband = 1.5f;
+
+    if (fabsf(out.roll) < controlDeadband)
+    {
+        out.roll = 0.0f;
+    }
+
+    if (fabsf(out.pitch) < controlDeadband)
+    {
+        out.pitch = 0.0f;
+    }
+
     m_lastControlDebug.targetRollRateDegSec = targetRollRateDegSec;
     m_lastControlDebug.targetPitchRateDegSec = targetPitchRateDegSec;
     m_lastControlDebug.targetYawRateDegSec = targetYawRateDegSec;
@@ -486,63 +498,141 @@ ControlOutput FlightController::UpdateAcroController(float dt)
 {
     ControlOutput out = {0};
 
-    const float maxRollRateDegSec = 180.0f;
-    const float maxPitchRateDegSec = 180.0f;
-    const float maxYawRateDegSec = 120.0f;
+    constexpr float maxRollRateDegSec = 180.0f;
+    constexpr float maxPitchRateDegSec = 180.0f;
+    constexpr float maxYawRateDegSec = 120.0f;
 
-    constexpr float RADIAN_ANGLE_MULTIPLIER = 57.2957795f;
+    constexpr float radToDeg = 57.2957795f;
 
-    float gyroX = 0.0;
-    float gyroY = 0.0;
-    float gyroZ = 0.0;
+    float gyroX = 0.0f;
+    float gyroY = 0.0f;
+    float gyroZ = 0.0f;
 
     if (m_gyroBiasReady)
     {
-        gyroX = MathUtils::ApplyDeadband(m_simImu.gyro.x - m_gyroBias.x, 0.02f);
-        gyroY = MathUtils::ApplyDeadband(m_simImu.gyro.y - m_gyroBias.y, 0.02f);
-        gyroZ = MathUtils::ApplyDeadband(m_simImu.gyro.z - m_gyroBias.z, 0.02f);
+        gyroX = m_simImu.gyro.x - m_gyroBias.x;
+        gyroY = m_simImu.gyro.y - m_gyroBias.y;
+        gyroZ = m_simImu.gyro.z - m_gyroBias.z;
     }
     else
     {
-        gyroX = MathUtils::ApplyDeadband(m_simImu.gyro.x, 0.02f);
-        gyroY = MathUtils::ApplyDeadband(m_simImu.gyro.y, 0.02f);
-        gyroZ = MathUtils::ApplyDeadband(m_simImu.gyro.z, 0.02f);
+        gyroX = m_simImu.gyro.x;
+        gyroY = m_simImu.gyro.y;
+        gyroZ = m_simImu.gyro.z;
     }
 
-    float gyroRollDegPerSec = gyroX * RADIAN_ANGLE_MULTIPLIER;
-    float gyroPitchDegPerSec = gyroY * RADIAN_ANGLE_MULTIPLIER;
-    float gyroYawDegPerSec = gyroZ * RADIAN_ANGLE_MULTIPLIER;
+    float gyroRollDegPerSec = gyroX * radToDeg;
+    float gyroPitchDegPerSec = gyroY * radToDeg;
+    float gyroYawDegPerSec = gyroZ * radToDeg;
 
-    float targetRollRateDegSec = static_cast<float>(m_rcCommand.roll / 1000.0f) * maxRollRateDegSec;
-    float targetPitchRateDegSec = static_cast<float>(m_rcCommand.pitch / 1000.0f) * maxPitchRateDegSec;
-    float targetYawRateDegSec = static_cast<float>(m_rcCommand.yaw / 1000.0f) * maxYawRateDegSec;
+    constexpr float gyroRateDeadbandDegSec = 1.5f;
 
-    out.roll = PID_Controller::Update(
-        &m_rollPID,
-        targetRollRateDegSec,
-        gyroRollDegPerSec,
-        dt
-    );
+    if (fabsf(gyroRollDegPerSec) < gyroRateDeadbandDegSec)
+    {
+        gyroRollDegPerSec = 0.0f;
+    }
 
-    out.pitch = PID_Controller::Update(
-        &m_pitchPID,
-        targetPitchRateDegSec,
-        gyroPitchDegPerSec,
-        dt
-    );
+    if (fabsf(gyroPitchDegPerSec) < gyroRateDeadbandDegSec)
+    {
+        gyroPitchDegPerSec = 0.0f;
+    }
 
-    out.yaw = PID_Controller::Update(
-        &m_yawPID,
-        targetYawRateDegSec,
-        gyroYawDegPerSec,
-        dt
-    );
+    if (fabsf(gyroYawDegPerSec) < gyroRateDeadbandDegSec)
+    {
+        gyroYawDegPerSec = 0.0f;
+    }
 
-    out.roll = MathUtils::Clamp(out.roll, -50, 50);
-    out.pitch = MathUtils::Clamp(out.pitch, -50, 50);
-    out.yaw = MathUtils::Clamp(out.yaw, -200, 200);
+    const float targetRollRateDegSec =
+        static_cast<float>(m_rcCommand.roll) / 1000.0f * maxRollRateDegSec;
 
-    out.yaw = 0;
+    const float targetPitchRateDegSec =
+        static_cast<float>(m_rcCommand.pitch) / 1000.0f * maxPitchRateDegSec;
+
+    const float targetYawRateDegSec =
+        static_cast<float>(m_rcCommand.yaw) / 1000.0f * maxYawRateDegSec;
+
+    constexpr float targetRateDeadbandDegSec = 0.5f;
+
+    const bool rollIdle =
+        fabsf(targetRollRateDegSec) < targetRateDeadbandDegSec &&
+        fabsf(gyroRollDegPerSec) < gyroRateDeadbandDegSec;
+
+    const bool pitchIdle =
+        fabsf(targetPitchRateDegSec) < targetRateDeadbandDegSec &&
+        fabsf(gyroPitchDegPerSec) < gyroRateDeadbandDegSec;
+
+    const bool yawIdle =
+        fabsf(targetYawRateDegSec) < targetRateDeadbandDegSec &&
+        fabsf(gyroYawDegPerSec) < gyroRateDeadbandDegSec;
+
+    if (rollIdle)
+    {
+        m_rollPID.previousError = 0.0f;
+        m_rollPID.integrator = 0.0f;
+        out.roll = 0.0f;
+    }
+    else
+    {
+        out.roll = PID_Controller::Update(
+            &m_rollPID,
+            targetRollRateDegSec,
+            gyroRollDegPerSec,
+            dt
+        );
+    }
+
+    if (pitchIdle)
+    {
+        m_pitchPID.previousError = 0.0f;
+        m_pitchPID.integrator = 0.0f;
+        out.pitch = 0.0f;
+    }
+    else
+    {
+        out.pitch = PID_Controller::Update(
+            &m_pitchPID,
+            targetPitchRateDegSec,
+            gyroPitchDegPerSec,
+            dt
+        );
+    }
+
+    if (yawIdle)
+    {
+        m_yawPID.previousError = 0.0f;
+        m_yawPID.integrator = 0.0f;
+        out.yaw = 0.0f;
+    }
+    else
+    {
+        out.yaw = PID_Controller::Update(
+            &m_yawPID,
+            targetYawRateDegSec,
+            gyroYawDegPerSec,
+            dt
+        );
+    }
+
+    out.roll = MathUtils::Clamp(out.roll, -20.0f, 20.0f);
+    out.pitch = MathUtils::Clamp(out.pitch, -20.0f, 20.0f);
+    out.yaw = MathUtils::Clamp(out.yaw, -100.0f, 100.0f);
+
+    constexpr float acroControlDeadband = 1.5f;
+
+    if (fabsf(out.roll) < acroControlDeadband)
+    {
+        out.roll = 0.0f;
+    }
+
+    if (fabsf(out.pitch) < acroControlDeadband)
+    {
+        out.pitch = 0.0f;
+    }
+
+    if (fabsf(out.yaw) < acroControlDeadband)
+    {
+        out.yaw = 0.0f;
+    }
 
     m_lastControlDebug.targetRollRateDegSec = targetRollRateDegSec;
     m_lastControlDebug.targetPitchRateDegSec = targetPitchRateDegSec;
