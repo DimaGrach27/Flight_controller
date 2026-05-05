@@ -37,18 +37,11 @@ private:
 
     void SendServoOutputRaw(MotorOutputs motor_outputs);
 
-    float ApplyDeadband(float input, float deadband);
-
     ControlOutput UpdateAngleController(float dt);
     ControlOutput UpdateAcroController(float dt);
     void UpdateAttitudeEstimator(float dt);
     MotorOutputs MixQuadX(const uint16_t throttle, const ControlOutput& control_output);
     MotorOutputs DesaturateMotors(MotorOutputs motor_outputs);
-
-    // void SendAcroDebug(float targetRollRateDegSec, float targetPitchRateDegSec, float targetYawRateDegSec,
-    //                    float gyroRollDegPerSec, float gyroPitchDegPerSec, float gyroYawDegPerSec,
-    //                    // float accelRollDeg, float accelPitchDeg, float throttleAuthority,
-    //                    ControlOutput control_output, float throttle, MotorOutputs motors);
 
     void ResetRatePidState();
     void CalibrateGyroBias();
@@ -87,8 +80,8 @@ private:
     uint32_t m_lastProcessedImuSequence = 0;
     uint64_t m_lastImuTimeUsec = 0;
 
-    const uint16_t m_idleArmedThrottle = 80;
-    const uint16_t m_idleThrottleThreshold = 50;
+    const int16_t m_idleArmedThrottle = 80;
+    const int16_t m_idleThrottleThreshold = 50;
 
     Vector3 m_gyroBias = {};
     bool m_gyroBiasReady = false;

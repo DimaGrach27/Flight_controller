@@ -250,7 +250,7 @@ void MavlinkBridge::HandleMessage(const mavlink_message_t& msg)
             mavlink_msg_named_value_float_decode(&msg, &named_value_float);
 
             HandleNamedValueFloat(named_value_float);
-            printf("[MavlinkBridge] %s %f\n", named_value_float.name, named_value_float.value);
+            // printf("[MavlinkBridge] %s %f\n", named_value_float.name, named_value_float.value);
             break;
         }
 

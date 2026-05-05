@@ -19,15 +19,15 @@ struct SimImuSample
 
 struct MotorOutputs
 {
-    uint16_t m1;
-    uint16_t m2;
-    uint16_t m3;
-    uint16_t m4;
+    int16_t m1;
+    int16_t m2;
+    int16_t m3;
+    int16_t m4;
 };
 
 struct RcCommand
 {
-    uint16_t throttle; // 0..1000
+    int16_t throttle; // 0..1000
     int16_t roll;     // -1000..1000
     int16_t pitch;    // -1000..1000
     int16_t yaw;      // -1000..1000
