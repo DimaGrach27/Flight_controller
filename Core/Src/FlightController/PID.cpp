@@ -6,29 +6,31 @@
 
 #include "FlightController/mathutils.h"
 
-float PID_Controller::Update(PID *pid, float target, float measured, float dt)
+int16_t PID_Controller::Update(PID *pid, const float target, const float measured, const float dt)
 {
     if (dt <= 0.000001f)
     {
         return 0.0f;
     }
 
-    float error = target - measured;
+    const float error = target - measured;
 
     pid->integrator += error * dt;
     pid->integrator = MathUtils::Clamp(pid->integrator, -pid->integratorLimit, pid->integratorLimit);
 
-    float derivative = (error - pid->previousError) / dt;
+    const float derivative = (error - pid->previousError) / dt;
     pid->previousError = error;
 
-    return pid->kp * error
+    const float pidOut = pid->kp * error
          + pid->ki * pid->integrator
          + pid->kd * derivative;
+
+    return static_cast<int16_t>(pidOut * 1000);
 }
 
-float PID_Controller::UpdateAngleWithGyroD(PID *pid,
-    float targetAngleDeg, float measuredAngleDeg, float gyroDegPerSec,
-    float dt)
+int16_t PID_Controller::UpdateAngleWithGyroD(PID *pid,
+    const float targetAngleDeg, const float measuredAngleDeg, const float gyroDegPerSec,
+    const float dt)
 {
     float error = targetAngleDeg - measuredAngleDeg;
 
@@ -39,9 +41,11 @@ float PID_Controller::UpdateAngleWithGyroD(PID *pid,
         pid->integratorLimit
     );
 
-    float p = pid->kp * error;
-    float i = pid->ki * pid->integrator;
-    float d = -pid->kd * gyroDegPerSec;
+    const float p = pid->kp * error;
+    const float i = pid->ki * pid->integrator;
+    const float d = -pid->kd * gyroDegPerSec;
 
-    return p + i + d;
+    const float pidOut = p + i + d;
+
+    return static_cast<int16_t>(pidOut * 1000);
 }

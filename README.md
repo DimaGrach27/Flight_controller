@@ -9,3 +9,17 @@ Milestone 2:
 - Rate/Acro mode
 - Possibility to change flight mode by input from RadioMaster TX12
 - Acro Mode roll/pitch/yaw
+
+Milestone 3:
+- Optimized UART transport
+- Possibility to fly on stand but with small drifting
+- PIDs before tuning
+-     pitchPID = rollPID
+      {
+          .kp = 0.0004f,
+          .ki = 0.0001f,
+          .kd = 0.0f,
+          .integrator = 0.0f,
+          .previousError = 0.0f,
+          .integratorLimit = 50.0f
+      };

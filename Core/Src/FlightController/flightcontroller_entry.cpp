@@ -13,11 +13,6 @@ extern "C" void flight_controller_Init(UART_HandleTypeDef* huart2)
     FlightController.Init(*huart2);
 }
 
-extern "C" void flight_controller_Update(float dt)
-{
-    FlightController.Update(dt);
-}
-
 extern "C" void flight_controller_Heartbeat(void)
 {
     FlightController.Heartbeat();

@@ -9,9 +9,9 @@ bool CsvLogger::Open(const std::string& path, const std::string& header)
 {
     Close();
 
-    file_.open(path);
+    m_file.open(path);
 
-    if (!file_.is_open())
+    if (!m_file.is_open())
         return false;
 
     WriteHeader(header);
@@ -21,21 +21,21 @@ bool CsvLogger::Open(const std::string& path, const std::string& header)
 
 void CsvLogger::Close()
 {
-    if (file_.is_open())
-        file_.close();
+    if (m_file.is_open())
+        m_file.close();
 }
 
 bool CsvLogger::IsOpen() const
 {
-    return file_.is_open();
+    return m_file.is_open();
 }
 
 void CsvLogger::WriteHeader(const std::string& header)
 {
-    if (!file_.is_open())
+    if (!m_file.is_open())
         return;
 
-    file_ << header << "\n";
+    m_file << header << "\n";
 }
 
 void CsvLogger::Log(
@@ -47,10 +47,10 @@ void CsvLogger::Log(
     double torque
 )
 {
-    if (!file_.is_open())
+    if (!m_file.is_open())
         return;
 
-    file_
+    m_file
         << timeSec << ","
         << angleDeg << ","
         << gyroDegSec << ","
@@ -60,49 +60,12 @@ void CsvLogger::Log(
         << "\n";
 }
 
-void CsvLogger::Log(FlightLogSample sample)
-{
-    if (!file_.is_open())
-        return;
-
-    file_
-        << sample.timeMs << ','
-        << sample.imuSeq << ','
-        << sample.controlSeq << ','
-        << sample.logSeq << ','
-        << sample.dt << ','
-        << sample.imuDt << ','
-        << sample.halDt << ','
-        << sample.rcThrottle << ','
-        << sample.rcRoll << ','
-        << sample.rcPitch << ','
-        << sample.rcYaw << ','
-        << sample.targetRollRateDegSec << ','
-        << sample.targetPitchRateDegSec << ','
-        << sample.targetYawRateDegSec << ','
-        << sample.gyroRollDegSec << ','
-        << sample.gyroPitchDegSec << ','
-        << sample.gyroYawDegSec << ','
-        << sample.estimatedRollDeg << ','
-        << sample.estimatedPitchDeg << ','
-        << sample.controlRoll << ','
-        << sample.controlPitch << ','
-        << sample.controlYaw << ','
-        << sample.motorM1 << ','
-        << sample.motorM2 << ','
-        << sample.motorM3 << ','
-        << sample.motorM4 << ','
-        << '\n';
-
-    file_.flush();
-}
-
 void CsvLogger::Log(std::unordered_map<std::string, float> map_log)
 {
-    if (!file_.is_open())
+    if (!m_file.is_open())
         return;
 
-    file_
+    m_file
         << map_log.at("time_ms") << ','
         << map_log.at("imu_seq") << ','
         << map_log.at("cont_seq") << ','
@@ -131,7 +94,7 @@ void CsvLogger::Log(std::unordered_map<std::string, float> map_log)
         << map_log.at("m4")
         << '\n';
 
-    file_.flush();
+    m_file.flush();
 }
 
 NAMESPACE_END

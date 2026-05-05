@@ -16,6 +16,28 @@ namespace MathUtils
         return value;
     }
 
+    int16_t Clamp(const int16_t value, const int16_t minValue, const int16_t maxValue)
+    {
+        if (value < minValue)
+            return minValue;
+
+        if (value > maxValue)
+            return maxValue;
+
+        return value;
+    }
+
+    uint16_t Clamp(const uint16_t value, const uint16_t minValue, const uint16_t maxValue)
+    {
+        if (value < minValue)
+            return minValue;
+
+        if (value > maxValue)
+            return maxValue;
+
+        return value;
+    }
+
     float Clamp01(const float value)
     {
         constexpr float minValue = 0.0f;

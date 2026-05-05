@@ -141,18 +141,11 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   uint32_t lastHeartbeatMs = 0;
-  uint32_t lastFlightMs = 0;
 
   HAL_UARTEx_ReceiveToIdle_DMA(&huart2, m_uartRxDmaBuffer, sizeof(m_uartRxDmaBuffer));
 
   while (1)
   {
-    // uint8_t byte;
-    // HAL_StatusTypeDef status = HAL_UART_Receive(&huart2, &byte, 1, 0);
-    // if (status == HAL_OK)
-    // {
-    //   flight_controller_MavlinkParseByte(byte);
-    // }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -165,14 +158,6 @@ int main(void)
       lastHeartbeatMs = now;
       flight_controller_Heartbeat();
     }
-
-    // if (now - lastFlightMs >= 10)
-    // {
-    //   float dt = (now - lastFlightMs) * 0.001f;
-    //   lastFlightMs = now;
-    //
-    //   flight_controller_Update(dt);
-    // }
   }
   /* USER CODE END 3 */
 }

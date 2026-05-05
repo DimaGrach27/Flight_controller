@@ -6,6 +6,7 @@
 
 #include <cstdint>
 
+#include "logger.h"
 #include "main.h"
 
 #include "mavlink/common/mavlink.h"
@@ -22,10 +23,9 @@ class FlightController
 {
 public:
     FlightController();
-    ~FlightController() = default;
+    ~FlightController();
 
     void Init(UART_HandleTypeDef& huart2);
-    void Update(float dt);
     void UpdateFormNewImuSample();
     void Heartbeat();
     void MavlinkParseByte(uint8_t byte);
@@ -33,6 +33,8 @@ public:
 private:
     void MavlinkHandleMessage(const mavlink_message_t* msg);
     void HandleHilSensor(const mavlink_message_t* msg);
+    void HandleRcCommand(const mavlink_message_t* msg);
+
     void SendServoOutputRaw(MotorOutputs motor_outputs);
 
     float ApplyDeadband(float input, float deadband);
@@ -40,7 +42,7 @@ private:
     ControlOutput UpdateAngleController(float dt);
     ControlOutput UpdateAcroController(float dt);
     void UpdateAttitudeEstimator(float dt);
-    MotorOutputs MixQuadX(const float throttle, const ControlOutput& control_output);
+    MotorOutputs MixQuadX(const uint16_t throttle, const ControlOutput& control_output);
     MotorOutputs DesaturateMotors(MotorOutputs motor_outputs);
 
     // void SendAcroDebug(float targetRollRateDegSec, float targetPitchRateDegSec, float targetYawRateDegSec,
@@ -52,8 +54,6 @@ private:
     void CalibrateGyroBias();
 
     float FilterGyroRollForDebug(float gyroRollDegSec);
-
-    void SendFlightLogCsv(const FlightLogSample& sample);
 
     float GetImuDtSec();
 
@@ -75,7 +75,6 @@ private:
     float m_estimatedRollDeg = 0.0f;
     float m_estimatedPitchDeg = 0.0f;
 
-    uint32_t m_lastDebugMs = 0;
 
     float m_lastGoodGyroRollDegSec = 0.0f;
 
@@ -88,8 +87,8 @@ private:
     uint32_t m_lastProcessedImuSequence = 0;
     uint64_t m_lastImuTimeUsec = 0;
 
-    const float m_idleArmedThrottle = 0.08f;
-    const float m_idleThrottleThreshold = 0.05f;
+    const uint16_t m_idleArmedThrottle = 80;
+    const uint16_t m_idleThrottleThreshold = 50;
 
     Vector3 m_gyroBias = {};
     bool m_gyroBiasReady = false;
@@ -100,4 +99,7 @@ private:
     uint32_t m_controlSequence = 0;
     uint32_t m_logSequence = 0;
     uint32_t m_previousHalLogMs = 0;
+
+    //DEBUG
+    Logger* m_logger = nullptr;
 };

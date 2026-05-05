@@ -60,6 +60,37 @@ void JoystickInput::Shutdown()
     SDL_QuitSubSystem(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
 }
 
+void LogJoystickInputs(SDL_Joystick& js)
+{
+    std::cout << "Name: " << SDL_JoystickName(&js) << "\n";
+    std::cout << "Axes: " << SDL_JoystickNumAxes(&js) << "\n";
+    std::cout << "Buttons: " << SDL_JoystickNumButtons(&js) << "\n";
+    std::cout << "Hats: " << SDL_JoystickNumHats(&js) << "\n";
+
+    std::cout << "\033[2J\033[H"; // clear terminal
+
+    std::cout << "Axes:\n";
+    for (int i = 0; i < SDL_JoystickNumAxes(&js); ++i)
+    {
+        Sint16 value = SDL_JoystickGetAxis(&js, i);
+        std::cout << "  Axis " << i << ": " << value << "\n";
+    }
+
+    std::cout << "\nButtons:\n";
+    for (int i = 0; i < SDL_JoystickNumButtons(&js); ++i)
+    {
+        Uint8 value = SDL_JoystickGetButton(&js, i);
+        std::cout << "  Button " << i << ": " << static_cast<int>(value) << "\n";
+    }
+
+    std::cout << "\nHats:\n";
+    for (int i = 0; i < SDL_JoystickNumHats(&js); ++i)
+    {
+        Uint8 value = SDL_JoystickGetHat(&js, i);
+        std::cout << "  Hat " << i << ": " << static_cast<int>(value) << "\n";
+    }
+}
+
 void JoystickInput::Poll()
 {
     if (!m_joystick)
@@ -67,18 +98,15 @@ void JoystickInput::Poll()
 
     SDL_JoystickUpdate();
 
-    // Початковий mapping. Його, скоріш за все, треба буде підправити під TX12.
     double axisRoll = Axis(0);
     double axisPitch = Axis(1);
     double axisThrottle = Axis(2);
-    double axisYaw = Axis(3);
-
-    // value = QuantizeAxis(value);
+    double axisYaw = -Axis(3);
 
     axisRoll = ApplyExpo(ApplyDeadzone(axisRoll, 0.04), 0.3);
     axisPitch = ApplyExpo(ApplyDeadzone(axisPitch, 0.04), 0.3);
     axisThrottle = NormalizeThrottle(axisThrottle);
-    axisYaw = -ApplyExpo(ApplyDeadzone(axisYaw, 0.04), 0.3);
+    axisYaw = ApplyExpo(ApplyDeadzone(axisYaw, 0.04), 0.3);
 
     m_control.roll = QuantizeAxis(axisRoll);
     m_control.pitch = QuantizeAxis(axisPitch);
@@ -87,55 +115,12 @@ void JoystickInput::Poll()
 
     m_control.valid = true;
 
-    // Кнопка 0 як arm для майбутнього. Поки можна ігнорувати.
     SDL_Joystick* js = static_cast<SDL_Joystick*>(m_joystick);
 
-    // std::cout << "Name: " << SDL_JoystickName(js) << "\n";
-    // std::cout << "Axes: " << SDL_JoystickNumAxes(js) << "\n";
-    // std::cout << "Buttons: " << SDL_JoystickNumButtons(js) << "\n";
-    // std::cout << "Hats: " << SDL_JoystickNumHats(js) << "\n";
-
-    // std::cout << "\033[2J\033[H"; // clear terminal
-
-    // std::cout << "Axes:\n";
-    // for (int i = 0; i < SDL_JoystickNumAxes(js); ++i)
-    // {
-    //     Sint16 value = SDL_JoystickGetAxis(js, i);
-    //     std::cout << "  Axis " << i << ": " << value << "\n";
-    // }
-
-    // std::cout << "\nButtons:\n";
-    // for (int i = 0; i < SDL_JoystickNumButtons(js); ++i)
-    // {
-    //     Uint8 value = SDL_JoystickGetButton(js, i);
-    //     std::cout << "  Button " << i << ": " << static_cast<int>(value) << "\n";
-    // }
-    //
-    // std::cout << "\nHats:\n";
-    // for (int i = 0; i < SDL_JoystickNumHats(js); ++i)
-    // {
-    //     Uint8 value = SDL_JoystickGetHat(js, i);
-    //     std::cout << "  Hat " << i << ": " << static_cast<int>(value) << "\n";
-    // }
+    // LogJoystickInputs(*js);
 
     if (SDL_JoystickNumButtons(js) > 0)
     {
-        bool btn_0 = SDL_JoystickGetButton(js, 0);
-        bool btn_1 = SDL_JoystickGetButton(js, 1);
-        bool btn_2 = SDL_JoystickGetButton(js, 2);
-        bool btn_3 = SDL_JoystickGetButton(js, 3);
-        bool btn_4 = SDL_JoystickGetButton(js, 4);
-        // std::cout
-        //     << "[Joystick] "
-        //     <<  "BTN_0=" << btn_0
-        //     << " BTN_1=" << btn_1
-        //     << " BTN_2=" << btn_2
-        //     << " BTN_3=" << btn_3
-        //     << " BTN_4=" << btn_4
-        // << std::endl;
-
-        //arm button it is B on controller and 6 axis in code 1 = 32768
-        //acro mode it is E on controller and 5 axis in code 1 = 32768
         m_control.arm = SDL_JoystickGetAxis(js, 6) > 16000;
         m_control.acroMode = SDL_JoystickGetAxis(js, 5) > 16000;
     }

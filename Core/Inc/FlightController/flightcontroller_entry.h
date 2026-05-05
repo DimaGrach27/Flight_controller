@@ -12,7 +12,6 @@ extern "C" {
 #endif
 
 void flight_controller_Init(UART_HandleTypeDef* huart2);
-void flight_controller_Update(float dt);
 void flight_controller_Heartbeat(void);
 void flight_controller_MavlinkParseByte(uint8_t byte);
 
