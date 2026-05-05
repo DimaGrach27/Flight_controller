@@ -66,6 +66,8 @@ void CsvLogger::Log(std::unordered_map<std::string, float> map_log)
         return;
 
     m_file
+        << map_log.at("f_mode") << ','
+        << map_log.at("armed") << ','
         << map_log.at("time_ms") << ','
         << map_log.at("imu_seq") << ','
         << map_log.at("cont_seq") << ','

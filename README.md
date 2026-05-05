@@ -23,3 +23,8 @@ Milestone 4:
           .previousError = 0.0f,
           .integratorLimit = 50.0f
       };
+
+
+додати лог режима агро англ
+пофіксити дріфт на акро
+додати yaw

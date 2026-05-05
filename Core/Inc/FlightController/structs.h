@@ -48,6 +48,8 @@ struct ControlOutput
 
 struct FlightLogSample
 {
+    float flightMode = 0; //1 = acro; 0 = angle
+    float armed = 0; //1 = yes; 0 = no
     uint32_t timeMs = 0;
     uint32_t imuSeq = 0;
     uint32_t controlSeq = 0;

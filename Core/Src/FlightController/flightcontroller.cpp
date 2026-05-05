@@ -101,20 +101,21 @@ void FlightController::UpdateFormNewImuSample()
 
     UpdateAttitudeEstimator(imuDt);
 
+    if (!m_gyroBiasReady)
+    {
+        CalibrateGyroBias();
+        return;
+    }
+
     if (!m_levelOffsetReady)
     {
         CalibrateLevelOffset();
+        return;
     }
 
     if (!m_armed)
     {
         SendServoOutputRaw(motors);
-        return;
-    }
-
-    if (!m_gyroBiasReady)
-    {
-        CalibrateGyroBias();
         return;
     }
 
@@ -157,6 +158,9 @@ void FlightController::UpdateFormNewImuSample()
         const uint32_t nowMs = HAL_GetTick();
         m_logger->GetLogSample().halDt = static_cast<float>(nowMs - m_previousHalLogMs) * 0.001f;
         m_previousHalLogMs = nowMs;
+
+        m_logger->GetLogSample().flightMode = m_flightMode == FlightMode::FLIGHT_MODE_ACRO ? 1 : 0;
+        m_logger->GetLogSample().armed = m_armed ? 1 : 0;
 
         m_logger->GetLogSample().controlSeq = m_controlSequence;
         m_logger->GetLogSample().logSeq = ++m_logSequence;

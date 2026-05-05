@@ -51,6 +51,8 @@ void Logger::SendFlightLogCsv()
     };
 
     sendNamed("+++++", 1); //start log
+    sendNamed("f_mode", m_logSample.flightMode);
+    sendNamed("armed", m_logSample.armed);
     sendNamed("time_ms", static_cast<float>(m_logSample.timeMs));
     sendNamed("imu_seq", static_cast<float>(m_logSample.imuSeq));
     sendNamed("cont_seq", static_cast<float>(m_logSample.controlSeq));
