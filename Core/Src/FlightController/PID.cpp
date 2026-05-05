@@ -25,7 +25,7 @@ int16_t PID_Controller::Update(PID *pid, const float target, const float measure
          + pid->ki * pid->integrator
          + pid->kd * derivative;
 
-    return static_cast<int16_t>(pidOut * 1000);
+    return static_cast<int16_t>(pidOut);
 }
 
 int16_t PID_Controller::UpdateAngleWithGyroD(PID *pid,
@@ -47,5 +47,5 @@ int16_t PID_Controller::UpdateAngleWithGyroD(PID *pid,
 
     const float pidOut = p + i + d;
 
-    return static_cast<int16_t>(pidOut * 1000);
+    return static_cast<int16_t>(pidOut);
 }
