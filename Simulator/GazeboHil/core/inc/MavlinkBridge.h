@@ -46,13 +46,19 @@ public:
     void SendManualControl(
         bool armStatus,
         bool acroMode,
-        double roll,
-        double pitch,
-        double throttle,
-        double yaw
+        int roll,
+        int pitch,
+        int throttle,
+        int yaw
     );
 
     const MotorOutputs& Motors() const;
+
+    uint32_t m_servoRxCount = 0;
+    uint32_t m_servoMaxCount = 0;
+    double m_lastServoWallSec = 0.0;
+    double m_servoDtMin = 999.0;
+    double m_servoDtMax = 0.0;
 
 private:
     void HandleMessage(const mavlink_message_t& msg);

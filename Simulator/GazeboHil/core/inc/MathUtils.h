@@ -14,4 +14,8 @@ inline double Clamp(double value, double minValue, double maxValue)
     return std::max(minValue, std::min(maxValue, value));
 }
 
+inline int Clamp(int value, int minValue, int maxValue)
+{
+    return std::max(minValue, std::min(maxValue, value));
+}
 NAMESPACE_END

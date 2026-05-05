@@ -50,9 +50,12 @@ struct FlightLogSample
 {
     uint32_t timeMs = 0;
     uint32_t imuSeq = 0;
+    uint32_t controlSeq = 0;
+    uint32_t logSeq = 0;
 
     float dt = 0.0f;
     float imuDt = 0.0f;
+    float halDt = 0.0f;
 
     float rcThrottle = 0.0f;
     float rcRoll = 0.0f;

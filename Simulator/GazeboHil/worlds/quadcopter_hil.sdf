@@ -150,10 +150,10 @@
                     name="hil_plugin::ImuHilPlugin">
 
                 <serial_port>/dev/cu.usbmodem103</serial_port>
-                <baud>115200</baud>
+                <baud>921600</baud>
                 <use_joystick>true</use_joystick>
                 <joystick_index>0</joystick_index>
-                <manual_rate_hz>50</manual_rate_hz>
+                <manual_rate_hz>10</manual_rate_hz>
                 <throttle>1</throttle>
 
             </plugin>

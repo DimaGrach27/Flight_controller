@@ -8,10 +8,10 @@
 NAMESPACE_BEGIN
 struct ManualControl
 {
-    double roll = 0.0;      // -1..1
-    double pitch = 0.0;     // -1..1
-    double throttle = 0.5;  // 0..1
-    double yaw = 0.0;       // -1..1
+    int roll = 0;      // -1000..1000
+    int pitch = 0;     // -1000..1000
+    int throttle = 50;  // 0..1000
+    int yaw = 0;       // -1000..1000
     bool arm = false;
     bool acroMode = false;
 
@@ -33,6 +33,7 @@ private:
     double ApplyDeadzone(double value, double deadzone);
     double ApplyExpo(double value, double expo);
     double NormalizeThrottle(double value);
+    int QuantizeAxis(double value) const;
 
 private:
     void* m_joystick = nullptr;

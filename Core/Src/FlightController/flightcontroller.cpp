@@ -87,7 +87,9 @@ void FlightController::Update(float dt)
 
     MotorOutputs motors = {0};
 
-    UpdateAttitudeEstimator(GetImuDtSec());
+    const float imuDt = GetImuDtSec();
+
+    UpdateAttitudeEstimator(imuDt);
 
     if (!m_armed)
     {
@@ -117,10 +119,10 @@ void FlightController::Update(float dt)
     switch (m_flightMode)
     {
         case FlightMode::FLIGHT_MODE_ACRO:
-            control = UpdateAcroController(dt);
+            control = UpdateAcroController(imuDt);
             break;
         case FlightMode::FLIGHT_MODE_ANGLE:
-            control = UpdateAngleController(dt);
+            control = UpdateAngleController(imuDt);
             break;
     }
 
@@ -134,10 +136,18 @@ void FlightController::Update(float dt)
 
     FlightLogSample log{};
 
+    ++m_controlSequence;
+
+    const uint32_t nowMs = HAL_GetTick();
+    log.halDt = static_cast<float>(nowMs - m_previousHalLogMs) * 0.001f;
+    m_previousHalLogMs = nowMs;
+
+    log.controlSeq = m_controlSequence;
+    log.logSeq = ++m_logSequence;
     log.timeMs = HAL_GetTick();
     log.imuSeq = m_imuSequence;
     log.dt = dt;
-    log.imuDt = GetImuDtSec();
+    log.imuDt = imuDt;
 
     log.rcThrottle = m_rcCommand.throttle;
     log.rcRoll = m_rcCommand.roll;
@@ -164,7 +174,67 @@ void FlightController::Update(float dt)
     log.gyroPitchDegSec = m_lastControlDebug.gyroPitchDegSec;
     log.gyroYawDegSec = m_lastControlDebug.gyroYawDegSec;
 
-    SendFlightLogCsv(log);
+    // SendFlightLogCsv(log);
+}
+
+void FlightController::UpdateFormNewImuSample()
+{
+    if (!m_simImu.valid)
+    {
+        return;
+    }
+
+    if (m_lastProcessedImuSequence == m_imuSequence)
+    {
+        return; // не рахувати PID повторно на старому IMU
+    }
+
+    m_lastProcessedImuSequence = m_imuSequence;
+
+    MotorOutputs motors = {0};
+
+    const float imuDt = GetImuDtSec();
+
+    UpdateAttitudeEstimator(imuDt);
+
+    if (!m_armed)
+    {
+        SendServoOutputRaw(motors);
+        return;
+    }
+
+    if (!m_gyroBiasReady)
+    {
+        CalibrateGyroBias();
+        return;
+    }
+
+    if (m_rcCommand.throttle <= m_idleThrottleThreshold)
+    {
+        ResetRatePidState();
+        m_filteredGyroRollDegPerSec = 0.0f;
+        m_filteredGyroPitchDegPerSec = 0.0f;
+        m_filteredGyroYawDegPerSec = 0.0f;
+
+        SendServoOutputRaw({m_idleArmedThrottle, m_idleArmedThrottle, m_idleArmedThrottle, m_idleArmedThrottle});
+        return;
+    }
+
+    ControlOutput control = {0};
+
+    switch (m_flightMode)
+    {
+        case FlightMode::FLIGHT_MODE_ACRO:
+            control = UpdateAcroController(imuDt);
+            break;
+        case FlightMode::FLIGHT_MODE_ANGLE:
+            control = UpdateAngleController(imuDt);
+            break;
+    }
+
+    motors = MixQuadX(m_rcCommand.throttle, control);
+
+    SendServoOutputRaw(motors);
 }
 
 void FlightController::Heartbeat()
@@ -185,7 +255,7 @@ void FlightController::Heartbeat()
 
     const uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
 
-    HAL_UART_Transmit(m_huart2, buffer, len, 100);
+    // HAL_UART_Transmit(m_huart2, buffer, len, 100);
 }
 
 void FlightController::MavlinkParseByte(uint8_t byte)
@@ -262,6 +332,8 @@ void FlightController::HandleHilSensor(const mavlink_message_t *msg)
     ++m_imuSequence;
 
     m_simImu.valid = true;
+
+    UpdateFormNewImuSample();
 }
 
 void FlightController::SendServoOutputRaw(const MotorOutputs motor_outputs)
@@ -381,7 +453,7 @@ void FlightController::SendFlightLogCsv(const FlightLogSample &sample)
 {
     const uint32_t nowMs = HAL_GetTick();
 
-    constexpr uint32_t logPeriodMs = 20; // 50 Hz
+    constexpr uint32_t logPeriodMs = 200; // 5 Hz
     if (nowMs - m_lastDebugMs < logPeriodMs)
     {
         return;
@@ -410,8 +482,11 @@ void FlightController::SendFlightLogCsv(const FlightLogSample &sample)
     sendNamed("+++++", 1); //start log
     sendNamed("time_ms", static_cast<float>(sample.timeMs));
     sendNamed("imu_seq", static_cast<float>(sample.imuSeq));
+    sendNamed("cont_seq", static_cast<float>(sample.controlSeq));
+    sendNamed("log_seq", static_cast<float>(sample.logSeq));
     sendNamed("dt", sample.dt);
     sendNamed("imu_dt", sample.imuDt);
+    sendNamed("hal_dt", sample.halDt);
     sendNamed("rc_thr", sample.rcThrottle);
     sendNamed("rc_roll", sample.rcRoll);
     sendNamed("rc_pitch", sample.rcPitch);

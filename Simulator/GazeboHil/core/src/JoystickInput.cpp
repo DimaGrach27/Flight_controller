@@ -73,10 +73,17 @@ void JoystickInput::Poll()
     double axisThrottle = Axis(2);
     double axisYaw = Axis(3);
 
-    m_control.roll = ApplyExpo(ApplyDeadzone(axisRoll, 0.04), 0.3);
-    m_control.pitch = ApplyExpo(ApplyDeadzone(axisPitch, 0.04), 0.3);
-    m_control.yaw = -ApplyExpo(ApplyDeadzone(axisYaw, 0.04), 0.3);
-    m_control.throttle = NormalizeThrottle(axisThrottle);
+    // value = QuantizeAxis(value);
+
+    axisRoll = ApplyExpo(ApplyDeadzone(axisRoll, 0.04), 0.3);
+    axisPitch = ApplyExpo(ApplyDeadzone(axisPitch, 0.04), 0.3);
+    axisThrottle = NormalizeThrottle(axisThrottle);
+    axisYaw = -ApplyExpo(ApplyDeadzone(axisYaw, 0.04), 0.3);
+
+    m_control.roll = QuantizeAxis(axisRoll);
+    m_control.pitch = QuantizeAxis(axisPitch);
+    m_control.throttle = QuantizeAxis(axisThrottle);
+    m_control.yaw = QuantizeAxis(axisYaw);
 
     m_control.valid = true;
 
@@ -158,6 +165,8 @@ double JoystickInput::Axis(int index) const
     else
         value = static_cast<double>(raw) / 32768.0;
 
+    value = std::clamp(value, -1.0, 1.0);
+
     return std::clamp(value, -1.0, 1.0);
 }
 
@@ -183,5 +192,10 @@ double JoystickInput::NormalizeThrottle(double value)
     // Перетворюємо в 0..1.
     double throttle = (value + 1.0) * 0.5;
     return std::clamp(throttle, 0.0, 1.0);
+}
+
+int JoystickInput::QuantizeAxis(double value) const
+{
+    return static_cast<int>(std::round(value * 1000.0f));
 }
 NAMESPACE_END

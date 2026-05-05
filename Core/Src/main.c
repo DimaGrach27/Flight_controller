@@ -43,22 +43,64 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_rx;
 
 /* USER CODE BEGIN PV */
-
+uint8_t m_uartRxDmaBuffer[256];
+uint16_t m_lastRxDmaPos = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+void ProcessUartRxDma(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t size)
+{
+    if (huart->Instance == USART2)
+    {
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart2, m_uartRxDmaBuffer, sizeof(m_uartRxDmaBuffer));
+    }
+}
 
+void ProcessUartRxDma()
+{
+    const uint16_t currentPos =
+        sizeof(m_uartRxDmaBuffer) - __HAL_DMA_GET_COUNTER(huart2.hdmarx);
+
+    if (currentPos == m_lastRxDmaPos)
+    {
+        return;
+    }
+
+    if (currentPos > m_lastRxDmaPos)
+    {
+        for (uint16_t i = m_lastRxDmaPos; i < currentPos; ++i)
+        {
+            flight_controller_MavlinkParseByte(m_uartRxDmaBuffer[i]);
+        }
+    }
+    else
+    {
+        for (uint16_t i = m_lastRxDmaPos; i < sizeof(m_uartRxDmaBuffer); ++i)
+        {
+            flight_controller_MavlinkParseByte(m_uartRxDmaBuffer[i]);
+        }
+
+        for (uint16_t i = 0; i < currentPos; ++i)
+        {
+            flight_controller_MavlinkParseByte(m_uartRxDmaBuffer[i]);
+        }
+    }
+
+    m_lastRxDmaPos = currentPos;
+}
 /* USER CODE END 0 */
 
 /**
@@ -90,10 +132,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   flight_controller_Init(&huart2);
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -101,18 +143,22 @@ int main(void)
   uint32_t lastHeartbeatMs = 0;
   uint32_t lastFlightMs = 0;
 
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, m_uartRxDmaBuffer, sizeof(m_uartRxDmaBuffer));
+
   while (1)
   {
-    uint8_t byte;
-
-    HAL_StatusTypeDef status = HAL_UART_Receive(&huart2, &byte, 1, 0);
-    if (status == HAL_OK)
-    {
-      flight_controller_MavlinkParseByte(byte);
-    }
+    // uint8_t byte;
+    // HAL_StatusTypeDef status = HAL_UART_Receive(&huart2, &byte, 1, 0);
+    // if (status == HAL_OK)
+    // {
+    //   flight_controller_MavlinkParseByte(byte);
+    // }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+    ProcessUartRxDma();
+
     uint32_t now = HAL_GetTick();
     if (now - lastHeartbeatMs >= 1000)
     {
@@ -120,13 +166,13 @@ int main(void)
       flight_controller_Heartbeat();
     }
 
-    if (now - lastFlightMs >= 10)
-    {
-      float dt = (now - lastFlightMs) * 0.001f;
-      lastFlightMs = now;
-
-      flight_controller_Update(dt);
-    }
+    // if (now - lastFlightMs >= 10)
+    // {
+    //   float dt = (now - lastFlightMs) * 0.001f;
+    //   lastFlightMs = now;
+    //
+    //   flight_controller_Update(dt);
+    // }
   }
   /* USER CODE END 3 */
 }
@@ -193,7 +239,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
+  huart2.Init.BaudRate = 921600;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
@@ -207,6 +253,22 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
 }
 

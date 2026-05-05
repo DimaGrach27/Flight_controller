@@ -9,6 +9,11 @@
 #include <termios.h>
 #include <unistd.h>
 
+#ifdef __APPLE__
+#include <sys/ioctl.h>
+#include <IOKit/serial/ioss.h>
+#endif
+
 NAMESPACE_BEGIN
 static speed_t BaudToTermios(int baud)
 {
@@ -58,16 +63,11 @@ bool SerialPort::Open(const std::string& path, int baud)
 
     cfmakeraw(&tty);
 
-    speed_t speed = BaudToTermios(baud);
-
-    cfsetispeed(&tty, speed);
-    cfsetospeed(&tty, speed);
-
     tty.c_cflag |= static_cast<tcflag_t>(CLOCAL | CREAD);
-    tty.c_cflag &= static_cast<tcflag_t>(~PARENB);
-    tty.c_cflag &= static_cast<tcflag_t>(~CSTOPB);
     tty.c_cflag &= static_cast<tcflag_t>(~CSIZE);
     tty.c_cflag |= CS8;
+    tty.c_cflag &= static_cast<tcflag_t>(~PARENB);
+    tty.c_cflag &= static_cast<tcflag_t>(~CSTOPB);
 
 #ifdef CRTSCTS
     tty.c_cflag &= static_cast<tcflag_t>(~CRTSCTS);
@@ -76,12 +76,31 @@ bool SerialPort::Open(const std::string& path, int baud)
     tty.c_cc[VMIN] = 0;
     tty.c_cc[VTIME] = 0;
 
+    speed_t speed = BaudToTermios(baud);
+
+    cfsetispeed(&tty, speed);
+    cfsetospeed(&tty, speed);
+
     if (tcsetattr(fd_, TCSANOW, &tty) != 0)
     {
         std::cerr << "[SerialPort] tcsetattr failed" << std::endl;
         Close();
         return false;
     }
+
+#ifdef __APPLE__
+    // macOS: set custom baud rates like 460800 / 921600 / 1000000.
+    if (baud > 230400)
+    {
+        speed_t customBaud = static_cast<speed_t>(baud);
+
+        if (ioctl(fd_, IOSSIOSPEED, &customBaud) == -1)
+        {
+            std::cerr << "[SerialPort] ioctl on " << customBaud << " failed" << std::endl;
+            return false;
+        }
+    }
+#endif
 
     tcflush(fd_, TCIOFLUSH);
 

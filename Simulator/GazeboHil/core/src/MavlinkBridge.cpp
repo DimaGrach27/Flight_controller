@@ -149,18 +149,18 @@ void MavlinkBridge::SendHilSensorFromImu(uint64_t timeUsec, const ImuData& imuDa
 void MavlinkBridge::SendManualControl(
     bool armStatus,
     bool acroMode,
-    double roll,
-    double pitch,
-    double throttle,
-    double yaw)
+    int roll,
+    int pitch,
+    int throttle,
+    int yaw)
 {
     mavlink_message_t msg;
     uint8_t txBuffer[MAVLINK_MAX_PACKET_LEN];
 
-    int16_t x = static_cast<int16_t>(Clamp(pitch, -1.0, 1.0) * 1000.0);
-    int16_t y = static_cast<int16_t>(Clamp(roll, -1.0, 1.0) * 1000.0);
-    int16_t z = static_cast<int16_t>(Clamp(throttle, 0.0, 1.0) * 1000.0);
-    int16_t r = static_cast<int16_t>(Clamp(yaw, -1.0, 1.0) * 1000.0);
+    int16_t x = static_cast<int16_t>(Clamp(pitch, -1000, 1000));
+    int16_t y = static_cast<int16_t>(Clamp(roll, -1000, 1000));
+    int16_t z = static_cast<int16_t>(Clamp(throttle, 0, 1000));
+    int16_t r = static_cast<int16_t>(Clamp(yaw, -1000, 1000));
 
     uint16_t buttons = 0;
     if (armStatus)
@@ -204,6 +204,12 @@ const MotorOutputs& MavlinkBridge::Motors() const
     return motors_;
 }
 
+static double NowWallSec()
+{
+    using clock = std::chrono::steady_clock;
+    return std::chrono::duration<double>(clock::now().time_since_epoch()).count();
+}
+
 void MavlinkBridge::HandleMessage(const mavlink_message_t& msg)
 {
     switch (msg.msgid)
@@ -217,6 +223,24 @@ void MavlinkBridge::HandleMessage(const mavlink_message_t& msg)
             motors_.m2 = PwmToMotor(servo.servo2_raw);
             motors_.m3 = PwmToMotor(servo.servo3_raw);
             motors_.m4 = PwmToMotor(servo.servo4_raw);
+
+            const double nowWallSec = NowWallSec();
+
+            ++m_servoRxCount;
+
+            if (m_lastServoWallSec > 0.0)
+            {
+                const double dt = nowWallSec - m_lastServoWallSec;
+                m_servoDtMin = std::min(m_servoDtMin, dt);
+                m_servoDtMax = std::max(m_servoDtMax, dt);
+
+                if (dt > 0.030)
+                {
+                    m_servoMaxCount++;
+                }
+            }
+
+            m_lastServoWallSec = nowWallSec;
 
             break;
         }

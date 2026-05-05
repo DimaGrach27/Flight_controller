@@ -64,6 +64,10 @@ private:
     );
 
     static double ToMotorSpeed(double normalized);
+    static double NowWallSec();
+    void PrintStatsIfNeeded();
+    bool HasInputChanged(const ManualControl& a, const ManualControl& b);
+    bool ShouldSendManual(const ManualControl& current);
 
 private:
     gz::transport::Node m_node;
@@ -88,15 +92,28 @@ private:
     MavlinkBridge m_mavlinkBridge;
     JoystickInput m_joystickInput;
 
+    ManualControl m_lastManualControl;
+
     int m_baud = 115200;
 
     bool m_useJoystick = true;
     int m_joystickIndex = 0;
 
     double m_hilRateHz = 100.0;
-    double m_manualRateHz = 50.0;
+    double m_manualRateHz = 10.0;
 
     double m_lastHilSendSec = -1.0;
     double m_lastManualSendSec = -1.0;
+
+
+
+    uint32_t m_hilTxCount = 0;
+    uint32_t m_manualTxCount = 0;
+
+    double m_lastStatsWallSec = 0.0;
+    double m_lastHilWallSec = 0.0;
+
+    double m_hilDtMin = 999.0;
+    double m_hilDtMax = 0.0;
 };
 NAMESPACE_END

@@ -68,7 +68,11 @@ void CsvLogger::Log(FlightLogSample sample)
     file_
         << sample.timeMs << ','
         << sample.imuSeq << ','
+        << sample.controlSeq << ','
+        << sample.logSeq << ','
         << sample.dt << ','
+        << sample.imuDt << ','
+        << sample.halDt << ','
         << sample.rcThrottle << ','
         << sample.rcRoll << ','
         << sample.rcPitch << ','
@@ -101,8 +105,11 @@ void CsvLogger::Log(std::unordered_map<std::string, float> map_log)
     file_
         << map_log.at("time_ms") << ','
         << map_log.at("imu_seq") << ','
+        << map_log.at("cont_seq") << ','
+        << map_log.at("log_seq") << ','
         << map_log.at("dt") << ','
         << map_log.at("imu_dt") << ','
+        << map_log.at("hal_dt") << ','
         << map_log.at("rc_thr") << ','
         << map_log.at("rc_roll") << ','
         << map_log.at("rc_pitch") << ','

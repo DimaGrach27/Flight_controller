@@ -26,6 +26,7 @@ public:
 
     void Init(UART_HandleTypeDef& huart2);
     void Update(float dt);
+    void UpdateFormNewImuSample();
     void Heartbeat();
     void MavlinkParseByte(uint8_t byte);
 
@@ -96,4 +97,7 @@ private:
     ControlDebug m_lastControlDebug{};
 
     uint64_t m_previousImuTimeUsec = 0;
+    uint32_t m_controlSequence = 0;
+    uint32_t m_logSequence = 0;
+    uint32_t m_previousHalLogMs = 0;
 };

@@ -180,6 +180,8 @@ void ImuHilPlugin::PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::En
     if (info.paused)
         return;
 
+    PrintStatsIfNeeded();
+
     const ImuData imu = GetLatestImu();
     if (!imu.valid)
     {
@@ -204,6 +206,20 @@ void ImuHilPlugin::PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::En
     {
         m_lastHilSendSec = simTimeSec;
 
+        const double nowWallSec = NowWallSec();
+
+        ++m_hilTxCount;
+
+        if (m_lastHilWallSec > 0.0)
+        {
+            const double dtHil = nowWallSec - m_lastHilWallSec;
+            m_hilDtMin = std::min(m_hilDtMin, dtHil);
+            m_hilDtMax = std::max(m_hilDtMax, dtHil);
+        }
+
+        m_lastHilWallSec = nowWallSec;
+
+        // printf("[ImuHilPlugin] HilSendSec: %f\n", simTimeSec);
         m_mavlinkBridge.SendHilSensorFromImu(
             static_cast<uint64_t>(simTimeSec * 1000000.0),
             imu
@@ -213,13 +229,17 @@ void ImuHilPlugin::PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::En
     if (m_useJoystick)
     {
         m_joystickInput.Poll();
+        const double now = NowWallSec();
 
-        if (m_lastManualSendSec < 0.0 ||
-            simTimeSec - m_lastManualSendSec >= 1.0 / m_manualRateHz)
+        const ManualControl& control = m_joystickInput.Control();
+
+        // const bool changed = HasInputChanged(control, m_lastManualControl);
+        // const bool periodicRefresh = (simTimeSec - m_lastManualSendSec) >= 1.0 / m_manualRateHz;
+
+        if (ShouldSendManual(control) && control.valid)
         {
-            m_lastManualSendSec = simTimeSec;
-
-            const ManualControl& control = m_joystickInput.Control();
+            m_lastManualSendSec = now;
+            m_lastManualControl = control;
 
             // printf("[Joystick] arm=%d roll=%f pitch=%f yaw=%f throttle=%f\n",
             //     control.arm,
@@ -236,17 +256,17 @@ void ImuHilPlugin::PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::En
             // << " yaw=" << control.yaw
             // << std::endl;
 
-            if (control.valid)
-            {
-                m_mavlinkBridge.SendManualControl(
-                    control.arm,
-                    control.acroMode,
-                    control.roll,
-                    control.pitch,
-                    control.throttle,
-                    control.yaw
-                );
-            }
+
+            ++m_manualTxCount;
+
+            m_mavlinkBridge.SendManualControl(
+                control.arm,
+                control.acroMode,
+                control.roll,
+                control.pitch,
+                control.throttle,
+                control.yaw
+            );
         }
     }
 }
@@ -332,6 +352,91 @@ double ImuHilPlugin::ToMotorSpeed(double normalized)
     constexpr double maxSpeed = 1200.0;
 
     return minSpeed + normalized * (maxSpeed - minSpeed);
+}
+
+double ImuHilPlugin::NowWallSec()
+{
+    using clock = std::chrono::steady_clock;
+    return std::chrono::duration<double>(clock::now().time_since_epoch()).count();
+}
+
+void ImuHilPlugin::PrintStatsIfNeeded()
+{
+    const double nowWallSec = NowWallSec();
+
+    if (m_lastStatsWallSec <= 0.0)
+    {
+        m_lastStatsWallSec = nowWallSec;
+        return;
+    }
+
+    const double elapsed = nowWallSec - m_lastStatsWallSec;
+
+    if (elapsed < 1.0)
+    {
+        return;
+    }
+
+    const double hilHz = m_hilTxCount / elapsed;
+    const double servoHz = m_mavlinkBridge.m_servoRxCount / elapsed;
+    const double manualHz = m_manualTxCount / elapsed;
+    // const double debugHz = m_debugRxCount / elapsed;
+
+    printf(
+        "[HIL Stats] hil_tx=%.1f Hz servo_rx=%.1f Hz manual_tx=%.1f Hz | "
+        "hil_dt=%.2f..%.2f ms servo_dt=%.2f..%.2f ms servo_max_count=%i\n",
+        hilHz,
+        servoHz,
+        manualHz,
+        // debugHz,
+        m_hilDtMin * 1000.0,
+        m_hilDtMax * 1000.0,
+        m_mavlinkBridge.m_servoDtMin * 1000.0,
+        m_mavlinkBridge.m_servoDtMax * 1000.0,
+        m_mavlinkBridge.m_servoMaxCount
+    );
+
+    m_hilTxCount = 0;
+    m_mavlinkBridge.m_servoRxCount = 0;
+    m_manualTxCount = 0;
+    // m_debugRxCount = 0;
+
+    m_hilDtMin = 999.0;
+    m_hilDtMax = 0.0;
+    m_mavlinkBridge.m_servoDtMin = 999.0;
+    m_mavlinkBridge.m_servoDtMax = 0.0;
+
+    m_lastStatsWallSec = nowWallSec;
+}
+
+bool ImuHilPlugin::HasInputChanged(const ManualControl &a, const ManualControl &b)
+{
+    constexpr int eps = 5;
+
+    return std::abs(a.throttle - b.throttle) > eps ||
+           std::abs(a.roll - b.roll) > eps ||
+           std::abs(a.pitch - b.pitch) > eps ||
+           std::abs(a.yaw - b.yaw) > eps ||
+           a.arm != b.arm ||
+           a.acroMode != b.acroMode;
+}
+
+bool ImuHilPlugin::ShouldSendManual(const ManualControl &current)
+{
+    const double now = NowWallSec();
+
+    constexpr double minPeriodSec = 1.0 / 20.0;   // максимум 20 Hz
+    constexpr double forcePeriodSec = 1.0 / 10.0; // хоча б 10 Hz refresh
+
+    const bool rateLimitPassed =
+        (now - m_lastManualSendSec) >= minPeriodSec;
+
+    const bool forceRefresh =
+        (now - m_lastManualSendSec) >= forcePeriodSec;
+
+    const bool changed = HasInputChanged(current, m_lastManualControl);
+
+    return forceRefresh || (changed && rateLimitPassed);
 }
 
 NAMESPACE_END

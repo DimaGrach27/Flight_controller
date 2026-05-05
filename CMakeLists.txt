@@ -65,7 +65,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
         ${CMAKE_SOURCE_DIR}/Core/Src/FlightControllers
-        ${CMAKE_SOURCE_DIR}/Middlewares
+        ${CMAKE_SOURCE_DIR}/shared
 )
 
 # Add project symbols (macros)
