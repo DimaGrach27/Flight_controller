@@ -70,8 +70,8 @@ void Logger::SendFlightLogCsv()
     sendNamed("g_yaw", m_logSample.gyroYawDegSec);
     sendNamed("a_roll", m_logSample.accelRoll);
     sendNamed("a_pitch", m_logSample.accelPitch);
-    sendNamed("c_roll", m_logSample.correctedRoll);
-    sendNamed("c_pitch", m_logSample.correctedPitch);
+    sendNamed("cor_roll", m_logSample.correctedRoll);
+    sendNamed("cor_pitch", m_logSample.correctedPitch);
     sendNamed("err_roll", m_logSample.angleErrorRoll);
     sendNamed("err_pitch", m_logSample.angleErrorPitch);
     sendNamed("est_roll", m_logSample.estimatedRollDeg);

@@ -101,6 +101,11 @@ void FlightController::UpdateFormNewImuSample()
 
     UpdateAttitudeEstimator(imuDt);
 
+    if (!m_levelOffsetReady)
+    {
+        CalibrateLevelOffset();
+    }
+
     if (!m_armed)
     {
         SendServoOutputRaw(motors);
@@ -349,8 +354,11 @@ ControlOutput FlightController::UpdateAngleController(float dt)
     const float targetRollAngleDeg = rollStick * maxRollAngleDeg + manualRollTrimDeg;
     const float targetPitchAngleDeg = pitchStick * maxPitchAngleDeg + manualPitchTrimDeg;
 
-    float rollAngleError = targetRollAngleDeg - m_estimatedRollDeg;
-    float pitchAngleError = targetPitchAngleDeg - m_estimatedPitchDeg;
+    const float correctedRollDeg = m_estimatedRollDeg - m_levelRollOffsetDeg;
+    const float correctedPitchDeg = m_estimatedPitchDeg - m_levelPitchOffsetDeg;
+
+    float rollAngleError = targetRollAngleDeg - correctedRollDeg;
+    float pitchAngleError = targetPitchAngleDeg - correctedPitchDeg;
 
     if (fabsf(rollAngleError) < angleErrorDeadbandDeg)
     {
@@ -423,8 +431,8 @@ ControlOutput FlightController::UpdateAngleController(float dt)
 
     if (m_logger)
     {
-        m_logger->GetLogSample().correctedRoll = out.roll;
-        m_logger->GetLogSample().correctedPitch = out.pitch;
+        m_logger->GetLogSample().correctedRoll = correctedRollDeg;
+        m_logger->GetLogSample().correctedPitch = correctedPitchDeg;
         m_logger->GetLogSample().angleErrorRoll = rollAngleError;
         m_logger->GetLogSample().angleErrorPitch = pitchAngleError;
     }
@@ -626,6 +634,28 @@ void FlightController::CalibrateGyroBias()
     m_gyroBias.z = sum.z / sampleCount;
 
     m_gyroBiasReady = true;
+}
+
+void FlightController::CalibrateLevelOffset()
+{
+    constexpr int sampleCount = 100;
+    static int currentSampleCount = 0;
+
+    static float sumLevelRollOffsetDeg = 0.0f;
+    static float sumLevelPitchOffsetDeg = 0.0f;
+
+    if (currentSampleCount < sampleCount)
+    {
+        sumLevelRollOffsetDeg += m_estimatedRollDeg;
+        sumLevelPitchOffsetDeg += m_estimatedPitchDeg;
+
+        currentSampleCount++;
+        return;
+    }
+
+    m_levelRollOffsetDeg = sumLevelRollOffsetDeg / sampleCount;
+    m_levelPitchOffsetDeg = sumLevelPitchOffsetDeg / sampleCount;
+    m_levelOffsetReady = true;
 }
 
 MotorOutputs FlightController::MixQuadX(const uint16_t throttle, const ControlOutput& controlOutput)

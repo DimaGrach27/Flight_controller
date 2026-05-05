@@ -45,6 +45,7 @@ private:
 
     void ResetRatePidState();
     void CalibrateGyroBias();
+    void CalibrateLevelOffset();
 
     float FilterGyroRollForDebug(float gyroRollDegSec);
 
@@ -91,6 +92,10 @@ private:
     uint32_t m_controlSequence = 0;
     uint32_t m_logSequence = 0;
     uint32_t m_previousHalLogMs = 0;
+
+    float m_levelRollOffsetDeg = 0.0f;
+    float m_levelPitchOffsetDeg = 0.0f;
+    bool m_levelOffsetReady = false;
 
     //DEBUG
     Logger* m_logger = nullptr;
