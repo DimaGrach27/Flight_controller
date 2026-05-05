@@ -68,7 +68,6 @@ private:
     float m_estimatedRollDeg = 0.0f;
     float m_estimatedPitchDeg = 0.0f;
 
-
     float m_lastGoodGyroRollDegSec = 0.0f;
 
     float m_filteredGyroRollDegPerSec = 0.0f;

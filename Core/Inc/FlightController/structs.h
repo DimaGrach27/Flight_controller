@@ -38,9 +38,9 @@ struct RcCommand
 
 struct ControlOutput
 {
-    int16_t roll;
-    int16_t pitch;
-    int16_t yaw;
+    float roll;
+    float pitch;
+    float yaw;
 };
 
 
@@ -69,6 +69,18 @@ struct FlightLogSample
     float gyroRollDegSec = 0.0f;
     float gyroPitchDegSec = 0.0f;
     float gyroYawDegSec = 0.0f;
+
+    float accelRoll = 0.0f;
+    float accelPitch = 0.0f;
+    float accelYaw = 0.0f;
+
+    float correctedRoll = 0.0f;
+    float correctedPitch = 0.0f;
+    float correctedYaw = 0.0f;
+
+    float angleErrorRoll = 0.0f;
+    float angleErrorPitch = 0.0f;
+    float angleErrorYaw = 0.0f;
 
     float estimatedRollDeg = 0.0f;
     float estimatedPitchDeg = 0.0f;

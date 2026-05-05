@@ -16,7 +16,12 @@ Logger::Logger(UART_HandleTypeDef& huart2)
 
 }
 
-void Logger::SendFlightLogCsv(const FlightLogSample& sample)
+FlightLogSample& Logger::GetLogSample()
+{
+    return m_logSample;
+}
+
+void Logger::SendFlightLogCsv()
 {
     const uint32_t nowMs = HAL_GetTick();
 
@@ -46,31 +51,37 @@ void Logger::SendFlightLogCsv(const FlightLogSample& sample)
     };
 
     sendNamed("+++++", 1); //start log
-    sendNamed("time_ms", static_cast<float>(sample.timeMs));
-    sendNamed("imu_seq", static_cast<float>(sample.imuSeq));
-    sendNamed("cont_seq", static_cast<float>(sample.controlSeq));
-    sendNamed("log_seq", static_cast<float>(sample.logSeq));
-    sendNamed("dt", sample.dt);
-    sendNamed("imu_dt", sample.imuDt);
-    sendNamed("hal_dt", sample.halDt);
-    sendNamed("rc_thr", sample.rcThrottle);
-    sendNamed("rc_roll", sample.rcRoll);
-    sendNamed("rc_pitch", sample.rcPitch);
-    sendNamed("rc_yaw", sample.rcYaw);
-    sendNamed("t_roll", sample.targetRollRateDegSec);
-    sendNamed("t_pitch", sample.targetPitchRateDegSec);
-    sendNamed("t_yaw", sample.targetYawRateDegSec);
-    sendNamed("g_roll", sample.gyroRollDegSec);
-    sendNamed("g_pitch", sample.gyroPitchDegSec);
-    sendNamed("g_yaw", sample.gyroYawDegSec);
-    sendNamed("est_roll", sample.estimatedRollDeg);
-    sendNamed("est_pitch", sample.estimatedPitchDeg);
-    sendNamed("c_roll", sample.controlRoll);
-    sendNamed("c_pitch", sample.controlPitch);
-    sendNamed("c_yaw", sample.controlYaw);
-    sendNamed("m1", sample.motorM1);
-    sendNamed("m2", sample.motorM2);
-    sendNamed("m3", sample.motorM3);
-    sendNamed("m4", sample.motorM4);
+    sendNamed("time_ms", static_cast<float>(m_logSample.timeMs));
+    sendNamed("imu_seq", static_cast<float>(m_logSample.imuSeq));
+    sendNamed("cont_seq", static_cast<float>(m_logSample.controlSeq));
+    sendNamed("log_seq", static_cast<float>(m_logSample.logSeq));
+    sendNamed("dt", m_logSample.dt);
+    sendNamed("imu_dt", m_logSample.imuDt);
+    sendNamed("hal_dt", m_logSample.halDt);
+    sendNamed("rc_thr", m_logSample.rcThrottle);
+    sendNamed("rc_roll", m_logSample.rcRoll);
+    sendNamed("rc_pitch", m_logSample.rcPitch);
+    sendNamed("rc_yaw", m_logSample.rcYaw);
+    sendNamed("t_roll", m_logSample.targetRollRateDegSec);
+    sendNamed("t_pitch", m_logSample.targetPitchRateDegSec);
+    sendNamed("t_yaw", m_logSample.targetYawRateDegSec);
+    sendNamed("g_roll", m_logSample.gyroRollDegSec);
+    sendNamed("g_pitch", m_logSample.gyroPitchDegSec);
+    sendNamed("g_yaw", m_logSample.gyroYawDegSec);
+    sendNamed("a_roll", m_logSample.accelRoll);
+    sendNamed("a_pitch", m_logSample.accelPitch);
+    sendNamed("c_roll", m_logSample.correctedRoll);
+    sendNamed("c_pitch", m_logSample.correctedPitch);
+    sendNamed("err_roll", m_logSample.angleErrorRoll);
+    sendNamed("err_pitch", m_logSample.angleErrorPitch);
+    sendNamed("est_roll", m_logSample.estimatedRollDeg);
+    sendNamed("est_pitch", m_logSample.estimatedPitchDeg);
+    sendNamed("c_roll", m_logSample.controlRoll);
+    sendNamed("c_pitch", m_logSample.controlPitch);
+    sendNamed("c_yaw", m_logSample.controlYaw);
+    sendNamed("m1", m_logSample.motorM1);
+    sendNamed("m2", m_logSample.motorM2);
+    sendNamed("m3", m_logSample.motorM3);
+    sendNamed("m4", m_logSample.motorM4);
     sendNamed("-----", 0); //end log
 }

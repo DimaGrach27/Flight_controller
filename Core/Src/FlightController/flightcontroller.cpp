@@ -138,51 +138,54 @@ void FlightController::UpdateFormNewImuSample()
 
     motors = MixQuadX(m_rcCommand.throttle, control);
 
-    SendServoOutputRaw(motors);
+    // motors.m1 = 700;
+    // motors.m2 = 700;
+    // motors.m3 = 700;
+    // motors.m4 = 700;
 
-    FlightLogSample log{};
+    SendServoOutputRaw(motors);
 
     ++m_controlSequence;
 
     if (m_logger)
     {
         const uint32_t nowMs = HAL_GetTick();
-        log.halDt = static_cast<float>(nowMs - m_previousHalLogMs) * 0.001f;
+        m_logger->GetLogSample().halDt = static_cast<float>(nowMs - m_previousHalLogMs) * 0.001f;
         m_previousHalLogMs = nowMs;
 
-        log.controlSeq = m_controlSequence;
-        log.logSeq = ++m_logSequence;
-        log.timeMs = HAL_GetTick();
-        log.imuSeq = m_imuSequence;
+        m_logger->GetLogSample().controlSeq = m_controlSequence;
+        m_logger->GetLogSample().logSeq = ++m_logSequence;
+        m_logger->GetLogSample().timeMs = HAL_GetTick();
+        m_logger->GetLogSample().imuSeq = m_imuSequence;
         // log.dt = dt;
-        log.imuDt = imuDt;
+        m_logger->GetLogSample().imuDt = imuDt;
 
-        log.rcThrottle = m_rcCommand.throttle;
-        log.rcRoll = m_rcCommand.roll;
-        log.rcPitch = m_rcCommand.pitch;
-        log.rcYaw = m_rcCommand.yaw;
+        m_logger->GetLogSample().rcThrottle = m_rcCommand.throttle;
+        m_logger->GetLogSample().rcRoll = m_rcCommand.roll;
+        m_logger->GetLogSample().rcPitch = m_rcCommand.pitch;
+        m_logger->GetLogSample().rcYaw = m_rcCommand.yaw;
 
-        log.estimatedRollDeg = m_estimatedRollDeg;
-        log.estimatedPitchDeg = m_estimatedPitchDeg;
+        m_logger->GetLogSample().estimatedRollDeg = m_estimatedRollDeg;
+        m_logger->GetLogSample().estimatedPitchDeg = m_estimatedPitchDeg;
 
-        log.controlRoll = control.roll;
-        log.controlPitch = control.pitch;
-        log.controlYaw = control.yaw;
+        m_logger->GetLogSample().controlRoll = control.roll;
+        m_logger->GetLogSample().controlPitch = control.pitch;
+        m_logger->GetLogSample().controlYaw = control.yaw;
 
-        log.motorM1 = motors.m1;
-        log.motorM2 = motors.m2;
-        log.motorM3 = motors.m3;
-        log.motorM4 = motors.m4;
+        m_logger->GetLogSample().motorM1 = motors.m1;
+        m_logger->GetLogSample().motorM2 = motors.m2;
+        m_logger->GetLogSample().motorM3 = motors.m3;
+        m_logger->GetLogSample().motorM4 = motors.m4;
 
-        log.targetRollRateDegSec = m_lastControlDebug.targetRollRateDegSec;
-        log.targetPitchRateDegSec = m_lastControlDebug.targetPitchRateDegSec;
-        log.targetYawRateDegSec = m_lastControlDebug.targetYawRateDegSec;
+        m_logger->GetLogSample().targetRollRateDegSec = m_lastControlDebug.targetRollRateDegSec;
+        m_logger->GetLogSample().targetPitchRateDegSec = m_lastControlDebug.targetPitchRateDegSec;
+        m_logger->GetLogSample().targetYawRateDegSec = m_lastControlDebug.targetYawRateDegSec;
 
-        log.gyroRollDegSec = m_lastControlDebug.gyroRollDegSec;
-        log.gyroPitchDegSec = m_lastControlDebug.gyroPitchDegSec;
-        log.gyroYawDegSec = m_lastControlDebug.gyroYawDegSec;
+        m_logger->GetLogSample().gyroRollDegSec = m_lastControlDebug.gyroRollDegSec;
+        m_logger->GetLogSample().gyroPitchDegSec = m_lastControlDebug.gyroPitchDegSec;
+        m_logger->GetLogSample().gyroYawDegSec = m_lastControlDebug.gyroYawDegSec;
 
-        m_logger->SendFlightLogCsv(log);
+        m_logger->SendFlightLogCsv();
     }
 }
 
@@ -335,16 +338,29 @@ ControlOutput FlightController::UpdateAngleController(float dt)
     constexpr float angleP = 4.0f;
     constexpr float maxLevelRateDegSec = 120.0f;
     constexpr float radToDeg = 57.2957795f;
+    constexpr float manualRollTrimDeg = 0.0f;
+    constexpr float manualPitchTrimDeg = 0.0f;
+    constexpr float angleErrorDeadbandDeg = 0.15f;
 
     const float rollStick = static_cast<float>(m_rcCommand.roll) / 1000.0f;
     const float pitchStick = static_cast<float>(m_rcCommand.pitch) / 1000.0f;
     const float yawStick = static_cast<float>(m_rcCommand.yaw) / 1000.0f;
 
-    const float targetRollAngleDeg = rollStick * maxRollAngleDeg;
-    const float targetPitchAngleDeg = pitchStick * maxPitchAngleDeg;
+    const float targetRollAngleDeg = rollStick * maxRollAngleDeg + manualRollTrimDeg;
+    const float targetPitchAngleDeg = pitchStick * maxPitchAngleDeg + manualPitchTrimDeg;
 
-    const float rollAngleError = targetRollAngleDeg - m_estimatedRollDeg;
-    const float pitchAngleError = targetPitchAngleDeg - m_estimatedPitchDeg;
+    float rollAngleError = targetRollAngleDeg - m_estimatedRollDeg;
+    float pitchAngleError = targetPitchAngleDeg - m_estimatedPitchDeg;
+
+    if (fabsf(rollAngleError) < angleErrorDeadbandDeg)
+    {
+        rollAngleError = 0.0f;
+    }
+
+    if (fabsf(pitchAngleError) < angleErrorDeadbandDeg)
+    {
+        pitchAngleError = 0.0f;
+    }
 
     float targetRollRateDegSec = rollAngleError * angleP;
     float targetPitchRateDegSec = pitchAngleError * angleP;
@@ -404,6 +420,14 @@ ControlOutput FlightController::UpdateAngleController(float dt)
     m_lastControlDebug.gyroRollDegSec = gyroRollDegSec;
     m_lastControlDebug.gyroPitchDegSec = gyroPitchDegSec;
     m_lastControlDebug.gyroYawDegSec = gyroYawDegSec;
+
+    if (m_logger)
+    {
+        m_logger->GetLogSample().correctedRoll = out.roll;
+        m_logger->GetLogSample().correctedPitch = out.pitch;
+        m_logger->GetLogSample().angleErrorRoll = rollAngleError;
+        m_logger->GetLogSample().angleErrorPitch = pitchAngleError;
+    }
 
     return out;
 }
@@ -560,6 +584,12 @@ void FlightController::UpdateAttitudeEstimator(float dt)
     m_estimatedPitchDeg =
         alpha * (m_estimatedPitchDeg + gyroPitchDegPerSec * dt)
       + (1.0f - alpha) * accelPitchDeg;
+
+    if (m_logger)
+    {
+        m_logger->GetLogSample().accelRoll = accelRollDeg;
+        m_logger->GetLogSample().accelPitch = accelPitchDeg;
+    }
 }
 
 void FlightController::ResetRatePidState()
