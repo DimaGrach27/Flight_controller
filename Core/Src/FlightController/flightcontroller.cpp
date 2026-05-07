@@ -46,7 +46,7 @@ FlightController::FlightController()
 
     m_yawPID =
     {
-        .kp = 1.6f,
+        .kp = 0.6f,
         .ki = 0.0f,
         .kd = 0.0f,
         .integrator = 0.0f,
