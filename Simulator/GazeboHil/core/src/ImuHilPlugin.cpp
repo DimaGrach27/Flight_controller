@@ -234,7 +234,7 @@ void ImuHilPlugin::PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::En
 
         m_lastHilWallSec = nowWallSec;
 
-        // printf("[ImuHilPlugin] HilSendSec: %f\n", simTimeSec);
+        printf("[ImuHilPlugin] HilSendSec: %f\n", simTimeSec);
         m_mavlinkBridge.SendHilSensorFromImu(
             static_cast<uint64_t>(simTimeSec * 1000000.0),
             imu

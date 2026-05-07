@@ -64,6 +64,8 @@ FlightController::FlightController()
         .acroMode = false,
         .valid = false
     };
+
+
 }
 
 FlightController::~FlightController()
@@ -74,11 +76,14 @@ FlightController::~FlightController()
     }
 }
 
-void FlightController::Init(UART_HandleTypeDef& huart2)
+void FlightController::Init(UART_HandleTypeDef& huart1, UART_HandleTypeDef& huart2)
 {
+    m_huart1 = &huart1;
     m_huart2 = &huart2;
 
     m_logger = new Logger(huart2);
+
+    m_crsfTelemetry.Init(huart1);
 }
 
 void FlightController::UpdateFormNewImuSample()
@@ -219,6 +224,31 @@ void FlightController::Heartbeat()
     HAL_UART_Transmit(m_huart2, buffer, len, 100);
 }
 
+void FlightController::Update()
+{
+    constexpr uint32_t UPDATE_INTERVAL_MS = 1000;
+    const uint32_t nowMs = HAL_GetTick();
+
+    static uint32_t previousMs = 0;
+
+    if (nowMs - previousMs < UPDATE_INTERVAL_MS)
+    {
+        return;
+    }
+
+
+    if (m_armed)
+    {
+        const char* flightMode = m_flightMode == FlightMode::FLIGHT_MODE_ACRO ? "ARM ACRO" : "ARM ANGLE";
+        m_crsfTelemetry.SendFlightMode(flightMode);
+    }
+    else
+    {
+        m_crsfTelemetry.SendFlightMode("DISARM");
+    }
+
+}
+
 void FlightController::MavlinkParseByte(uint8_t byte)
 {
     mavlink_message_t msg;
@@ -230,6 +260,14 @@ void FlightController::MavlinkParseByte(uint8_t byte)
     }
 }
 
+void FlightController::ParseRcCommandByte(uint8_t byte)
+{
+    if (m_crsfReceiver.ProcessByte(byte))
+    {
+        HandleRcCommand();
+    }
+}
+
 void FlightController::MavlinkHandleMessage(const mavlink_message_t *msg)
 {
     switch (msg->msgid)
@@ -238,7 +276,7 @@ void FlightController::MavlinkHandleMessage(const mavlink_message_t *msg)
             HandleHilSensor(msg);
             break;
         case MAVLINK_MSG_ID_MANUAL_CONTROL:
-            HandleRcCommand(msg);
+            // HandleRcCommand(msg);
             break;
         default:
             break;
@@ -298,6 +336,52 @@ void FlightController::HandleRcCommand(const mavlink_message_t* msg)
     }
 
     m_rcCommand.valid = true;
+}
+
+void FlightController::HandleRcCommand()
+{
+    const CrsfReceiver::Channels& channels = m_crsfReceiver.GetChannels();
+
+    if (!channels.valid)
+    {
+        return;
+    }
+
+    float pitch = m_crsfReceiver.NormalizeStick(channels.us[0]);
+    float roll = m_crsfReceiver.NormalizeStick(channels.us[1]);;
+    float throttle = m_crsfReceiver.NormalizeThrottle(channels.us[2]);;
+    float yaw = m_crsfReceiver.NormalizeStick(channels.us[3]);;
+
+    m_rcCommand.pitch = MathUtils::ApplyDeadband(pitch, 25);
+    m_rcCommand.roll = MathUtils::ApplyDeadband(roll, 25);
+    m_rcCommand.throttle = MathUtils::ApplyDeadband(throttle, 25u);
+    m_rcCommand.yaw = MathUtils::ApplyDeadband(yaw, 25);
+
+    m_rcCommand.roll = MathUtils::Clamp(m_rcCommand.roll, -1000, 1000);
+    m_rcCommand.pitch = MathUtils::Clamp(m_rcCommand.pitch, -1000, 1000);
+    m_rcCommand.throttle = MathUtils::Clamp(m_rcCommand.throttle, 0, 1000);
+    m_rcCommand.yaw = MathUtils::Clamp(m_rcCommand.yaw, -1000, 1000);
+
+    m_rcCommand.armed = channels.us[4] > 1500;
+    m_rcCommand.acroMode = channels.us[5] > 1500;
+
+    m_armed = m_rcCommand.armed;
+
+    if (m_rcCommand.acroMode)
+    {
+        m_flightMode = FlightMode::FLIGHT_MODE_ACRO;
+    }
+    else
+    {
+        m_flightMode = FlightMode::FLIGHT_MODE_ANGLE;
+    }
+
+    m_rcCommand.valid = true;
+}
+
+void FlightController::SendByteToRc(uint8_t byte)
+{
+
 }
 
 void FlightController::SendServoOutputRaw(const MotorOutputs motor_outputs)

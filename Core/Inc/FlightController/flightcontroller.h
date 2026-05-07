@@ -12,6 +12,8 @@
 #include "mavlink/common/mavlink.h"
 #include "structs.h"
 #include "PID.h"
+#include "crsfreceiver.h"
+#include "crsftelemetry.h"
 
 enum class FlightMode
 {
@@ -25,15 +27,20 @@ public:
     FlightController();
     ~FlightController();
 
-    void Init(UART_HandleTypeDef& huart2);
+    void Init(UART_HandleTypeDef& huart1, UART_HandleTypeDef& huart2);
     void UpdateFormNewImuSample();
     void Heartbeat();
+    void Update();
     void MavlinkParseByte(uint8_t byte);
+    void ParseRcCommandByte(uint8_t byte);
 
 private:
     void MavlinkHandleMessage(const mavlink_message_t* msg);
     void HandleHilSensor(const mavlink_message_t* msg);
     void HandleRcCommand(const mavlink_message_t* msg);
+    void HandleRcCommand();
+
+    static void SendByteToRc(uint8_t byte);
 
     void SendServoOutputRaw(MotorOutputs motor_outputs);
 
@@ -52,7 +59,11 @@ private:
     float GetImuDtSec();
 
 private:
+    UART_HandleTypeDef* m_huart1 = nullptr;
     UART_HandleTypeDef* m_huart2 = nullptr;
+
+    CrsfReceiver m_crsfReceiver;
+    CrsfTelemetry m_crsfTelemetry;
 
     RcCommand m_rcCommand = {};
     SimImuSample m_simImu = {};

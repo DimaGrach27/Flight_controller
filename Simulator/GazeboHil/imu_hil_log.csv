@@ -1,1 +1,0 @@
-truth_x,truth_y,truth_z,truth_vx,truth_vy,truth_vz,f_mode,armed,time_ms,imu_seq,cont_seq,log_seq,dt,imu_dt,hal_dt,rc_thr,rc_roll,rc_pitch,rc_yaw,t_roll,t_pitch,t_yaw,g_roll,g_pitch,g_yaw,a_roll,a_pitch,cor_roll,cor_pitch,err_roll,err_pitch,est_roll,est_pitch,c_roll,c_pitch,c_yaw,m1,m2,m3,m4

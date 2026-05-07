@@ -42,12 +42,16 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart2_rx;
 
 /* USER CODE BEGIN PV */
-uint8_t m_uartRxDmaBuffer[256];
-uint16_t m_lastRxDmaPos = 0;
+uint8_t m_uartVirtualRxDmaBuffer[256];
+uint8_t m_uartRCRxDmaBuffer[256];
+uint16_t m_lastVirtualRxDmaPos = 0;
+uint16_t m_lastRCRxDmaPos = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -55,51 +59,90 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
-void ProcessUartRxDma(void);
+void ProcessVirtualUartRxDma(void);
+void ProcessRCUartRxDma(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t size)
 {
+    if (huart->Instance == USART1)
+    {
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart1, m_uartRCRxDmaBuffer, sizeof(m_uartRCRxDmaBuffer));
+    }
+
     if (huart->Instance == USART2)
     {
-        HAL_UARTEx_ReceiveToIdle_DMA(&huart2, m_uartRxDmaBuffer, sizeof(m_uartRxDmaBuffer));
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart2, m_uartVirtualRxDmaBuffer, sizeof(m_uartVirtualRxDmaBuffer));
     }
 }
 
-void ProcessUartRxDma()
+void ProcessVirtualUartRxDma()
 {
     const uint16_t currentPos =
-        sizeof(m_uartRxDmaBuffer) - __HAL_DMA_GET_COUNTER(huart2.hdmarx);
+        sizeof(m_uartVirtualRxDmaBuffer) - __HAL_DMA_GET_COUNTER(huart2.hdmarx);
 
-    if (currentPos == m_lastRxDmaPos)
+    if (currentPos == m_lastVirtualRxDmaPos)
     {
         return;
     }
 
-    if (currentPos > m_lastRxDmaPos)
+    if (currentPos > m_lastVirtualRxDmaPos)
     {
-        for (uint16_t i = m_lastRxDmaPos; i < currentPos; ++i)
+        for (uint16_t i = m_lastVirtualRxDmaPos; i < currentPos; ++i)
         {
-            flight_controller_MavlinkParseByte(m_uartRxDmaBuffer[i]);
+            flight_controller_MavlinkParseByte(m_uartVirtualRxDmaBuffer[i]);
         }
     }
     else
     {
-        for (uint16_t i = m_lastRxDmaPos; i < sizeof(m_uartRxDmaBuffer); ++i)
+        for (uint16_t i = m_lastVirtualRxDmaPos; i < sizeof(m_uartVirtualRxDmaBuffer); ++i)
         {
-            flight_controller_MavlinkParseByte(m_uartRxDmaBuffer[i]);
+            flight_controller_MavlinkParseByte(m_uartVirtualRxDmaBuffer[i]);
         }
 
         for (uint16_t i = 0; i < currentPos; ++i)
         {
-            flight_controller_MavlinkParseByte(m_uartRxDmaBuffer[i]);
+            flight_controller_MavlinkParseByte(m_uartVirtualRxDmaBuffer[i]);
         }
     }
 
-    m_lastRxDmaPos = currentPos;
+    m_lastVirtualRxDmaPos = currentPos;
+}
+
+void ProcessRCUartRxDma()
+{
+    const uint16_t currentPos = sizeof(m_uartRCRxDmaBuffer) - __HAL_DMA_GET_COUNTER(huart1.hdmarx);
+
+    if (currentPos == m_lastRCRxDmaPos)
+    {
+        return;
+    }
+
+    if (currentPos > m_lastRCRxDmaPos)
+    {
+        for (uint16_t i = m_lastRCRxDmaPos; i < currentPos; ++i)
+        {
+            flight_controller_ParseRcCommandByte(m_uartRCRxDmaBuffer[i]);
+        }
+    }
+    else
+    {
+        for (uint16_t i = m_lastRCRxDmaPos; i < sizeof(m_uartRCRxDmaBuffer); ++i)
+        {
+            flight_controller_ParseRcCommandByte(m_uartRCRxDmaBuffer[i]);
+        }
+
+        for (uint16_t i = 0; i < currentPos; ++i)
+        {
+            flight_controller_ParseRcCommandByte(m_uartRCRxDmaBuffer[i]);
+        }
+    }
+
+    m_lastRCRxDmaPos = currentPos;
 }
 /* USER CODE END 0 */
 
@@ -134,15 +177,17 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  flight_controller_Init(&huart2);
+  flight_controller_Init(&huart1, &huart2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   uint32_t lastHeartbeatMs = 0;
 
-  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, m_uartRxDmaBuffer, sizeof(m_uartRxDmaBuffer));
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart1, m_uartRCRxDmaBuffer, sizeof(m_uartRCRxDmaBuffer));
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, m_uartVirtualRxDmaBuffer, sizeof(m_uartVirtualRxDmaBuffer));
 
   while (1)
   {
@@ -150,7 +195,8 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-    ProcessUartRxDma();
+    ProcessVirtualUartRxDma();
+    ProcessRCUartRxDma();
 
     uint32_t now = HAL_GetTick();
     if (now - lastHeartbeatMs >= 1000)
@@ -158,6 +204,8 @@ int main(void)
       lastHeartbeatMs = now;
       flight_controller_Heartbeat();
     }
+
+    flight_controller_Update();
   }
   /* USER CODE END 3 */
 }
@@ -209,6 +257,39 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 420000;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -249,11 +330,15 @@ static void MX_DMA_Init(void)
 
   /* DMA controller clock enable */
   __HAL_RCC_DMA1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
   /* DMA1_Stream5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
+  /* DMA2_Stream2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
 
 }
 
