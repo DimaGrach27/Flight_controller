@@ -6,7 +6,7 @@
 
 #include "FlightController/mathutils.h"
 
-int16_t PID_Controller::Update(PID *pid, const float target, const float measured, const float dt)
+float PID_Controller::Update(PID *pid, const float target, const float measured, const float dt)
 {
     if (dt <= 0.000001f)
     {
@@ -25,10 +25,10 @@ int16_t PID_Controller::Update(PID *pid, const float target, const float measure
          + pid->ki * pid->integrator
          + pid->kd * derivative;
 
-    return static_cast<int16_t>(pidOut);
+    return pidOut;
 }
 
-int16_t PID_Controller::UpdateAngleWithGyroD(PID *pid,
+float PID_Controller::UpdateAngleWithGyroD(PID *pid,
     const float targetAngleDeg, const float measuredAngleDeg, const float gyroDegPerSec,
     const float dt)
 {
@@ -47,5 +47,5 @@ int16_t PID_Controller::UpdateAngleWithGyroD(PID *pid,
 
     const float pidOut = p + i + d;
 
-    return static_cast<int16_t>(pidOut);
+    return pidOut;
 }

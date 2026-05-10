@@ -661,21 +661,20 @@ ControlOutput FlightController::UpdateAcroController(float dt)
         fabsf(targetYawRateDegSec) < targetRateDeadbandDegSec &&
         fabsf(gyroYawDegPerSec) < gyroRateDeadbandDegSec;
 
-    if (rollIdle)
+    if (m_isRollAutoTuneActive)
     {
-        m_rollPID.previousError = 0.0f;
-        m_rollPID.integrator = 0.0f;
-        out.roll = 0.0f;
-    }
-    else if (m_isRollAutoTuneActive)
-    {
-        out.roll = m_rollAutoTune.Update(gyroRollDegPerSec, dt);
+        out.roll = m_rollAutoTune.Update(gyroX, dt);
 
         if (m_rollAutoTune.IsFinished())
         {
             const PidGains gains = m_rollAutoTune.GetResult();
 
             m_rollPID.SetGains(gains.kp, gains.ki, gains.kd);
+            m_rollPID.integrator = 0.0f;
+            m_rollPID.previousError = 0.0f;
+
+            m_isRollAutoTuneActive = false;
+            m_isRollAutoTuneComplete = true;
 
             if (m_logger)
             {
@@ -683,11 +682,8 @@ ControlOutput FlightController::UpdateAcroController(float dt)
                 m_logger->GetLogSample().PID_I_roll = m_rollPID.ki;
                 m_logger->GetLogSample().PID_D_roll = m_rollPID.kd;
             }
-            m_isRollAutoTuneActive = false;
-            m_isRollAutoTuneComplete = true;
         }
-
-        if (m_rollAutoTune.IsFailed())
+        else if (m_rollAutoTune.IsFailed())
         {
             m_isRollAutoTuneActive = false;
 
@@ -696,6 +692,12 @@ ControlOutput FlightController::UpdateAcroController(float dt)
             m_rollPID.integrator = 0.0f;
             out.roll = 0.0f;
         }
+    }
+    else if (rollIdle)
+    {
+        m_rollPID.previousError = 0.0f;
+        m_rollPID.integrator = 0.0f;
+        out.roll = 0.0f;
     }
     else
     {
@@ -745,7 +747,7 @@ ControlOutput FlightController::UpdateAcroController(float dt)
 
     constexpr float acroControlDeadband = 1.5f;
 
-    if (fabsf(out.roll) < acroControlDeadband)
+    if (fabsf(out.roll) < acroControlDeadband && !m_isRollAutoTuneActive)
     {
         out.roll = 0.0f;
     }

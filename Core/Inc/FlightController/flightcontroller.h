@@ -114,7 +114,7 @@ private:
 
     PidAutoTune m_rollAutoTune {
         PidAutoTune::Config {
-            .relayAmplitude = 0.05f,
+            .relayAmplitude = 5.0f,
             .hysteresis = 0.035f,
             .minOscillationAmplitude = 0.15f,
             .maxSafeRate = 3.5f,
