@@ -26,9 +26,9 @@ FlightController::FlightController()
 {
     m_rollPID =
     {
-        .kp = 0.8f,
-        .ki = 0.0f, //0.05
-        .kd = 0.0f, //0.02
+        .kp = 1.0f,
+        .ki = 5.0f, //0.05
+        .kd = 0.01f, //0.02
         .integrator = 0.0f,
         .previousError = 0.0f,
         .integratorLimit = 100.0f
@@ -36,9 +36,9 @@ FlightController::FlightController()
 
     m_pitchPID =
     {
-        .kp = 0.8f,
-        .ki = 0.0f,
-        .kd = 0.0f,
+        .kp = 1.0f,
+        .ki = 5.0f,
+        .kd = 0.01f,
         .integrator = 0.0f,
         .previousError = 0.0f,
         .integratorLimit = 100.0f
@@ -46,12 +46,12 @@ FlightController::FlightController()
 
     m_yawPID =
     {
-        .kp = 0.6f,
-        .ki = 0.0f,
-        .kd = 0.0f,
+        .kp = 1.0f,
+        .ki = 5.0f,
+        .kd = 0.01f,
         .integrator = 0.0f,
         .previousError = 0.0f,
-        .integratorLimit = 50.0f
+        .integratorLimit = 100.0f
     };
 
     m_rcCommand =
@@ -138,11 +138,11 @@ void FlightController::UpdateFormNewImuSample()
     ControlOutput control = {0};
 
 
-    if (!m_isRollAutoTuneComplete && !m_isRollAutoTuneActive)
-    {
-        m_rollAutoTune.Start();
-        m_isRollAutoTuneActive = true;
-    }
+    // if (!m_isRollAutoTuneComplete && !m_isRollAutoTuneActive)
+    // {
+    //     m_rollAutoTune.Start();
+    //     m_isRollAutoTuneActive = true;
+    // }
 
     switch (m_flightMode)
     {

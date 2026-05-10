@@ -30,6 +30,14 @@ void PidAutoTune::Start()
     m_amplitudeCount = 0;
 
     m_result = {};
+
+    m_relaySide = RelaySide::Positive;
+
+    m_lastPositiveSwitchTime = -1.0f;
+    m_lastNegativeSwitchTime = -1.0f;
+
+    m_halfCyclePositiveCollected = false;
+    m_halfCycleNegativeCollected = false;
 }
 
 void PidAutoTune::Stop()
@@ -61,7 +69,7 @@ float PidAutoTune::Update(float measuredRateRadSec, float dt)
 
     UpdatePeaks(measuredRateRadSec);
     UpdateRelay(measuredRateRadSec);
-    DetectPeriod(measuredRateRadSec);
+    // DetectPeriod(measuredRateRadSec);
 
     m_lastRate = measuredRateRadSec;
 
@@ -98,16 +106,25 @@ PidGains PidAutoTune::GetResult() const
 
 void PidAutoTune::UpdateRelay(float measuredRateRadSec)
 {
-    // Якщо rate став позитивним — даємо негативну корекцію.
-    // Якщо rate став негативним — даємо позитивну корекцію.
-    // Hysteresis потрібен, щоб output не смикався біля нуля.
-    if (measuredRateRadSec > m_config.hysteresis)
+    if (m_relaySide == RelaySide::Positive)
     {
-        m_output = -m_config.relayAmplitude;
+        if (measuredRateRadSec > m_config.hysteresis)
+        {
+            m_output = -m_config.relayAmplitude;
+            m_relaySide = RelaySide::Negative;
+
+            OnRelaySwitchToNegative();
+        }
     }
-    else if (measuredRateRadSec < -m_config.hysteresis)
+    else
     {
-        m_output = m_config.relayAmplitude;
+        if (measuredRateRadSec < -m_config.hysteresis)
+        {
+            m_output = m_config.relayAmplitude;
+            m_relaySide = RelaySide::Positive;
+
+            OnRelaySwitchToPositive();
+        }
     }
 }
 
@@ -205,4 +222,62 @@ void PidAutoTune::CalculateGains()
     gains.kd = MathUtils::Clamp(gains.kd, 0.0f, m_config.maxKd);
 
     m_result = gains;
+}
+
+void PidAutoTune::OnRelaySwitchToPositive()
+{
+    m_lastPositiveSwitchTime = m_timeSec;
+    m_halfCyclePositiveCollected = true;
+
+    TryCollectPeriod();
+
+    m_positivePeak = 0.0f;
+    m_negativePeak = 0.0f;
+    m_havePositivePeak = false;
+    m_haveNegativePeak = false;
+}
+
+void PidAutoTune::OnRelaySwitchToNegative()
+{
+    m_lastNegativeSwitchTime = m_timeSec;
+    m_halfCycleNegativeCollected = true;
+
+    TryCollectPeriod();
+}
+
+void PidAutoTune::TryCollectPeriod()
+{
+    if (!m_halfCyclePositiveCollected || !m_halfCycleNegativeCollected)
+    {
+        return;
+    }
+
+    if (m_lastPositiveSwitchTime < 0.0f || m_lastNegativeSwitchTime < 0.0f)
+    {
+        return;
+    }
+
+    const float halfPeriod = fabsf(m_lastPositiveSwitchTime - m_lastNegativeSwitchTime);
+    const float period = halfPeriod * 2.0f;
+
+    if (period < 0.05f)
+    {
+        return;
+    }
+
+    const float amplitude = CalculateCurrentAmplitude();
+
+    if (amplitude < m_config.minOscillationAmplitude)
+    {
+        return;
+    }
+
+    m_periodSum += period;
+    m_periodCount++;
+
+    m_amplitudeSum += amplitude;
+    m_amplitudeCount++;
+
+    m_halfCyclePositiveCollected = false;
+    m_halfCycleNegativeCollected = false;
 }

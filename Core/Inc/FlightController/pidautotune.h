@@ -71,6 +71,10 @@ private:
     float CalculateCurrentAmplitude() const;
     void CalculateGains();
 
+    void OnRelaySwitchToPositive();
+    void OnRelaySwitchToNegative();
+    void TryCollectPeriod();
+
 private:
     Config m_config;
 
@@ -96,4 +100,18 @@ private:
     uint8_t m_amplitudeCount = 0;
 
     PidGains m_result;
+
+    enum class RelaySide
+    {
+        Positive,
+        Negative
+    };
+
+    RelaySide m_relaySide = RelaySide::Positive;
+
+    float m_lastPositiveSwitchTime = -1.0f;
+    float m_lastNegativeSwitchTime = -1.0f;
+
+    bool m_halfCyclePositiveCollected = false;
+    bool m_halfCycleNegativeCollected = false;
 };
