@@ -14,6 +14,14 @@ struct  PID
     float previousError;
 
     float integratorLimit;
+
+public:
+    inline void SetGains(const float gainsKp, const float gainsKi, const float gainsKd)
+    {
+        this->kp = gainsKp;
+        this->ki = gainsKi;
+        this->kd = gainsKd;
+    }
 };
 
 class PID_Controller

@@ -137,6 +137,13 @@ void FlightController::UpdateFormNewImuSample()
 
     ControlOutput control = {0};
 
+
+    if (!m_isRollAutoTuneComplete && !m_isRollAutoTuneActive)
+    {
+        m_rollAutoTune.Start();
+        m_isRollAutoTuneActive = true;
+    }
+
     switch (m_flightMode)
     {
         case FlightMode::FLIGHT_MODE_ACRO:
@@ -660,6 +667,36 @@ ControlOutput FlightController::UpdateAcroController(float dt)
         m_rollPID.integrator = 0.0f;
         out.roll = 0.0f;
     }
+    else if (m_isRollAutoTuneActive)
+    {
+        out.roll = m_rollAutoTune.Update(gyroRollDegPerSec, dt);
+
+        if (m_rollAutoTune.IsFinished())
+        {
+            const PidGains gains = m_rollAutoTune.GetResult();
+
+            m_rollPID.SetGains(gains.kp, gains.ki, gains.kd);
+
+            if (m_logger)
+            {
+                m_logger->GetLogSample().PID_P_roll = m_rollPID.kp;
+                m_logger->GetLogSample().PID_I_roll = m_rollPID.ki;
+                m_logger->GetLogSample().PID_D_roll = m_rollPID.kd;
+            }
+            m_isRollAutoTuneActive = false;
+            m_isRollAutoTuneComplete = true;
+        }
+
+        if (m_rollAutoTune.IsFailed())
+        {
+            m_isRollAutoTuneActive = false;
+
+            // Тут зупинити мотори або перейти в safe mode.
+            m_rollPID.previousError = 0.0f;
+            m_rollPID.integrator = 0.0f;
+            out.roll = 0.0f;
+        }
+    }
     else
     {
         out.roll = PID_Controller::Update(
@@ -667,7 +704,7 @@ ControlOutput FlightController::UpdateAcroController(float dt)
             targetRollRateDegSec,
             gyroRollDegPerSec,
             dt
-        );
+            );
     }
 
     if (pitchIdle)

@@ -43,7 +43,12 @@ struct ControlOutput
     float yaw;
 };
 
-
+struct PidGains
+{
+    float kp = 0.0f;
+    float ki = 0.0f;
+    float kd = 0.0f;
+};
 //DEBUG
 
 struct FlightLogSample
@@ -95,6 +100,18 @@ struct FlightLogSample
     float motorM2 = 0.0f;
     float motorM3 = 0.0f;
     float motorM4 = 0.0f;
+
+    float PID_P_roll = 0.0f;
+    float PID_I_roll = 0.0f;
+    float PID_D_roll = 0.0f;
+
+    float PID_P_pitch = 0.0f;
+    float PID_I_pitch = 0.0f;
+    float PID_D_pitch = 0.0f;
+
+    float PID_P_yaw = 0.0f;
+    float PID_I_yaw = 0.0f;
+    float PID_D_yaw = 0.0f;
 };
 
 struct ControlDebug

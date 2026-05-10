@@ -14,6 +14,7 @@
 #include "PID.h"
 #include "crsfreceiver.h"
 #include "crsftelemetry.h"
+#include "pidautotune.h"
 
 enum class FlightMode
 {
@@ -107,6 +108,24 @@ private:
     float m_levelRollOffsetDeg = 0.0f;
     float m_levelPitchOffsetDeg = 0.0f;
     bool m_levelOffsetReady = false;
+
+    bool m_isRollAutoTuneActive = false;
+    bool m_isRollAutoTuneComplete = false;
+
+    PidAutoTune m_rollAutoTune {
+        PidAutoTune::Config {
+            .relayAmplitude = 0.05f,
+            .hysteresis = 0.035f,
+            .minOscillationAmplitude = 0.15f,
+            .maxSafeRate = 3.5f,
+            .periodsToCollect = 6,
+            .timeoutSec = 10.0f,
+            .maxKp = 1.0f,
+            .maxKi = 5.0f,
+            .maxKd = 0.1f
+        }
+    };
+
 
     //DEBUG
     Logger* m_logger = nullptr;
