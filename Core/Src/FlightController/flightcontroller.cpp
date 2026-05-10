@@ -276,7 +276,7 @@ void FlightController::MavlinkHandleMessage(const mavlink_message_t *msg)
             HandleHilSensor(msg);
             break;
         case MAVLINK_MSG_ID_MANUAL_CONTROL:
-            // HandleRcCommand(msg);
+            HandleRcCommand(msg);
             break;
         default:
             break;
@@ -347,8 +347,8 @@ void FlightController::HandleRcCommand()
         return;
     }
 
-    float pitch = m_crsfReceiver.NormalizeStick(channels.us[0]);
-    float roll = m_crsfReceiver.NormalizeStick(channels.us[1]);;
+    float roll = m_crsfReceiver.NormalizeStick(channels.us[0]);;
+    float pitch = m_crsfReceiver.NormalizeStick(channels.us[1]);
     float throttle = m_crsfReceiver.NormalizeThrottle(channels.us[2]);;
     float yaw = m_crsfReceiver.NormalizeStick(channels.us[3]);;
 
@@ -360,7 +360,7 @@ void FlightController::HandleRcCommand()
     m_rcCommand.roll = MathUtils::Clamp(m_rcCommand.roll, -1000, 1000);
     m_rcCommand.pitch = MathUtils::Clamp(m_rcCommand.pitch, -1000, 1000);
     m_rcCommand.throttle = MathUtils::Clamp(m_rcCommand.throttle, 0, 1000);
-    m_rcCommand.yaw = MathUtils::Clamp(m_rcCommand.yaw, -1000, 1000);
+    m_rcCommand.yaw = -MathUtils::Clamp(m_rcCommand.yaw, -1000, 1000);
 
     m_rcCommand.armed = channels.us[4] > 1500;
     m_rcCommand.acroMode = channels.us[5] > 1500;
