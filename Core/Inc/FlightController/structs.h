@@ -10,30 +10,12 @@ struct Vector3
     float z;
 };
 
-struct SimImuSample
-{
-    Vector3 gyro;
-    Vector3 accel;
-    bool valid;
-};
-
 struct MotorOutputs
 {
     int16_t m1;
     int16_t m2;
     int16_t m3;
     int16_t m4;
-};
-
-struct RcCommand
-{
-    int16_t throttle; // 0..1000
-    int16_t roll;     // -1000..1000
-    int16_t pitch;    // -1000..1000
-    int16_t yaw;      // -1000..1000
-    bool armed;
-    bool acroMode;
-    bool valid;
 };
 
 struct ControlOutput
@@ -49,6 +31,7 @@ struct PidGains
     float ki = 0.0f;
     float kd = 0.0f;
 };
+
 //DEBUG
 
 struct FlightLogSample
