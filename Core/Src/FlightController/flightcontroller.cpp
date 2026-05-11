@@ -66,7 +66,7 @@ void FlightController::Init()
 {
     m_scheduler.AddTask(TaskID::Imu, 2000);         //500 Hz
     m_scheduler.AddTask(TaskID::Rc, 5000);          //200 Hz
-    m_scheduler.AddTask(TaskID::Control, 1000);     //500 Hz
+    m_scheduler.AddTask(TaskID::Control, 2000);     //500 Hz
     m_scheduler.AddTask(TaskID::Telemetry, 100000); //10 Hz
 
     if (!m_sensorsManager.Init())
@@ -275,10 +275,10 @@ void FlightController::HandleRcCommand(const mavlink_message_t* msg)
 
     RcRawFrame frame{};
 
-    float roll = manual.x / 1000.0f;
-    float pitch = manual.y / 1000.0f;
+    float roll = manual.y / 1000.0f;
+    float pitch = manual.x / 1000.0f;
     float throttle = manual.z / 1000.0f;
-    float yaw = manual.r / 1000.0f;
+    float yaw = -manual.r / 1000.0f;
 
     constexpr uint8_t armedInputMask = 1u << 1;
     constexpr uint8_t flightModeInputMask = 1u << 2;

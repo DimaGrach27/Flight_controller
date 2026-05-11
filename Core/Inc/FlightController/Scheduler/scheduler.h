@@ -26,7 +26,7 @@ private:
         TaskID taskId = TaskID::INVALID;
         uint32_t periodUs = 0;
         uint32_t lastRunUs = 0;
-        bool enabled = true;
+        bool enabled = false;
     };
 
 private:

@@ -23,7 +23,7 @@ void Scheduler::AddTask(TaskID taskId, const uint32_t periodUs)
 
     const uint8_t taskPosition = static_cast<uint8_t>(taskId);
 
-    if (m_tasks[taskPosition].taskId == TaskID::INVALID)
+    if (m_tasks[taskPosition].taskId != TaskID::INVALID)
     {
         //TASK ALREADY ADDED
         return;
@@ -75,7 +75,7 @@ bool Scheduler::ConsumeTask(TaskID taskId)
 
 bool Scheduler::ShouldRun(TaskID taskId)
 {
-    const Task task = GetTaskRef(taskId);
+    const Task& task = GetTaskRef(taskId);
     if (m_nowUs - task.lastRunUs >= task.periodUs)
     {
         return true;
@@ -86,19 +86,19 @@ bool Scheduler::ShouldRun(TaskID taskId)
 
 void Scheduler::MarkRun(TaskID taskId)
 {
-    Task task = GetTaskRef(taskId);
+    Task& task = GetTaskRef(taskId);
     task.lastRunUs = m_nowUs;
 }
 
 void Scheduler::EnableTask(TaskID taskId)
 {
-    Task task = GetTaskRef(taskId);
+    Task& task = GetTaskRef(taskId);
     task.enabled = true;
 }
 
 void Scheduler::DiableTask(TaskID taskId)
 {
-    Task task = GetTaskRef(taskId);
+    Task& task = GetTaskRef(taskId);
     task.enabled = false;
 }
 

@@ -52,10 +52,10 @@ MotorCommand Mixer::Mix(float throttle, const ControlOutput& control) const
         return motors;
     }
 
-    motors.m1 = throttle - control.roll + control.pitch - control.yaw; // front right
-    motors.m2 = throttle + control.roll - control.pitch - control.yaw; // rear left
-    motors.m3 = throttle + control.roll + control.pitch + control.yaw; // front left
-    motors.m4 = throttle - control.roll - control.pitch + control.yaw; // rear right
+    motors.m1 = throttle + control.roll - control.pitch - control.yaw; // front right
+    motors.m2 = throttle - control.roll + control.pitch - control.yaw; // rear left
+    motors.m3 = throttle - control.roll - control.pitch + control.yaw; // front left
+    motors.m4 = throttle + control.roll + control.pitch + control.yaw; // rear right
 
     Desaturate(motors);
 
