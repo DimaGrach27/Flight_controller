@@ -4,6 +4,7 @@
 
 #pragma once
 #include "taskid.h"
+#include <array>
 
 class Scheduler
 {
@@ -25,16 +26,19 @@ private:
         TaskID taskId = TaskID::INVALID;
         uint32_t periodUs = 0;
         uint32_t lastRunUs = 0;
-        bool enable = true;
+        bool enabled = true;
     };
 
 private:
     bool ShouldRun(TaskID taskId);
     void MarkRun(TaskID taskId);
-    bool GetTask(TaskID taskId, Task& outTask);
+
+    Task& GetTaskRef(TaskID taskId);
+    const Task& GetTaskRef(TaskID taskId) const;
 
 private:
     uint32_t m_nowUs = 0;
 
-    Task* m_tasks = nullptr;
+    static constexpr uint8_t ArraySize = static_cast<uint8_t>(TaskID::COUNT);
+    std::array<Task, ArraySize> m_tasks;
 };

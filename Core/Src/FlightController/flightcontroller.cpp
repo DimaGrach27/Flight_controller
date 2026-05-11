@@ -64,10 +64,10 @@ FlightController::~FlightController()
 
 void FlightController::Init()
 {
-    m_scheduler.AddTask(TaskID::Imu, 1000);
-    m_scheduler.AddTask(TaskID::Rc, 1000);
-    m_scheduler.AddTask(TaskID::Control, 1000);
-    m_scheduler.AddTask(TaskID::Telemetry, 1000);
+    m_scheduler.AddTask(TaskID::Imu, 2000);         //500 Hz
+    m_scheduler.AddTask(TaskID::Rc, 5000);          //200 Hz
+    m_scheduler.AddTask(TaskID::Control, 1000);     //500 Hz
+    m_scheduler.AddTask(TaskID::Telemetry, 100000); //10 Hz
 
     if (!m_sensorsManager.Init())
     {
@@ -86,8 +86,10 @@ void FlightController::Init()
     m_mixer.Init();
 
 #if NOT_USE_HIL
+    m_pwmMotorOutput.Init();
     m_pwmMotorOutput.StopAll();
 #else
+    m_hilMotorOutput.Init();
     m_hilMotorOutput.StopAll();
 #endif
 }
@@ -115,7 +117,7 @@ void FlightController::Heartbeat()
 
 void FlightController::Update()
 {
-    const uint32_t nowUs = HAL_GetTick();
+    const uint32_t nowUs = GetMicros();
 
     m_scheduler.Update(nowUs);
 
@@ -152,6 +154,11 @@ void FlightController::MavlinkParseByte(uint8_t byte)
     {
         MavlinkHandleMessage(&msg);
     }
+}
+
+uint32_t FlightController::GetMicros() const
+{
+    return HAL_GetTick() * 1000U;
 }
 
 void FlightController::RunControlLoop(uint32_t nowUs)
@@ -318,7 +325,7 @@ void FlightController::HandleRcCommand(const mavlink_message_t* msg)
         ChannelMax
     );
 
-    frame.timestampUs = HAL_GetTick();
+    frame.timestampUs = GetMicros();
     frame.failsafe = false;
     frame.valid = true;
 

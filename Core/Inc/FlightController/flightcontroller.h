@@ -54,15 +54,15 @@ public:
     void Update();
     void MavlinkParseByte(uint8_t byte);
 
-private:
+    uint32_t GetMicros() const;
 
+private:
     void RunControlLoop(uint32_t nowUs);
 
     void MavlinkHandleMessage(const mavlink_message_t* msg);
     void HandleHilSensor(const mavlink_message_t* msg);
     void HandleRcCommand(const mavlink_message_t* msg);
 
-    void SendServoOutputRaw(const MotorOutputs motor_outputs);
 private:
     Scheduler m_scheduler;
 

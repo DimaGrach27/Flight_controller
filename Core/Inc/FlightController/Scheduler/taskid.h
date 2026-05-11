@@ -13,6 +13,6 @@ enum class TaskID : uint8_t
     Control = 4,
     Telemetry = 5,
 
-    INVALID = 254,
-    COUNT
+    COUNT,
+    INVALID = UINT8_MAX
 };

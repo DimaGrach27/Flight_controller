@@ -6,15 +6,11 @@
 
 Scheduler::Scheduler()
 {
-    constexpr uint8_t MAX_TASKS = static_cast<uint8_t>(TaskID::COUNT) - 1;
 
-    m_tasks = new Task[MAX_TASKS];
-    m_tasks = {};
 }
 
 Scheduler::~Scheduler()
 {
-    delete[] m_tasks;
 }
 
 void Scheduler::AddTask(TaskID taskId, const uint32_t periodUs)
@@ -36,7 +32,7 @@ void Scheduler::AddTask(TaskID taskId, const uint32_t periodUs)
     m_tasks[taskPosition].taskId = taskId;
     m_tasks[taskPosition].periodUs = periodUs;
     m_tasks[taskPosition].lastRunUs = 0;
-    m_tasks[taskPosition].enable = true;
+    m_tasks[taskPosition].enabled = true;
 }
 
 void Scheduler::Update(const uint32_t timeTick)
@@ -46,9 +42,14 @@ void Scheduler::Update(const uint32_t timeTick)
 
 bool Scheduler::ConsumeTask(TaskID taskId)
 {
-    Task task;
+    if (taskId == TaskID::INVALID || taskId == TaskID::COUNT)
+    {
+        return false;
+    }
 
-    if (!GetTask(taskId, task))
+    Task& task = GetTaskRef(taskId);
+
+    if (!task.enabled)
     {
         return false;
     }
@@ -60,9 +61,7 @@ bool Scheduler::ConsumeTask(TaskID taskId)
         return false;
     }
 
-    constexpr uint8_t scalerTimeToVeryLateUpdate = 4U;
-
-    if (elapsedUs > task.periodUs * scalerTimeToVeryLateUpdate)
+    if (elapsedUs > task.periodUs * 4U)
     {
         task.lastRunUs = m_nowUs;
     }
@@ -76,13 +75,7 @@ bool Scheduler::ConsumeTask(TaskID taskId)
 
 bool Scheduler::ShouldRun(TaskID taskId)
 {
-    Task task;
-
-    if (!GetTask(taskId, task))
-    {
-        return false;
-    }
-
+    const Task task = GetTaskRef(taskId);
     if (m_nowUs - task.lastRunUs >= task.periodUs)
     {
         return true;
@@ -93,51 +86,28 @@ bool Scheduler::ShouldRun(TaskID taskId)
 
 void Scheduler::MarkRun(TaskID taskId)
 {
-    Task task;
-
-    if (GetTask(taskId, task))
-    {
-        task.lastRunUs = m_nowUs;
-    }
+    Task task = GetTaskRef(taskId);
+    task.lastRunUs = m_nowUs;
 }
 
 void Scheduler::EnableTask(TaskID taskId)
 {
-    Task task;
-
-    if (GetTask(taskId, task))
-    {
-        task.enable = true;
-    }
+    Task task = GetTaskRef(taskId);
+    task.enabled = true;
 }
 
 void Scheduler::DiableTask(TaskID taskId)
 {
-    Task task;
-
-    if (GetTask(taskId, task))
-    {
-        task.enable = false;
-    }
+    Task task = GetTaskRef(taskId);
+    task.enabled = false;
 }
 
-bool Scheduler::GetTask(TaskID taskId, Task& outTask)
+Scheduler::Task& Scheduler::GetTaskRef(TaskID taskId)
 {
-    if (taskId == TaskID::COUNT || taskId == TaskID::INVALID)
-    {
-        //INVALID TASK
-        return false;
-    }
+    return m_tasks[static_cast<uint8_t>(taskId)];
+}
 
-    const uint8_t taskPosition = static_cast<uint8_t>(taskId);
-    Task task = m_tasks[taskPosition];
-
-    if (task.taskId == TaskID::INVALID)
-    {
-        //TASK NOT INICIALIZED
-        return false;;
-    }
-
-    outTask = task;
-    return true;
+const Scheduler::Task& Scheduler::GetTaskRef(TaskID taskId) const
+{
+    return m_tasks[static_cast<uint8_t>(taskId)];
 }
