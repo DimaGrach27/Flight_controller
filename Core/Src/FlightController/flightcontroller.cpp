@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include "main.h"
+#include "FlightController/LowPassFilter.h"
 #include "FlightController/mathutils.h"
 #include "FlightController/PID.h"
 
@@ -76,12 +77,23 @@ FlightController::~FlightController()
     }
 }
 
-void FlightController::Init(UART_HandleTypeDef& huart1, UART_HandleTypeDef& huart2)
+void FlightController::Init()
 {
-    m_huart1 = &huart1;
-    m_huart2 = &huart2;
-
     m_logger = new Logger(huart2);
+
+    m_lsm6ds3 = new IMU_Lsm6ds3(&hspi2, CS_SPI2_GPIO_Port, CS_SPI2_Pin);
+
+    bool imuOK = m_lsm6ds3->Init();
+
+    if (!imuOK)
+    {
+        // IMU doesn't answer
+        while (true)
+        {
+            HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+            HAL_Delay(100);
+        }
+    }
 
     m_crsfTelemetry.Init(huart1);
 }
@@ -231,29 +243,134 @@ void FlightController::Heartbeat()
     HAL_UART_Transmit(m_huart2, buffer, len, 100);
 }
 
+
+struct GyroOffset
+{
+    float x_dps = 0.0f;
+    float y_dps = 0.0f;
+    float z_dps = 0.0f;
+};
+
+GyroOffset g_gyroOffset{};
+
+GyroOffset CalibrateGyro(IMU_Lsm6ds3* imu)
+{
+    if (imu == nullptr)
+    {
+        return GyroOffset();
+    }
+
+    constexpr int sampleCount = 2000;
+
+    float sumX = 0.0f;
+    float sumY = 0.0f;
+    float sumZ = 0.0f;
+
+    int validSamples = 0;
+
+    for (int i = 0; i < sampleCount; ++i)
+    {
+        IMU_Lsm6ds3::Data data{};
+
+        if (imu->Read(data))
+        {
+            sumX += data.gyroX_dps;
+            sumY += data.gyroY_dps;
+            sumZ += data.gyroZ_dps;
+
+            ++validSamples;
+        }
+
+        HAL_Delay(1);
+    }
+
+    GyroOffset offset{};
+
+    if (validSamples > 0)
+    {
+        offset.x_dps = sumX / validSamples;
+        offset.y_dps = sumY / validSamples;
+        offset.z_dps = sumZ / validSamples;
+    }
+
+    return offset;
+}
+
 void FlightController::Update()
 {
+
+    g_gyroOffset = CalibrateGyro(m_lsm6ds3);
+
     constexpr uint32_t UPDATE_INTERVAL_MS = 1000;
+    constexpr uint32_t READ_IMU_INTERVAL_MS = 100;
     const uint32_t nowMs = HAL_GetTick();
 
-    static uint32_t previousMs = 0;
+    static uint32_t previousImuMs = 0;
+    static uint32_t previousTelemetryCrcfMs = 0;
 
-    if (nowMs - previousMs < UPDATE_INTERVAL_MS)
+    if (nowMs - previousImuMs >= READ_IMU_INTERVAL_MS)
     {
-        return;
+        IMU_Lsm6ds3::Data imuData{};
+        IMU_Lsm6ds3::RawData raw{};
+
+        if (m_lsm6ds3 != nullptr && m_lsm6ds3->ReadRaw(raw))
+        {
+            printf("raw gyro: %d %d %d, raw accel: %d %d %d\r\n",
+                raw.gyroX,
+                raw.gyroY,
+                raw.gyroZ,
+                raw.accelX,
+                raw.accelY,
+                raw.accelZ
+            );
+        }
+
+        if (m_lsm6ds3 != nullptr && m_lsm6ds3->Read(imuData))
+        {
+            float rollRate_dps  = imuData.gyroX_dps - g_gyroOffset.x_dps;
+            float pitchRate_dps = imuData.gyroY_dps - g_gyroOffset.y_dps;
+            float yawRate_dps   = imuData.gyroZ_dps - g_gyroOffset.z_dps;
+
+            LowPassFilter gyroXFilter(0.8f);
+            LowPassFilter gyroYFilter(0.8f);
+            LowPassFilter gyroZFilter(0.8f);
+
+            rollRate_dps  = gyroXFilter.Update(rollRate_dps);
+            pitchRate_dps = gyroYFilter.Update(pitchRate_dps);
+            yawRate_dps   = gyroZFilter.Update(yawRate_dps);
+
+            float accelX_g = imuData.accelX_g;
+            float accelY_g = imuData.accelY_g;
+            float accelZ_g = imuData.accelZ_g;
+
+            printf("DPS gyro: %d %d %d, DPS accel: %d %d %d\r\n",
+                rollRate_dps,
+                pitchRate_dps,
+                yawRate_dps,
+                accelX_g,
+                accelY_g,
+                accelZ_g
+);
+            // Далі передаєш у фільтр / PID
+        }
+
+        previousImuMs = nowMs;
     }
 
-
-    if (m_armed)
+    if (nowMs - previousTelemetryCrcfMs >= UPDATE_INTERVAL_MS)
     {
-        const char* flightMode = m_flightMode == FlightMode::FLIGHT_MODE_ACRO ? "ARM ACRO" : "ARM ANGLE";
-        m_crsfTelemetry.SendFlightMode(flightMode);
-    }
-    else
-    {
-        m_crsfTelemetry.SendFlightMode("DISARM");
-    }
+        if (m_armed)
+        {
+            const char* flightMode = m_flightMode == FlightMode::FLIGHT_MODE_ACRO ? "ARM ACRO" : "ARM ANGLE";
+            m_crsfTelemetry.SendFlightMode(flightMode);
+        }
+        else
+        {
+            m_crsfTelemetry.SendFlightMode("DISARM");
+        }
 
+        previousTelemetryCrcfMs = nowMs;
+    }
 }
 
 void FlightController::MavlinkParseByte(uint8_t byte)

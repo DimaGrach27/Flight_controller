@@ -8,9 +8,9 @@
 
 static FlightController FlightController;
 
-extern "C" void flight_controller_Init(UART_HandleTypeDef* huart1, UART_HandleTypeDef* huart2)
+extern "C" void flight_controller_Init(UART_HandleTypeDef* huart1, UART_HandleTypeDef* huart2, SPI_HandleTypeDef* hspi2)
 {
-    FlightController.Init(*huart1, *huart2);
+    FlightController.Init(*huart1, *huart2, *hspi2);
 }
 
 extern "C" void flight_controller_Heartbeat(void)

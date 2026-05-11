@@ -14,6 +14,7 @@
 #include "PID.h"
 #include "crsfreceiver.h"
 #include "crsftelemetry.h"
+#include "Sensors/imu_lsm6ds3.h"
 #include "pidautotune.h"
 
 enum class FlightMode
@@ -28,7 +29,7 @@ public:
     FlightController();
     ~FlightController();
 
-    void Init(UART_HandleTypeDef& huart1, UART_HandleTypeDef& huart2);
+    void Init();
     void UpdateFormNewImuSample();
     void Heartbeat();
     void Update();
@@ -60,14 +61,12 @@ private:
     float GetImuDtSec();
 
 private:
-    UART_HandleTypeDef* m_huart1 = nullptr;
-    UART_HandleTypeDef* m_huart2 = nullptr;
-
     CrsfReceiver m_crsfReceiver;
     CrsfTelemetry m_crsfTelemetry;
 
     RcCommand m_rcCommand = {};
     SimImuSample m_simImu = {};
+    IMU_Lsm6ds3* m_lsm6ds3 = nullptr;
 
     PID m_rollPID = {};
     PID m_pitchPID = {};

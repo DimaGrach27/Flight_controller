@@ -11,7 +11,11 @@
 extern "C" {
 #endif
 
-void flight_controller_Init(UART_HandleTypeDef* huart1, UART_HandleTypeDef* huart2);
+void flight_controller_Init(
+    UART_HandleTypeDef* huart1,
+    UART_HandleTypeDef* huart2,
+    SPI_HandleTypeDef* hspi2);
+
 void flight_controller_Heartbeat(void);
 void flight_controller_Update(void);
 void flight_controller_MavlinkParseByte(uint8_t byte);
