@@ -5,30 +5,26 @@
 #include "FlightController/Sensors/imu_driver.h"
 
 
-Imu_Driver::Imu_Driver(ISpiBus& iSpiBus)
+#if NOT_USE_HIL
+Imu_Driver::Imu_Driver(IMU_Lsm6ds3& imu_lsm6_ds3)
+    : m_driverReal(imu_lsm6_ds3)
 {
-#if USE_REAL_IMU
-    m_driverReal = new IMU_Lsm6ds3(iSpiBus);
-#else
-    m_driverHil = new IMU_Driver_Hil();
-#endif
-}
 
-Imu_Driver::~Imu_Driver()
-{
-#if USE_REAL_IMU
-    delete m_driverReal;
-#else
-    delete m_driverHil;
-#endif
 }
+#else
+Imu_Driver::Imu_Driver(IMU_Driver_Hil &imu_driver_hil)
+    : m_driverHil(imu_driver_hil)
+{
+
+}
+#endif
 
 bool Imu_Driver::Init()
 {
-#if USE_REAL_IMU
-    return m_driverReal->Init();
+#if NOT_USE_HIL
+    return m_driverReal.Init();
 #else
-    return m_driverHil->Init();
+    return m_driverHil.Init();
 #endif
 
     return false;
@@ -36,21 +32,21 @@ bool Imu_Driver::Init()
 
 bool Imu_Driver::ReadRaw(ImuRawData &outRawData, uint32_t nowUs)
 {
-#if USE_REAL_IMU
-    return m_driverReal->ReadRaw(outRawData, nowUs);
+#if NOT_USE_HIL
+    return m_driverReal.ReadRaw(outRawData, nowUs);
 #else
-    return m_driverHil->ReadRaw(outRawData, nowUs);
+    return m_driverHil.ReadRaw(outRawData, nowUs);
 #endif
 
     return false;
 }
 
-bool Imu_Driver::Read(ImuData &outData, uint32_t nowUs)
+bool Imu_Driver::Read(ImuSample &outData, uint32_t nowUs)
 {
-#if USE_REAL_IMU
-    return m_driverReal->Read(outData, nowUs);
+#if NOT_USE_HIL
+    return m_driverReal.Read(outData, nowUs);
 #else
-    return m_driverHil->Read(outData, nowUs);
+    return m_driverHil.Read(outData, nowUs);
 #endif
 
     return false;

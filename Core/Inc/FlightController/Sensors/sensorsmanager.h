@@ -16,7 +16,7 @@ public:
     bool Init();
     void UpdateImu(uint32_t nowUs);
 
-    const ImuData& GetData() const;
+    const ImuSample& GetImuData() const;
 
 private:
     Imu_Sensor& m_imuSensor;

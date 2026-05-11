@@ -11,121 +11,100 @@
 
 #include "mavlink/common/mavlink.h"
 #include "structs.h"
-#include "PID.h"
-#include "crsfreceiver.h"
-#include "crsftelemetry.h"
-#include "Sensors/imu_lsm6ds3.h"
-#include "pidautotune.h"
 
-enum class FlightMode
-{
-    FLIGHT_MODE_ANGLE = 0,
-    FLIGHT_MODE_ACRO = 1,
-};
+#include "Estimators/stateestimator.h"
+#include "FlightManager/flightmodemanager.h"
+#include "Motors/imotoroutput.h"
+#include "Motors/mixer.h"
+#include "PID/ratecontroller.h"
+#include "Protocols/stm32spibus.h"
+#include "Protocols/stm32uartdmabytestream.h"
+#include "RcInput/rcinput.h"
+#include "Scheduler/scheduler.h"
+#include "Sensors/sensorsmanager.h"
+
+#if NOT_USE_HIL
+#include "Sensors/imu_driver_lsm6ds3.h"
+#include "Motors/pwmmotoroutput.h"
+#include "RcInput/crsfrcreceiver.h"
+#else
+#include "Sensors/imu_driver_hil.h"
+#include "Motors/hilmotoroutput.h"
+#include "RcInput/hilrcreceiver.h"
+#endif
 
 class FlightController
 {
 public:
-    FlightController();
+
+#if NOT_USE_HIL
+    FlightController(
+        UART_HandleTypeDef& serialUart,
+        UART_HandleTypeDef& rcUart,
+        SPI_HandleTypeDef& spiImuHandler,
+        std::array<PwmMotorOutput::MotorChannel, 4> motorChannels);
+#else
+    FlightController(UART_HandleTypeDef& serialUart);
+#endif
+
     ~FlightController();
 
     void Init();
-    void UpdateFormNewImuSample();
     void Heartbeat();
     void Update();
     void MavlinkParseByte(uint8_t byte);
-    void ParseRcCommandByte(uint8_t byte);
 
 private:
+
+    void RunControlLoop(uint32_t nowUs);
+
     void MavlinkHandleMessage(const mavlink_message_t* msg);
     void HandleHilSensor(const mavlink_message_t* msg);
     void HandleRcCommand(const mavlink_message_t* msg);
-    void HandleRcCommand();
 
-    static void SendByteToRc(uint8_t byte);
-
-    void SendServoOutputRaw(MotorOutputs motor_outputs);
-
-    ControlOutput UpdateAngleController(float dt);
-    ControlOutput UpdateAcroController(float dt);
-    void UpdateAttitudeEstimator(float dt);
-    MotorOutputs MixQuadX(const uint16_t throttle, const ControlOutput& control_output);
-    MotorOutputs DesaturateMotors(MotorOutputs motor_outputs);
-
-    void ResetRatePidState();
-    void CalibrateGyroBias();
-    void CalibrateLevelOffset();
-
-    float FilterGyroRollForDebug(float gyroRollDegSec);
-
-    float GetImuDtSec();
-
+    void SendServoOutputRaw(const MotorOutputs motor_outputs);
 private:
-    CrsfReceiver m_crsfReceiver;
-    CrsfTelemetry m_crsfTelemetry;
+    Scheduler m_scheduler;
 
-    RcCommand m_rcCommand = {};
-    SimImuSample m_simImu = {};
-    IMU_Lsm6ds3* m_lsm6ds3 = nullptr;
+#if NOT_USE_HIL
+    Stm32SpiBus m_stm32SpiBusImu;
+    Stm32UartDmaByteStream m_stm32UartDmaCrsfRc;
+    IMU_Lsm6ds3 m_imuLsm6ds3;
+#else
+    IMU_Driver_Hil m_imuDriverHil;
+#endif
+    Imu_Driver m_imuDriver;
+    Imu_Sensor m_imuSensor;
+    SensorsManager m_sensorsManager;
 
-    PID m_rollPID = {};
-    PID m_pitchPID = {};
-    PID m_yawPID = {};
+#if NOT_USE_HIL
+    CrsfRcReceiver m_crsfRcReceiver;
+#else
+    HilRcReceiver m_hilRcReceiver;
+#endif
+    RcInput m_rcInput;
 
-    FlightMode m_flightMode = FlightMode::FLIGHT_MODE_ANGLE;
+    StateEstimator m_stateEstimator;
 
-    bool m_armed = false;
+    FlightModeManager m_flightModeManager;
 
-    bool m_estimatorInitialized = false;
-    float m_estimatedRollDeg = 0.0f;
-    float m_estimatedPitchDeg = 0.0f;
+    RateController m_rateController;
+    Mixer m_mixer;
 
-    float m_lastGoodGyroRollDegSec = 0.0f;
+#if NOT_USE_HIL
+    PwmMotorOutput m_pwmMotorOutput;
+#else
+    HilMotorOutput m_hilMotorOutput;
+#endif
 
-    float m_filteredGyroRollDegPerSec = 0.0f;
-    float m_filteredGyroPitchDegPerSec = 0.0f;
-    float m_filteredGyroYawDegPerSec = 0.0f;
-    bool m_gyroFilterInitialized = false;
+    MotorCommand m_lastMotorCommand{};
 
-    uint32_t m_imuSequence = 0;
-    uint32_t m_lastProcessedImuSequence = 0;
-    uint64_t m_lastImuTimeUsec = 0;
+#if NOT_USE_HIL
+    uint8_t* m_receiveBufferRcCommand;
+    const uint16_t m_receiveBufferSizeRcCommand = 512;
+#endif
 
-    const int16_t m_idleArmedThrottle = 80;
-    const int16_t m_idleThrottleThreshold = 50;
-
-    Vector3 m_gyroBias = {};
-    bool m_gyroBiasReady = false;
-
-    ControlDebug m_lastControlDebug{};
-
-    uint64_t m_previousImuTimeUsec = 0;
-    uint32_t m_controlSequence = 0;
-    uint32_t m_logSequence = 0;
-    uint32_t m_previousHalLogMs = 0;
-
-    float m_levelRollOffsetDeg = 0.0f;
-    float m_levelPitchOffsetDeg = 0.0f;
-    bool m_levelOffsetReady = false;
-
-    bool m_isRollAutoTuneActive = false;
-    bool m_isRollAutoTuneComplete = false;
-
-    PidAutoTune m_rollAutoTune {
-        PidAutoTune::Config {
-            .relayAmplitude = 8.0f,
-            .hysteresis = 0.01f,
-            .minOscillationAmplitude = 0.03f,
-            .maxSafeRate = 3.5f,
-            .periodsToCollect = 6,
-            .timeoutSec = 10.0f,
-            .maxKp = 1.0f,
-            .maxKi = 5.0f,
-            .maxKd = 0.1f
-        }
-    };
-
-
+    UART_HandleTypeDef& m_serialUart;
     //DEBUG
-    Logger* m_logger = nullptr;
+    Logger m_logger;
 };

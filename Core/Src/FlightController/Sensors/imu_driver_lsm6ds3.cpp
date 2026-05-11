@@ -136,7 +136,7 @@ bool IMU_Lsm6ds3::ReadRaw(ImuRawData& outRawData, uint32_t nowUs)
     return true;
 }
 
-bool IMU_Lsm6ds3::Read(ImuData &outData, uint32_t nowUs)
+bool IMU_Lsm6ds3::Read(ImuSample &outData, uint32_t nowUs)
 {
     ImuRawData outRawData;
     if (!ReadRaw(outRawData, nowUs))

@@ -1,7 +1,7 @@
 //
 // Created by Dmytro Hrachov on 01.05.2026.
 //
-#include "FlightController/mathutils.h"
+#include "../../../Inc/FlightController/Utils/mathutils.h"
 
 #include <cmath>
 
@@ -76,5 +76,18 @@ namespace MathUtils
             return 0;
 
         return input;
+    }
+
+    constexpr float RadToDeg = 57.2957795f;
+    constexpr float DegToRad = 0.01745329252f;
+
+    float ToDegrees(float radians)
+    {
+        return radians * RadToDeg;
+    }
+
+    float ToRadians(float degrees)
+    {
+        return degrees * DegToRad;
     }
 }

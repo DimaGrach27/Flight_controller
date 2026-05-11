@@ -22,7 +22,7 @@ struct ImuRawData
     bool valid = false;
 };
 
-struct ImuData
+struct ImuSample
 {
     Vector3 accel_mps2 = {};
     Vector3 gyro_rads = {};
@@ -56,6 +56,7 @@ struct RcCommand
 
     bool armSwitch = false;
     bool angleModeSwitch = false;
+    bool acroModeSwitch = false;
     bool failsafe = false;
 
     uint32_t timestampUs = 0;

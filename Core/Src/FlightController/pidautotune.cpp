@@ -4,7 +4,7 @@
 
 #include "FlightController/pidautotune.h"
 
-#include "FlightController/mathutils.h"
+#include "../../Inc/FlightController/Utils/mathutils.h"
 
 #include <cmath>
 

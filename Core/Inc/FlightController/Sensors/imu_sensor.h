@@ -15,19 +15,19 @@ public:
 
     bool Update(uint32_t nowUs);
 
-    const ImuData& GetData() const;
+    const ImuSample& GetData() const;
 
     void SetGyroOffset(float x_rads, float y_rads, float z_rads);
     void SetAccelOffset(float x_mps2, float y_mps2, float z_mps2);
 
 private:
-    ImuData ApplyCalibration(const ImuData& sample) const;
-    bool ValidateSample(const ImuData& sample) const;
+    ImuSample ApplyCalibration(const ImuSample& sample) const;
+    bool ValidateSample(const ImuSample& sample) const;
 
 private:
     Imu_Driver& m_driver;
 
-    ImuData m_data{};
+    ImuSample m_data{};
 
     float m_accelOffsetX_mps2 = 0.0f;
     float m_accelOffsetY_mps2 = 0.0f;

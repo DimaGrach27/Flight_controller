@@ -24,7 +24,7 @@ bool IMU_Driver_Hil::Init()
     return true;
 }
 
-void IMU_Driver_Hil::SetHilData(const ImuData& data)
+void IMU_Driver_Hil::SetHilData(const ImuSample& data)
 {
     m_latestData = data;
     m_hasData = data.valid;
@@ -69,7 +69,7 @@ bool IMU_Driver_Hil::ReadRaw(ImuRawData& outRawData, uint32_t nowUs)
     return true;
 }
 
-bool IMU_Driver_Hil::Read(ImuData &outData, uint32_t nowUs)
+bool IMU_Driver_Hil::Read(ImuSample &outData, uint32_t nowUs)
 {
     if (!m_initialized || !m_hasData)
     {

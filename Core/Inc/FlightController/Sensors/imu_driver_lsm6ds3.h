@@ -18,7 +18,7 @@ public:
     bool Init();
 
     bool ReadRaw(ImuRawData& outRawData, uint32_t nowUs);
-    bool Read(ImuData& outData, uint32_t nowUs);
+    bool Read(ImuSample& outData, uint32_t nowUs);
 
 private:
     bool CheckDeviceId();

@@ -30,7 +30,7 @@ void SensorsManager::UpdateImu(uint32_t nowUs)
     m_imuSensor.Update(nowUs);
 }
 
-const ImuData& SensorsManager::GetData() const
+const ImuSample& SensorsManager::GetImuData() const
 {
     return m_imuSensor.GetData();
 }

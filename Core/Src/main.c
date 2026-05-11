@@ -43,6 +43,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi2;
+DMA_HandleTypeDef hdma_spi2_rx;
 
 TIM_HandleTypeDef htim3;
 
@@ -53,9 +54,9 @@ DMA_HandleTypeDef hdma_usart2_rx;
 
 /* USER CODE BEGIN PV */
 uint8_t m_uartVirtualRxDmaBuffer[256];
-uint8_t m_uartRCRxDmaBuffer[256];
+// uint8_t m_uartRCRxDmaBuffer[256];
 uint16_t m_lastVirtualRxDmaPos = 0;
-uint16_t m_lastRCRxDmaPos = 0;
+// uint16_t m_lastRCRxDmaPos = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -68,17 +69,17 @@ static void MX_TIM3_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
 void ProcessVirtualUartRxDma(void);
-void ProcessRCUartRxDma(void);
+// void ProcessRCUartRxDma(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t size)
 {
-    if (huart->Instance == USART1)
-    {
-        HAL_UARTEx_ReceiveToIdle_DMA(&huart1, m_uartRCRxDmaBuffer, sizeof(m_uartRCRxDmaBuffer));
-    }
+    // if (huart->Instance == USART1)
+    // {
+    //     HAL_UARTEx_ReceiveToIdle_DMA(&huart1, m_uartRCRxDmaBuffer, sizeof(m_uartRCRxDmaBuffer));
+    // }
 
     if (huart->Instance == USART2)
     {
@@ -127,37 +128,37 @@ void ProcessVirtualUartRxDma()
     m_lastVirtualRxDmaPos = currentPos;
 }
 
-void ProcessRCUartRxDma()
-{
-    const uint16_t currentPos = sizeof(m_uartRCRxDmaBuffer) - __HAL_DMA_GET_COUNTER(huart1.hdmarx);
-
-    if (currentPos == m_lastRCRxDmaPos)
-    {
-        return;
-    }
-
-    if (currentPos > m_lastRCRxDmaPos)
-    {
-        for (uint16_t i = m_lastRCRxDmaPos; i < currentPos; ++i)
-        {
-            flight_controller_ParseRcCommandByte(m_uartRCRxDmaBuffer[i]);
-        }
-    }
-    else
-    {
-        for (uint16_t i = m_lastRCRxDmaPos; i < sizeof(m_uartRCRxDmaBuffer); ++i)
-        {
-            flight_controller_ParseRcCommandByte(m_uartRCRxDmaBuffer[i]);
-        }
-
-        for (uint16_t i = 0; i < currentPos; ++i)
-        {
-            flight_controller_ParseRcCommandByte(m_uartRCRxDmaBuffer[i]);
-        }
-    }
-
-    m_lastRCRxDmaPos = currentPos;
-}
+// void ProcessRCUartRxDma()
+// {
+//     const uint16_t currentPos = sizeof(m_uartRCRxDmaBuffer) - __HAL_DMA_GET_COUNTER(huart1.hdmarx);
+//
+//     if (currentPos == m_lastRCRxDmaPos)
+//     {
+//         return;
+//     }
+//
+//     if (currentPos > m_lastRCRxDmaPos)
+//     {
+//         for (uint16_t i = m_lastRCRxDmaPos; i < currentPos; ++i)
+//         {
+//             flight_controller_ParseRcCommandByte(m_uartRCRxDmaBuffer[i]);
+//         }
+//     }
+//     else
+//     {
+//         for (uint16_t i = m_lastRCRxDmaPos; i < sizeof(m_uartRCRxDmaBuffer); ++i)
+//         {
+//             flight_controller_ParseRcCommandByte(m_uartRCRxDmaBuffer[i]);
+//         }
+//
+//         for (uint16_t i = 0; i < currentPos; ++i)
+//         {
+//             flight_controller_ParseRcCommandByte(m_uartRCRxDmaBuffer[i]);
+//         }
+//     }
+//
+//     m_lastRCRxDmaPos = currentPos;
+// }
 
 typedef enum
 {
@@ -278,14 +279,15 @@ int main(void)
   MX_TIM3_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-  flight_controller_Init(&huart1, &huart2, &hspi2);
+  flight_controller_Create(&huart1, &huart2, &hspi2, &htim3);
+  flight_controller_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   uint32_t lastHeartbeatMs = 0;
 
-  HAL_UARTEx_ReceiveToIdle_DMA(&huart1, m_uartRCRxDmaBuffer, sizeof(m_uartRCRxDmaBuffer));
+  // HAL_UARTEx_ReceiveToIdle_DMA(&huart1, m_uartRCRxDmaBuffer, sizeof(m_uartRCRxDmaBuffer));
   HAL_UARTEx_ReceiveToIdle_DMA(&huart2, m_uartVirtualRxDmaBuffer, sizeof(m_uartVirtualRxDmaBuffer));
 
   while (1)
@@ -296,7 +298,7 @@ int main(void)
     ProcessPwmSequence_Test();
 
     ProcessVirtualUartRxDma();
-    ProcessRCUartRxDma();
+    // ProcessRCUartRxDma();
 
     uint32_t now = HAL_GetTick();
     if (now - lastHeartbeatMs >= 1000)
@@ -436,6 +438,19 @@ static void MX_TIM3_Init(void)
   {
     Error_Handler();
   }
+  sConfigOC.Pulse = 0;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN TIM3_Init 2 */
 
   /* USER CODE END TIM3_Init 2 */
@@ -520,6 +535,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
   /* DMA1_Stream5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);

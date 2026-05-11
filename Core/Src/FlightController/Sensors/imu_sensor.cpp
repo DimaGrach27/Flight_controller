@@ -43,7 +43,7 @@ bool Imu_Sensor::Update(uint32_t nowUs)
         return false;
     }
 
-    ImuData sample{};
+    ImuSample sample{};
 
     if (!m_driver.Read(sample, nowUs))
     {
@@ -63,7 +63,7 @@ bool Imu_Sensor::Update(uint32_t nowUs)
     return true;
 }
 
-const ImuData & Imu_Sensor::GetData() const
+const ImuSample & Imu_Sensor::GetData() const
 {
     return m_data;
 }
@@ -82,9 +82,9 @@ void Imu_Sensor::SetAccelOffset(float x_mps2, float y_mps2, float z_mps2)
     m_accelOffsetZ_mps2 = z_mps2;
 }
 
-ImuData Imu_Sensor::ApplyCalibration(const ImuData &sample) const
+ImuSample Imu_Sensor::ApplyCalibration(const ImuSample &sample) const
 {
-    ImuData calibrated = sample;
+    ImuSample calibrated = sample;
 
     calibrated.accel_mps2.x -= m_accelOffsetX_mps2;
     calibrated.accel_mps2.y -= m_accelOffsetY_mps2;
@@ -99,7 +99,7 @@ ImuData Imu_Sensor::ApplyCalibration(const ImuData &sample) const
     return calibrated;
 }
 
-bool Imu_Sensor::ValidateSample(const ImuData& sample) const
+bool Imu_Sensor::ValidateSample(const ImuSample& sample) const
 {
     if (!sample.valid)
     {

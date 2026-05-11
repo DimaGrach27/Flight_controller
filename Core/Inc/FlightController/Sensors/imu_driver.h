@@ -3,9 +3,10 @@
 //
 #pragma once
 
-#define USE_REAL_IMU 1
+#include "FlightController/globaldef.h"
+#include "imu_driver_hil.h"
 
-#if USE_REAL_IMU
+#if NOT_USE_HIL
 #include "FlightController/Sensors/imu_driver_lsm6ds3.h"
 #else
 #include "FlightController/Sensors/imu_driver_hil.h"
@@ -14,19 +15,24 @@
 class Imu_Driver
 {
 public:
-    Imu_Driver(ISpiBus& iSpiBus);
+#if NOT_USE_HIL
+    Imu_Driver(IMU_Lsm6ds3& imu_lsm6_ds3);
+#else
+    Imu_Driver(IMU_Driver_Hil& imu_driver_hil);
+#endif
+
     ~Imu_Driver();
 
     bool Init();
 
     bool ReadRaw(ImuRawData& outRawData, uint32_t nowUs);
-    bool Read(ImuData& outData, uint32_t nowUs);
+    bool Read(ImuSample& outData, uint32_t nowUs);
 
 private:
 
-#if USE_REAL_IMU
-    IMU_Lsm6ds3* m_driverReal = nullptr; //real driver
+#if NOT_USE_HIL
+    IMU_Lsm6ds3& m_driverReal; //real driver
 #else
-    IMU_Driver_Hil* m_driverHil = nullptr; //HIL driver
+    IMU_Driver_Hil& m_driverHil; //HIL driver
 #endif
 };

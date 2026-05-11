@@ -11,12 +11,12 @@ public:
 
     bool Init();
     bool ReadRaw(ImuRawData& outRawData, uint32_t nowUs);
-    bool Read(ImuData& outData, uint32_t nowUs);
+    bool Read(ImuSample& outData, uint32_t nowUs);
 
-    void SetHilData(const ImuData& data);
+    void SetHilData(const ImuSample& data);
 
 private:
-    ImuData m_latestData{};
+    ImuSample m_latestData{};
 
     bool m_hasData = false;
     bool m_initialized = false;

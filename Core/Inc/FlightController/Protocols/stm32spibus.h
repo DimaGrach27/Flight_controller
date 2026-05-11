@@ -4,9 +4,9 @@
 #pragma once
 
 #include "ispibus.h"
-#include "stm32f4xx_hal_spi.h"
+#include "main.h"
 
-class Stm32SpiBus : public ISpiBus
+class Stm32SpiBus final : public ISpiBus
 {
 public:
     Stm32SpiBus(

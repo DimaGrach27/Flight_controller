@@ -15,4 +15,7 @@ namespace MathUtils
     float ApplyDeadband(const float input, const float deadband);
     int16_t ApplyDeadband(const int16_t input, const int16_t deadband);
     uint16_t ApplyDeadband(const uint16_t input, const uint16_t deadband);
+
+    float ToDegrees(float radians);
+    float ToRadians(float degrees);
 }
