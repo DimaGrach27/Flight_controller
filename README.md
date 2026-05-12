@@ -23,5 +23,7 @@ Milestone 4:
           .previousError = 0.0f,
           .integratorLimit = 50.0f
       };
-пофіксити дріфт на акро
-додати yaw
+
+Milestone 5:
+- Architecture changing. Separate moduls for Sensors, Estimation, RC Command, Rate control, Mixer, MotorOutput
+- Dynamic using in HIL and real drone, by changing one Definition <code>NOT_USE_HIL 0/1</code>
