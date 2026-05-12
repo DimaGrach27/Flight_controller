@@ -321,7 +321,7 @@ void FlightController::HandleRcCommand(const mavlink_message_t* msg)
     RcRawFrame frame{};
 
     float roll = manual.y / 1000.0f;
-    float pitch = manual.x / 1000.0f;
+    float pitch = -manual.x / 1000.0f;
     float throttle = manual.z / 1000.0f;
     float yaw = -manual.r / 1000.0f;
 
