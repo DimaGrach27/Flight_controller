@@ -65,50 +65,57 @@ void CsvLogger::Log(std::unordered_map<std::string, float> map_log)
     if (!m_file.is_open())
         return;
 
-    m_file
-        << map_log.at("truth_x") << ','
-        << map_log.at("truth_y") << ','
-        << map_log.at("truth_z") << ','
-        << map_log.at("truth_vx") << ','
-        << map_log.at("truth_vy") << ','
-        << map_log.at("truth_vz") << ','
-        << map_log.at("f_mode") << ','
-        << map_log.at("armed") << ','
-        << map_log.at("time_ms") << ','
-        << map_log.at("imu_seq") << ','
-        << map_log.at("cont_seq") << ','
-        << map_log.at("log_seq") << ','
-        << map_log.at("dt") << ','
-        << map_log.at("imu_dt") << ','
-        << map_log.at("hal_dt") << ','
-        << map_log.at("rc_thr") << ','
-        << map_log.at("rc_roll") << ','
-        << map_log.at("rc_pitch") << ','
-        << map_log.at("rc_yaw") << ','
-        << map_log.at("t_roll") << ','
-        << map_log.at("t_pitch") << ','
-        << map_log.at("t_yaw") << ','
-        << map_log.at("g_roll") << ','
-        << map_log.at("g_pitch") << ','
-        << map_log.at("g_yaw") << ','
-        << map_log.at("a_roll") << ','
-        << map_log.at("a_pitch") << ','
-        << map_log.at("cor_roll") << ','
-        << map_log.at("cor_pitch") << ','
-        << map_log.at("err_roll") << ','
-        << map_log.at("err_pitch") << ','
-        << map_log.at("est_roll") << ','
-        << map_log.at("est_pitch") << ','
-        << map_log.at("c_roll") << ','
-        << map_log.at("c_pitch") << ','
-        << map_log.at("c_yaw") << ','
-        << map_log.at("m1") << ','
-        << map_log.at("m2") << ','
-        << map_log.at("m3") << ','
-        << map_log.at("m4")
-        << '\n';
+    try
+    {
+        m_file
+            << map_log.at("truth_x") << ','
+            << map_log.at("truth_y") << ','
+            << map_log.at("truth_z") << ','
+            << map_log.at("truth_vx") << ','
+            << map_log.at("truth_vy") << ','
+            << map_log.at("truth_vz") << ','
+            << map_log.at("f_mode") << ','
+            << map_log.at("armed") << ','
+            << map_log.at("time_ms") << ','
+            << map_log.at("imu_seq") << ','
+            << map_log.at("cont_seq") << ','
+            << map_log.at("log_seq") << ','
+            << map_log.at("dt") << ','
+            << map_log.at("imu_dt") << ','
+            << map_log.at("hal_dt") << ','
+            << map_log.at("rc_thr") << ','
+            << map_log.at("rc_roll") << ','
+            << map_log.at("rc_pitch") << ','
+            << map_log.at("rc_yaw") << ','
+            << map_log.at("t_roll") << ','
+            << map_log.at("t_pitch") << ','
+            << map_log.at("t_yaw") << ','
+            << map_log.at("g_roll") << ','
+            << map_log.at("g_pitch") << ','
+            << map_log.at("g_yaw") << ','
+            << map_log.at("a_roll") << ','
+            << map_log.at("a_pitch") << ','
+            << map_log.at("cor_roll") << ','
+            << map_log.at("cor_pitch") << ','
+            << map_log.at("err_roll") << ','
+            << map_log.at("err_pitch") << ','
+            << map_log.at("est_roll") << ','
+            << map_log.at("est_pitch") << ','
+            << map_log.at("c_roll") << ','
+            << map_log.at("c_pitch") << ','
+            << map_log.at("c_yaw") << ','
+            << map_log.at("m1") << ','
+            << map_log.at("m2") << ','
+            << map_log.at("m3") << ','
+            << map_log.at("m4")
+            << '\n';
 
-    m_file.flush();
+        m_file.flush();
+    }
+    catch (std::exception& e)
+    {
+        printf("CsvLogger::Log: std::exception: %s\n", e.what());
+    }
 }
 
 NAMESPACE_END

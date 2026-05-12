@@ -68,6 +68,7 @@ void FlightController::Init()
     m_scheduler.AddTask(TaskID::Rc, 5000);          //200 Hz
     m_scheduler.AddTask(TaskID::Control, 2000);     //500 Hz
     m_scheduler.AddTask(TaskID::Telemetry, 100000); //10 Hz
+    m_scheduler.AddTask(TaskID::Loging, 10000); //100 Hz
 
     if (!m_sensorsManager.Init())
     {
@@ -143,6 +144,46 @@ void FlightController::Update()
     {
 
     }
+
+    if (m_scheduler.ConsumeTask(TaskID::Loging))
+    {
+        const ImuSample& m_imu_sample = m_sensorsManager.GetImuData();
+        const RcCommand& rcCommand = m_rcInput.GetCommand();
+        const VehicleState& state = m_stateEstimator.GetState();
+        const FlightModeState& flightModeState = m_flightModeManager.GetState();
+
+        m_logger.GetLogSample().timeMs = nowUs / 1000.0f;
+
+        m_logger.GetLogSample().flightMode = flightModeState.mode == FlightMode::Acro ? 1.0f : 0.0f;
+        m_logger.GetLogSample().armed = flightModeState.armState == ArmState::Armed ? 1.0f : 0.0f;
+
+        m_logger.GetLogSample().gyroRollDegSec = m_imu_sample.gyro_rads.x;
+        m_logger.GetLogSample().gyroPitchDegSec = m_imu_sample.gyro_rads.y;
+        m_logger.GetLogSample().gyroYawDegSec = m_imu_sample.gyro_rads.z;
+
+        m_logger.GetLogSample().accelRoll = m_imu_sample.accel_mps2.x;
+        m_logger.GetLogSample().accelPitch = m_imu_sample.accel_mps2.y;
+        m_logger.GetLogSample().accelYaw = m_imu_sample.accel_mps2.z;
+
+        m_logger.GetLogSample().rcThrottle = rcCommand.throttle;
+        m_logger.GetLogSample().rcRoll = rcCommand.roll;
+        m_logger.GetLogSample().rcPitch = rcCommand.pitch;
+        m_logger.GetLogSample().rcYaw = rcCommand.yaw;
+
+        m_logger.GetLogSample().estimatedRollDeg = state.rollRad;
+        m_logger.GetLogSample().estimatedPitchDeg = state.pitchRad;
+
+        m_logger.GetLogSample().controlRoll = m_lastControlOutput.roll;
+        m_logger.GetLogSample().controlPitch = m_lastControlOutput.pitch;
+        m_logger.GetLogSample().controlYaw = m_lastControlOutput.yaw;
+
+        m_logger.GetLogSample().motorM1 = m_lastMotorCommand.m1;
+        m_logger.GetLogSample().motorM2 = m_lastMotorCommand.m2;
+        m_logger.GetLogSample().motorM3 = m_lastMotorCommand.m3;
+        m_logger.GetLogSample().motorM4 = m_lastMotorCommand.m4;
+
+        m_logger.SendFlightLogCsv();
+    }
 }
 
 void FlightController::MavlinkParseByte(uint8_t byte)
@@ -215,7 +256,11 @@ void FlightController::RunControlLoop(uint32_t nowUs)
         control = m_rateController.Update(rcCommand, state, nowUs);
     }
 
+    m_lastControlOutput = control;
+
     const MotorCommand motors = m_mixer.Mix(rcCommand.throttle, control);
+
+    m_lastMotorCommand = motors;
 
 #if NOT_USE_HIL
     m_pwmMotorOutput.Write(motors);

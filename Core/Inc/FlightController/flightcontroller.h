@@ -97,6 +97,7 @@ private:
     HilMotorOutput m_hilMotorOutput;
 #endif
 
+    ControlOutput m_lastControlOutput{};
     MotorCommand m_lastMotorCommand{};
 
 #if NOT_USE_HIL

@@ -49,10 +49,10 @@ void HilMotorOutput::SendServoOutput(const MotorCommand &command)
     mavlink_message_t msg;
     uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
 
-    const uint16_t leftPwmFront = (1000 + command.m1 * 1000);
-    const uint16_t rightPwmFront = (1000 + command.m2 * 1000);
-    const uint16_t rightPwmBack = (1000 + command.m3 * 1000);
-    const uint16_t leftPwmBack = (1000 + command.m4 * 1000);
+    const uint16_t rightPwmFront = (1000 + command.m1 * 1000);
+    const uint16_t leftPwmBack = (1000 + command.m2 * 1000);
+    const uint16_t leftPwmFront = (1000 + command.m3 * 1000);
+    const uint16_t rightPwmBack = (1000 + command.m4 * 1000);
 
     mavlink_msg_servo_output_raw_pack(
         1,

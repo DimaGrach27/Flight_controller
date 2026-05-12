@@ -28,9 +28,9 @@ void RateController::Init()
         Для реального дрона ці значення треба тюнити.
         Для симулятора вони теж можуть бути іншими.
     */
-    m_rollPid.Init(0.08f, 0.00f, 0.002f);
-    m_pitchPid.Init(0.08f, 0.00f, 0.002f);
-    m_yawPid.Init(0.04f, 0.00f, 0.000f);
+    m_rollPid.Init(0.01f, 0.00f, 0.00f);
+    m_pitchPid.Init(0.01f, 0.00f, 0.00f);
+    m_yawPid.Init(0.00f, 0.00f, 0.000f);
 
     m_rollPid.SetOutputLimit(-0.4f, 0.4f);
     m_pitchPid.SetOutputLimit(-0.4f, 0.4f);
@@ -94,6 +94,10 @@ ControlOutput RateController::Update(
         state.yawRateRadS,
         dt
     );
+
+    // output.roll = 0.0f;
+    // output.pitch = 0.0f;
+    // output.yaw = 0.0f;
 
     return output;
 }

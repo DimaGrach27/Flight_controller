@@ -12,6 +12,7 @@ enum class TaskID : uint8_t
     Barometer = 3,
     Control = 4,
     Telemetry = 5,
+    Loging = 6,
 
     COUNT,
     INVALID = UINT8_MAX
