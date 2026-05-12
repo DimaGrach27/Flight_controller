@@ -13,6 +13,11 @@ Mixer::Mixer()
 
 void Mixer::Init()
 {
+    m_controlDirectionConfig = {
+        .rollSign = -1,
+        .pitchSign = 1,
+        .yawSign = 1,
+    };
 }
 
 MotorCommand Mixer::Mix(float throttle, const ControlOutput& control) const
@@ -52,10 +57,14 @@ MotorCommand Mixer::Mix(float throttle, const ControlOutput& control) const
         return motors;
     }
 
-    motors.m1 = throttle - control.roll + control.pitch + control.yaw; // front right
-    motors.m2 = throttle + control.roll + control.pitch - control.yaw; // rear left
-    motors.m3 = throttle + control.roll - control.pitch + control.yaw; // front left
-    motors.m4 = throttle - control.roll - control.pitch - control.yaw; // rear right
+    float roll = control.roll * m_controlDirectionConfig.rollSign;
+    float pitch = control.pitch * m_controlDirectionConfig.pitchSign;
+    float yaw = control.roll * m_controlDirectionConfig.yawSign;
+
+    motors.m1 = throttle - roll + pitch + yaw; // front right
+    motors.m2 = throttle + roll - pitch + yaw; // rear left
+    motors.m3 = throttle + roll + pitch - yaw; // front left
+    motors.m4 = throttle - roll - pitch - yaw; // rear right
 
     Desaturate(motors);
 

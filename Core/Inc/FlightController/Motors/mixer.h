@@ -3,6 +3,7 @@
 //
 #pragma once
 
+#include "controldirectionconfig.h"
 #include "FlightController/structs.h"
 #include "FlightController/Motors/motorcommand.h"
 
@@ -19,4 +20,6 @@ public:
 private:
     float m_minThrottle = 0.05f;
     float m_idleThrottle = 0.06f;
+
+    ControlDirectionConfig m_controlDirectionConfig{};
 };

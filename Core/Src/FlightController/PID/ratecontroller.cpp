@@ -95,6 +95,9 @@ ControlOutput RateController::Update(
         dt
     );
 
+    // output.roll = -output.roll;
+    // output.pitch = -output.pitch;
+    // output.yaw = -output.yaw;
     // output.roll = 0.0f;
     // output.pitch = 0.0f;
     // output.yaw = 0.0f;
