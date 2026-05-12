@@ -28,7 +28,7 @@
 #include "Motors/pwmmotoroutput.h"
 #include "RcInput/crsfrcreceiver.h"
 #else
-#include "Sensors/imu_driver_hil.h"
+#include "Sensors/IMU/imu_driver_hil.h"
 #include "Motors/hilmotoroutput.h"
 #include "RcInput/hilrcreceiver.h"
 #endif

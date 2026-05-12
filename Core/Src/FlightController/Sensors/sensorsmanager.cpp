@@ -34,3 +34,18 @@ const ImuSample& SensorsManager::GetImuData() const
 {
     return m_imuSensor.GetData();
 }
+
+bool SensorsManager::IsImuReady() const
+{
+    return m_imuSensor.IsGyroCalibrated();
+}
+
+void SensorsManager::StartGyroCalibration(uint16_t sampleCount)
+{
+    m_imuSensor.StartGyroCalibration(sampleCount);
+}
+
+void SensorsManager::StartLevelAccelCalibration(uint16_t sampleCount, float expectedAccelZ_mps2)
+{
+    m_imuSensor.StartLevelAccelCalibration(sampleCount, expectedAccelZ_mps2);
+}

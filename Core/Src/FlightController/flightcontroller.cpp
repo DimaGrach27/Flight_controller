@@ -7,7 +7,7 @@
 #include <algorithm>
 
 #include "main.h"
-#include "FlightController/LowPassFilter.h"
+#include "../../Inc/FlightController/Utils/lowpassfilter.h"
 #include "FlightController/Utils/mathutils.h"
 #include "FlightController/PID.h"
 #include "FlightController/RcInput/rcchannelutils.h"
@@ -226,6 +226,17 @@ void FlightController::RunControlLoop(uint32_t nowUs)
 #else
         m_hilMotorOutput.StopAll();
 #endif
+        return;
+    }
+
+    if (!m_sensorsManager.IsImuReady())
+    {
+#if NOT_USE_HIL
+        m_pwmMotorOutput.StopAll();
+#else
+        m_hilMotorOutput.StopAll();
+#endif
+        m_rateController.Reset();
         return;
     }
 

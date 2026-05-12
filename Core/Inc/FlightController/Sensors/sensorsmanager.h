@@ -4,7 +4,7 @@
 #pragma once
 #include <cstdint>
 
-#include "FlightController/Sensors/imu_sensor.h"
+#include "IMU/imu_sensor.h"
 #include "FlightController/datastructs.h"
 
 class SensorsManager
@@ -17,6 +17,11 @@ public:
     void UpdateImu(uint32_t nowUs);
 
     const ImuSample& GetImuData() const;
+
+    bool IsImuReady() const;
+
+    void StartGyroCalibration(uint16_t sampleCount);
+    void StartLevelAccelCalibration(uint16_t sampleCount, float expectedAccelZ_mps2);
 
 private:
     Imu_Sensor& m_imuSensor;

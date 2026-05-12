@@ -9,7 +9,7 @@
 #if NOT_USE_HIL
 #include "FlightController/Sensors/imu_driver_lsm6ds3.h"
 #else
-#include "FlightController/Sensors/imu_driver_hil.h"
+#include "imu_driver_hil.h"
 #endif
 
 class Imu_Driver

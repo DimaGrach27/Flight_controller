@@ -2,7 +2,7 @@
 // Created by Dmytro Hrachov on 10.05.2026.
 //
 
-#include "FlightController/Sensors/imu_driver_lsm6ds3.h"
+#include "../../../../Inc/FlightController/Sensors/IMU/imu_driver_lsm6ds3.h"
 
 #include <cstdint>
 
