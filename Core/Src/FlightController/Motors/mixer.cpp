@@ -61,6 +61,13 @@ MotorCommand Mixer::Mix(float throttle, const ControlOutput& control) const
     float pitch = control.pitch * m_controlDirectionConfig.pitchSign;
     float yaw = control.roll * m_controlDirectionConfig.yawSign;
 
+    constexpr float ROLL_PITCH_DEADBAND = 0.015f;
+    constexpr float YAW_DEADBAND = 0.005f;
+
+    roll = MathUtils::ApplyDeadband(roll, ROLL_PITCH_DEADBAND);
+    pitch = MathUtils::ApplyDeadband(pitch, ROLL_PITCH_DEADBAND);
+    yaw = MathUtils::ApplyDeadband(yaw, YAW_DEADBAND);
+
     motors.m1 = throttle - roll + pitch + yaw; // front right
     motors.m2 = throttle + roll - pitch + yaw; // rear left
     motors.m3 = throttle + roll + pitch - yaw; // front left
