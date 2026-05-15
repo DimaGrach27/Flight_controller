@@ -4,7 +4,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUILD_DIR="$PROJECT_DIR/build/debug"
-WORLD_FILE="$PROJECT_DIR/worlds/quadcopter_hil.sdf"
+WORLD_FILE="$PROJECT_DIR/worlds/baylands.sdf"
+#WORLD_FILE="$PROJECT_DIR/worlds/quadcopter_hil.sdf"
 
 PLUGIN_DIR="$BUILD_DIR/plugins"
 MODELS_DIR="$PROJECT_DIR/models"

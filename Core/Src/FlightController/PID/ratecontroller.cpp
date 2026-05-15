@@ -30,17 +30,17 @@ void RateController::Init()
         Для реального дрона ці значення треба тюнити.
         Для симулятора вони теж можуть бути іншими.
     */
-    m_rollPid.Init(0.08f, 0.00f, 0.00f);
-    m_pitchPid.Init(0.08f, 0.00f, 0.00f);
-    m_yawPid.Init(0.02f, 0.00f, 0.000f);
+    m_rollPid.Init(0.08f, 0.00f, 0.002f);
+    m_pitchPid.Init(0.08f, 0.00f, 0.002f);
+    m_yawPid.Init(0.04f, 0.00f, 0.002f);
 
     m_rollPid.SetOutputLimit(-0.4f, 0.4f);
     m_pitchPid.SetOutputLimit(-0.4f, 0.4f);
-    m_yawPid.SetOutputLimit(-0.15f, 0.15f);
+    m_yawPid.SetOutputLimit(-0.2f, 0.2f);
 
     m_rollPid.SetIntegralLimit(-0.2f, 0.2f);
     m_pitchPid.SetIntegralLimit(-0.2f, 0.2f);
-    m_yawPid.SetIntegralLimit(-0.05f, 0.05f);
+    m_yawPid.SetIntegralLimit(-0.1f, 0.1f);
 
     m_maxRollRate_rads = MaxRollRate_dps * DegToRad;
     m_maxPitchRate_rads = MaxPitchRate_dps * DegToRad;
