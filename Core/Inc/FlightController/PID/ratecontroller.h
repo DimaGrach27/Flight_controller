@@ -24,6 +24,8 @@ public:
 
     void Reset();
 
+    const RateData& GetRateData();
+
 private:
     float ComputeDtSeconds(uint32_t nowUs);
 
@@ -38,4 +40,6 @@ private:
     float m_maxRollRate_rads = 0.0f;
     float m_maxPitchRate_rads = 0.0f;
     float m_maxYawRate_rads = 0.0f;
+
+    RateData m_rateData;
 };

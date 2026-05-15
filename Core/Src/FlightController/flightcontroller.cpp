@@ -151,6 +151,7 @@ void FlightController::Update()
         const RcCommand& rcCommand = m_rcInput.GetCommand();
         const VehicleState& state = m_stateEstimator.GetState();
         const FlightModeState& flightModeState = m_flightModeManager.GetState();
+        const RateData& rateData = m_rateController.GetRateData();
 
         m_logger.GetLogSample().timeMs = nowUs / 1000.0f;
         m_logger.GetLogSample().imuDt = state.imuDt;
@@ -165,6 +166,10 @@ void FlightController::Update()
         m_logger.GetLogSample().accelRoll = m_imu_sample.accel_mps2.x;
         m_logger.GetLogSample().accelPitch = m_imu_sample.accel_mps2.y;
         m_logger.GetLogSample().accelYaw = m_imu_sample.accel_mps2.z;
+
+        m_logger.GetLogSample().targetRollRateDegSec = rateData.targetRollRad;
+        m_logger.GetLogSample().targetPitchRateDegSec = rateData.targetPitchRad;
+        m_logger.GetLogSample().targetYawRateDegSec = rateData.targetYawRad;
 
         m_logger.GetLogSample().rcThrottle = rcCommand.throttle;
         m_logger.GetLogSample().rcRoll = rcCommand.roll;

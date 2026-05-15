@@ -4,6 +4,8 @@
 
 #include "FlightController/PID/ratecontroller.h"
 
+#include "FlightController/Utils/mathutils.h"
+
 namespace
 {
     constexpr float DegToRad = 0.01745329252f;
@@ -95,12 +97,23 @@ ControlOutput RateController::Update(
         dt
     );
 
+    constexpr float ROLL_PITCH_DEADBAND = 0.015f;
+    constexpr float YAW_DEADBAND = 0.005f;
+
+    output.roll = MathUtils::ApplyDeadband(output.roll, ROLL_PITCH_DEADBAND);
+    output.pitch = MathUtils::ApplyDeadband(output.pitch, ROLL_PITCH_DEADBAND);
+    output.yaw = MathUtils::ApplyDeadband(output.yaw, YAW_DEADBAND);
+
     // output.roll = -output.roll;
     // output.pitch = -output.pitch;
     // output.yaw = -output.yaw;
     output.roll = 0.0f;
     output.pitch = 0.0f;
     // output.yaw = 0.0f;
+
+    m_rateData.targetRollRad = targetRollRate_rads;
+    m_rateData.targetPitchRad = targetPitchRate_rads;
+    m_rateData.targetYawRad = targetYawRate_rads;
 
     return output;
 }
@@ -113,6 +126,11 @@ void RateController::Reset()
 
     m_lastUpdateUs = 0;
     m_hasLastUpdate = false;
+}
+
+const RateData & RateController::GetRateData()
+{
+    return m_rateData;
 }
 
 float RateController::ComputeDtSeconds(uint32_t nowUs)

@@ -103,7 +103,7 @@ RcCommand RcInput::ConvertFrameToCommand(const RcRawFrame& frame) const
     */
     command.pitch = -NormalizeCenteredChannel(frame.channels[m_pitchChannel]);
     command.throttle = NormalizeThrottleChannel(frame.channels[m_throttleChannel]);
-    command.yaw = -NormalizeCenteredChannel(frame.channels[m_yawChannel]);
+    command.yaw = NormalizeCenteredChannel(frame.channels[m_yawChannel]);
 
     command.roll = MathUtils::ApplyDeadband(command.roll, 0.025f);
     command.pitch = MathUtils::ApplyDeadband(command.pitch, 0.025f);
