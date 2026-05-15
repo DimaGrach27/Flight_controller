@@ -93,17 +93,18 @@ RcCommand RcInput::ConvertFrameToCommand(const RcRawFrame& frame) const
         return command;
     }
 
-    command.roll = NormalizeCenteredChannel(frame.channels[m_rollChannel]);
+    constexpr int rollInputDirectionSign = 1;
+    constexpr int pitchInputDirectionSign = -1;
+    constexpr int yawInputDirectionSign = -1;
 
-    /*
-        Pitch часто треба інвертувати.
-        На пульті stick forward зазвичай має давати pitch forward.
-        У математиці контролера може знадобитись знак '-'.
-        Поки ставлю мінус, бо для дронів це часто зручніше.
-    */
-    command.pitch = -NormalizeCenteredChannel(frame.channels[m_pitchChannel]);
+    command.roll = NormalizeCenteredChannel(frame.channels[m_rollChannel]);
+    command.pitch = NormalizeCenteredChannel(frame.channels[m_pitchChannel]);
     command.throttle = NormalizeThrottleChannel(frame.channels[m_throttleChannel]);
     command.yaw = NormalizeCenteredChannel(frame.channels[m_yawChannel]);
+
+    command.roll *= rollInputDirectionSign;
+    command.pitch *= pitchInputDirectionSign;
+    command.yaw *= yawInputDirectionSign;
 
     command.roll = MathUtils::ApplyDeadband(command.roll, 0.025f);
     command.pitch = MathUtils::ApplyDeadband(command.pitch, 0.025f);

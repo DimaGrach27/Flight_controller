@@ -176,10 +176,10 @@ void ImuHilPlugin::PreUpdate(const gz::sim::UpdateInfo &info, gz::sim::EntityCom
     // );
 
     SendMotorSpeeds(
-        ToMotorSpeed(motorsData.m2),
         ToMotorSpeed(motorsData.m1),
-        ToMotorSpeed(motorsData.m4),
-        ToMotorSpeed(motorsData.m3)
+        ToMotorSpeed(motorsData.m2),
+        ToMotorSpeed(motorsData.m3),
+        ToMotorSpeed(motorsData.m4)
     );
 
     // SendMotorSpeeds(
@@ -403,6 +403,12 @@ void ImuHilPlugin::SendMotorSpeeds(double m0, double m1, double m2, double m3)
 {
     gz::msgs::Actuators msg;
 
+    /*model motor ordering
+     *m0 = front right
+     *m1 = rear left
+     *m2 = front left
+     *m3 = rear right
+    */
     msg.add_velocity(m0);
     msg.add_velocity(m1);
     msg.add_velocity(m2);

@@ -109,7 +109,7 @@ ControlOutput RateController::Update(
     // output.yaw = -output.yaw;
     // output.roll = 0.0f;
     // output.pitch = 0.0f;
-    output.yaw = 0.02f;
+    // output.yaw = 0.02f;
 
     m_rateData.targetRollRad = targetRollRate_rads;
     m_rateData.targetPitchRad = targetPitchRate_rads;

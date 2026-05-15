@@ -14,9 +14,9 @@ Mixer::Mixer()
 void Mixer::Init()
 {
     m_controlDirectionConfig = {
-        .rollSign = -1,
-        .pitchSign = 1,
-        .yawSign = 1,
+        .rollSign = 1,
+        .pitchSign = -1,
+        .yawSign = -1,
     };
 }
 
@@ -65,6 +65,8 @@ MotorCommand Mixer::Mix(float throttle, const ControlOutput& control) const
     motors.m2 = throttle + roll - pitch + yaw; // rear left
     motors.m3 = throttle + roll + pitch - yaw; // front left
     motors.m4 = throttle - roll - pitch - yaw; // rear right
+
+    //яв треба поправити щоб повертався в ту сторону
 
     Desaturate(motors);
 
