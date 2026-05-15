@@ -58,9 +58,30 @@ bool StateEstimator::UpdateImu(const ImuSample& imuSample)
     const float accelRollRad = ComputeAccelRollRad(imuSample);
     const float accelPitchRad = ComputeAccelPitchRad(imuSample);
 
-    const float gyroRollRad = m_state.rollRad + imuSample.gyro_rads.x * dt;
-    const float gyroPitchRad = m_state.pitchRad + imuSample.gyro_rads.y * dt;
-    const float gyroYawRad = m_state.yawRad + imuSample.gyro_rads.z * dt;
+    const float roll = m_state.rollRad;
+    const float pitch = m_state.pitchRad;
+
+    const float p = imuSample.gyro_rads.x;
+    const float q = imuSample.gyro_rads.y;
+    const float r = imuSample.gyro_rads.z;
+
+    const float sinRoll = std::sin(roll);
+    const float cosRoll = std::cos(roll);
+    const float tanPitch = std::tan(pitch);
+    const float cosPitch = std::cos(pitch);
+
+    float rollDot = p + q * sinRoll * tanPitch + r * cosRoll * tanPitch;
+    float pitchDot = q * cosRoll - r * sinRoll;
+    float yawDot = r;
+
+    if (cosPitch > 0.01f || cosPitch < -0.01f)
+    {
+        yawDot = q * sinRoll / cosPitch + r * cosRoll / cosPitch;
+    }
+
+    const float gyroRollRad = m_state.rollRad + rollDot * dt;
+    const float gyroPitchRad = m_state.pitchRad + pitchDot * dt;
+    const float gyroYawRad = m_state.yawRad + yawDot * dt;
 
     m_state.rollRad =
         m_alpha * gyroRollRad +
