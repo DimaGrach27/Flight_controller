@@ -16,7 +16,7 @@ void Mixer::Init()
     m_controlDirectionConfig = {
         .rollSign = -1,
         .pitchSign = 1,
-        .yawSign = 1,
+        .yawSign = -1,
     };
 }
 
