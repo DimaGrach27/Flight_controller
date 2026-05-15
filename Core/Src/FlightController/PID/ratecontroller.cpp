@@ -30,15 +30,15 @@ void RateController::Init()
     */
     m_rollPid.Init(0.08f, 0.00f, 0.00f);
     m_pitchPid.Init(0.08f, 0.00f, 0.00f);
-    m_yawPid.Init(0.004f, 0.00f, 0.000f);
+    m_yawPid.Init(0.02f, 0.00f, 0.000f);
 
     m_rollPid.SetOutputLimit(-0.4f, 0.4f);
     m_pitchPid.SetOutputLimit(-0.4f, 0.4f);
-    m_yawPid.SetOutputLimit(-0.3f, 0.3f);
+    m_yawPid.SetOutputLimit(-0.15f, 0.15f);
 
     m_rollPid.SetIntegralLimit(-0.2f, 0.2f);
     m_pitchPid.SetIntegralLimit(-0.2f, 0.2f);
-    m_yawPid.SetIntegralLimit(-0.1f, 0.1f);
+    m_yawPid.SetIntegralLimit(-0.05f, 0.05f);
 
     m_maxRollRate_rads = MaxRollRate_dps * DegToRad;
     m_maxPitchRate_rads = MaxPitchRate_dps * DegToRad;
@@ -98,8 +98,8 @@ ControlOutput RateController::Update(
     // output.roll = -output.roll;
     // output.pitch = -output.pitch;
     // output.yaw = -output.yaw;
-    // output.roll = 0.0f;
-    // output.pitch = 0.0f;
+    output.roll = 0.0f;
+    output.pitch = 0.0f;
     // output.yaw = 0.0f;
 
     return output;

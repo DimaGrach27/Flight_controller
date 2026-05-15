@@ -153,6 +153,7 @@ void FlightController::Update()
         const FlightModeState& flightModeState = m_flightModeManager.GetState();
 
         m_logger.GetLogSample().timeMs = nowUs / 1000.0f;
+        m_logger.GetLogSample().imuDt = state.imuDt;
 
         m_logger.GetLogSample().flightMode = flightModeState.mode == FlightMode::Acro ? 1.0f : 0.0f;
         m_logger.GetLogSample().armed = flightModeState.armState == ArmState::Armed ? 1.0f : 0.0f;

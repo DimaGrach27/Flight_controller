@@ -76,6 +76,8 @@ struct VehicleState
     float altitudeM = 0.0f;
     float verticalVelocityMS = 0.0f;
 
+    float imuDt = 0.0f;
+
     uint32_t timestampUs = 0;
     bool valid = false;
 };

@@ -59,7 +59,7 @@ MotorCommand Mixer::Mix(float throttle, const ControlOutput& control) const
 
     float roll = control.roll * m_controlDirectionConfig.rollSign;
     float pitch = control.pitch * m_controlDirectionConfig.pitchSign;
-    float yaw = control.roll * m_controlDirectionConfig.yawSign;
+    float yaw = control.yaw * m_controlDirectionConfig.yawSign;
 
     constexpr float ROLL_PITCH_DEADBAND = 0.015f;
     constexpr float YAW_DEADBAND = 0.005f;

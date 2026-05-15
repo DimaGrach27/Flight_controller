@@ -82,6 +82,7 @@ bool StateEstimator::UpdateImu(const ImuSample& imuSample)
     m_state.pitchRateRadS = imuSample.gyro_rads.y;
     m_state.yawRateRadS = imuSample.gyro_rads.z;
 
+    m_state.imuDt = dt;
     m_state.timestampUs = imuSample.timestampUs;
     m_state.valid = true;
 
