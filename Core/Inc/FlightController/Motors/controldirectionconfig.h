@@ -6,5 +6,5 @@ struct ControlDirectionConfig
 {
     int rollSign = -1;
     int pitchSign = 1;
-    int yawSign = 1;
+    int yawSign = -1;
 };
