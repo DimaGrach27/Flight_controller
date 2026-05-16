@@ -4,13 +4,6 @@
 #pragma once
 
 #include <cstdint>
-struct Vector3
-{
-    float x;
-    float y;
-    float z;
-};
-
 struct MotorOutputs
 {
     int16_t m1;
@@ -73,8 +66,16 @@ struct FlightLogSample
     float angleErrorPitch = 0.0f;
     float angleErrorYaw = 0.0f;
 
-    float estimatedRollDeg = 0.0f;
-    float estimatedPitchDeg = 0.0f;
+    float estimatedRollRad = 0.0f;
+    float estimatedPitchRad = 0.0f;
+    float estimatedYawRad = 0.0f;
+
+    float gyroBiasX = 0.0f;
+    float gyroBiasY = 0.0f;
+    float gyroBiasZ = 0.0f;
+
+    float accelMagnitude = 0.0f;
+    float ahrsValid = 0.0f;
 
     float controlRoll = 0.0f;
     float controlPitch = 0.0f;

@@ -4,7 +4,7 @@
 #pragma once
 #include <cstdint>
 
-#include "structs.h"
+#include "Math/Vector3f.h"
 
 struct ImuRawData
 {
@@ -24,8 +24,8 @@ struct ImuRawData
 
 struct ImuSample
 {
-    Vector3 accel_mps2 = {};
-    Vector3 gyro_rads = {};
+    Vector3f accel_mps2 = {};
+    Vector3f gyro_rads = {};
 
     float temperature_C = 0.0f;
 
@@ -69,6 +69,8 @@ struct VehicleState
     float pitchRad = 0.0f;
     float yawRad = 0.0f;
 
+    Vector3f gyroBias = Vector3f(0.0f, 0.0f, 0.0f);
+
     float rollRateRadS = 0.0f;
     float pitchRateRadS = 0.0f;
     float yawRateRadS = 0.0f;
@@ -80,6 +82,7 @@ struct VehicleState
 
     uint32_t timestampUs = 0;
     bool valid = false;
+    bool ahrsValid = false;
 };
 
 struct RateData

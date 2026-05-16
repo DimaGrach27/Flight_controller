@@ -6,12 +6,12 @@
 #include <cstdint>
 
 #include "FlightController/datastructs.h"
-#include "FlightController/structs.h"
+#include "FlightController/Math/vector3f.h"
 
 struct ImuCalibrationData
 {
-    Vector3 gyroBias_rads{};
-    Vector3 accelBias_mps2{};
+    Vector3f gyroBias_rads{};
+    Vector3f accelBias_mps2{};
 
     bool gyroCalibrated = false;
     bool accelCalibrated = false;
@@ -44,8 +44,8 @@ private:
 private:
     ImuCalibrationData m_calibration{};
 
-    Vector3 m_gyroSum{};
-    Vector3 m_accelSum{};
+    Vector3f m_gyroSum{};
+    Vector3f m_accelSum{};
 
     uint16_t m_gyroSampleTarget = 0;
     uint16_t m_accelSampleTarget = 0;

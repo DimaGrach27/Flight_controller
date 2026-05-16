@@ -76,8 +76,14 @@ void Logger::SendFlightLogCsv()
     sendNamed("cor_pitch", m_logSample.correctedPitch);
     sendNamed("err_roll", m_logSample.angleErrorRoll);
     sendNamed("err_pitch", m_logSample.angleErrorPitch);
-    sendNamed("est_roll", m_logSample.estimatedRollDeg);
-    sendNamed("est_pitch", m_logSample.estimatedPitchDeg);
+    sendNamed("est_roll", m_logSample.estimatedRollRad);
+    sendNamed("est_pitch", m_logSample.estimatedPitchRad);
+    sendNamed("est_yaw", m_logSample.estimatedYawRad);
+    sendNamed("gyr_b_x", m_logSample.gyroBiasX);
+    sendNamed("gyr_b_y", m_logSample.gyroBiasY);
+    sendNamed("gyr_b_z", m_logSample.gyroBiasZ);
+    sendNamed("accel_m", m_logSample.accelMagnitude);
+    sendNamed("ahrs_v", m_logSample.ahrsValid);
     sendNamed("c_roll", m_logSample.controlRoll);
     sendNamed("c_pitch", m_logSample.controlPitch);
     sendNamed("c_yaw", m_logSample.controlYaw);

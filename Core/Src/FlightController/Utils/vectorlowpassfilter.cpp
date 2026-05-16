@@ -3,6 +3,8 @@
 //
 #include "FlightController/Utils/vectorlowpassfilter.h"
 
+#include "FlightController/Math/Vector3f.h"
+
 Vector3LowPassFilter::Vector3LowPassFilter()
 {
 }
@@ -14,9 +16,9 @@ void Vector3LowPassFilter::Init(float cutoffHz)
     m_zFilter.Init(cutoffHz);
 }
 
-Vector3 Vector3LowPassFilter::Update(const Vector3& input, float dt)
+Vector3f Vector3LowPassFilter::Update(const Vector3f& input, float dt)
 {
-    Vector3 output{};
+    Vector3f output{};
 
     output.x = m_xFilter.Update(input.x, dt);
     output.y = m_yFilter.Update(input.y, dt);
@@ -25,7 +27,7 @@ Vector3 Vector3LowPassFilter::Update(const Vector3& input, float dt)
     return output;
 }
 
-void Vector3LowPassFilter::Reset(const Vector3& value)
+void Vector3LowPassFilter::Reset(const Vector3f& value)
 {
     m_xFilter.Reset(value.x);
     m_yFilter.Reset(value.y);
