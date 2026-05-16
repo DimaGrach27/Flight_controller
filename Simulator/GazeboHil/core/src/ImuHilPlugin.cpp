@@ -359,9 +359,19 @@ void ImuHilPlugin::OnOdometry(const gz::msgs::Odometry &msg)
     m_latestGroundTruth.vy = msg.twist().linear().y();
     m_latestGroundTruth.vz = msg.twist().linear().z();
 
-    m_latestGroundTruth.roll = msg.pose().orientation().x();
-    m_latestGroundTruth.pitch = msg.pose().orientation().y();
-    m_latestGroundTruth.yaw = msg.pose().orientation().z();
+    const gz::msgs::Quaternion& q = msg.pose().orientation();
+
+    const gz::math::Quaterniond& quat = {
+        q.w(),
+         q.x(),
+         q.y(),
+         q.z()
+    };
+    const gz::math::Vector3d euler = quat.Euler();
+
+    m_latestGroundTruth.roll = euler.X();
+    m_latestGroundTruth.pitch = euler.Y();
+    m_latestGroundTruth.yaw = euler.Z();
 
     m_latestGroundTruth.valid = true;
 }
