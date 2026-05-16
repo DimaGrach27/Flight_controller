@@ -29,6 +29,7 @@ void Ahrs::Reset()
     m_hasTimestamp = false;
     m_lastDt = 0.0f;
     m_valid = false;
+    m_initialized = false;
 }
 
 bool Ahrs::Update(const ImuSample& imuSample)
@@ -152,7 +153,7 @@ Vector3f Ahrs::ComputeGravityErrorBody(const Vector3f& accelBodyNormalized) cons
 
     const Vector3f estimatedGravityBody = m_q.RotateWorldToBody(gravityWorld);
 
-    return Vector3f::Cross(estimatedGravityBody, accelBodyNormalized);
+    return Vector3f::Cross(accelBodyNormalized, estimatedGravityBody);
 }
 
 void Ahrs::IntegrateGyro(const Vector3f& gyroRadS, float dt)

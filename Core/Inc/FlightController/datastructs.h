@@ -4,7 +4,7 @@
 #pragma once
 #include <cstdint>
 
-#include "Math/Vector3f.h"
+#include "FlightController/Math/Vector3f.h"
 
 struct ImuRawData
 {

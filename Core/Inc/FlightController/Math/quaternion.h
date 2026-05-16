@@ -93,7 +93,7 @@ public:
         const float sinp = 2.0f * (w * y - z * x);
         if (std::fabs(sinp) >= 1.0f)
         {
-            euler.pitchRad = std::copysign(M_1_PI / 2.0f, sinp);
+            euler.pitchRad = std::copysign(M_PI / 2.0f, sinp);
         }
         else
         {

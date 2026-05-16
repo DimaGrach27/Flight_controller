@@ -54,4 +54,5 @@ private:
 
     float m_lastDt = 0.0f;
     bool m_valid = false;
+    bool m_initialized = false;
 };
