@@ -41,6 +41,7 @@ public:
                                                  "g_roll,"
                                                  "g_pitch,"
                                                  "g_yaw,"
+                                                 "g_mag,"
                                                  "a_roll,"
                                                  "a_pitch,"
                                                  "cor_roll,"

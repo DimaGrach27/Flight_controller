@@ -30,9 +30,9 @@ void RateController::Init()
         Для реального дрона ці значення треба тюнити.
         Для симулятора вони теж можуть бути іншими.
     */
-    m_rollPid.Init(0.006f, 0.0005f, 0.00005f);
-    m_pitchPid.Init(0.006f, 0.0005f, 0.00005f);
-    m_yawPid.Init(0.004f, 0.0003f, 0.0f);
+    m_rollPid.Init(0.016f, 0.0f, 0.0f);
+    m_pitchPid.Init(0.016f, 0.0f, 0.0f);
+    m_yawPid.Init(0.012f, 0.0f, 0.0f);
 
     m_rollPid.SetOutputLimit(-0.4f, 0.4f);
     m_pitchPid.SetOutputLimit(-0.4f, 0.4f);
@@ -78,12 +78,12 @@ ControlOutput RateController::Update(
     output.pitch = m_pitchPid.Update(targetPitchRate_rads,state.pitchRateRadS, dt);
     output.yaw = m_yawPid.Update(targetYawRate_rads,state.yawRateRadS, dt);
 
-    constexpr float ROLL_PITCH_DEADBAND = 0.005f;
-    constexpr float YAW_DEADBAND = 0.005f;
+    // constexpr float ROLL_PITCH_DEADBAND = 0.005f;
+    // constexpr float YAW_DEADBAND = 0.005f;
 
-    output.roll = MathUtils::ApplyDeadband(output.roll, ROLL_PITCH_DEADBAND);
-    output.pitch = MathUtils::ApplyDeadband(output.pitch, ROLL_PITCH_DEADBAND);
-    output.yaw = MathUtils::ApplyDeadband(output.yaw, YAW_DEADBAND);
+    // output.roll = MathUtils::ApplyDeadband(output.roll, ROLL_PITCH_DEADBAND);
+    // output.pitch = MathUtils::ApplyDeadband(output.pitch, ROLL_PITCH_DEADBAND);
+    // output.yaw = MathUtils::ApplyDeadband(output.yaw, YAW_DEADBAND);
 
     // output.roll = -output.roll;
     // output.pitch = -output.pitch;

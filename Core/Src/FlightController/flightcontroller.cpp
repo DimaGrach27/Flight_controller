@@ -159,17 +159,18 @@ void FlightController::Update()
         m_logger.GetLogSample().flightMode = flightModeState.mode == FlightMode::Acro ? 1.0f : 0.0f;
         m_logger.GetLogSample().armed = flightModeState.armState == ArmState::Armed ? 1.0f : 0.0f;
 
-        m_logger.GetLogSample().gyroRollDegSec = m_imu_sample.gyro_rads.x;
-        m_logger.GetLogSample().gyroPitchDegSec = m_imu_sample.gyro_rads.y;
-        m_logger.GetLogSample().gyroYawDegSec = m_imu_sample.gyro_rads.z;
+        m_logger.GetLogSample().gyroRollRadSec = m_imu_sample.gyro_rads.x;
+        m_logger.GetLogSample().gyroPitchRadSec = m_imu_sample.gyro_rads.y;
+        m_logger.GetLogSample().gyroYawRadSec = m_imu_sample.gyro_rads.z;
+        m_logger.GetLogSample().gyroMagnitude = m_imu_sample.gyro_rads.Length();
 
         m_logger.GetLogSample().accelRoll = m_imu_sample.accel_mps2.x;
         m_logger.GetLogSample().accelPitch = m_imu_sample.accel_mps2.y;
         m_logger.GetLogSample().accelYaw = m_imu_sample.accel_mps2.z;
 
-        m_logger.GetLogSample().targetRollRateDegSec = rateData.targetRollRad;
-        m_logger.GetLogSample().targetPitchRateDegSec = rateData.targetPitchRad;
-        m_logger.GetLogSample().targetYawRateDegSec = rateData.targetYawRad;
+        m_logger.GetLogSample().targetRollRateRadSec = rateData.targetRollRad;
+        m_logger.GetLogSample().targetPitchRateRadSec = rateData.targetPitchRad;
+        m_logger.GetLogSample().targetYawRateRadSec = rateData.targetYawRad;
 
         m_logger.GetLogSample().rcThrottle = rcCommand.throttle;
         m_logger.GetLogSample().rcRoll = rcCommand.roll;

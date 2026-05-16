@@ -46,13 +46,15 @@ struct FlightLogSample
     float rcPitch = 0.0f;
     float rcYaw = 0.0f;
 
-    float targetRollRateDegSec = 0.0f;
-    float targetPitchRateDegSec = 0.0f;
-    float targetYawRateDegSec = 0.0f;
+    float targetRollRateRadSec = 0.0f;
+    float targetPitchRateRadSec = 0.0f;
+    float targetYawRateRadSec = 0.0f;
 
-    float gyroRollDegSec = 0.0f;
-    float gyroPitchDegSec = 0.0f;
-    float gyroYawDegSec = 0.0f;
+    float gyroRollRadSec = 0.0f;
+    float gyroPitchRadSec = 0.0f;
+    float gyroYawRadSec = 0.0f;
+
+    float gyroMagnitude = 0.0f;
 
     float accelRoll = 0.0f;
     float accelPitch = 0.0f;

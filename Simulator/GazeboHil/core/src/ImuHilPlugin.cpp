@@ -286,6 +286,16 @@ void ImuHilPlugin::PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::En
     }
 }
 
+float GetRoundedFloat(float value, int decimalPlaces = 4)
+{
+    float multiplier = std::pow(10.0f, decimalPlaces);
+
+    // Округляем само число
+    float rounded_num = std::round(value * multiplier) / multiplier;
+
+    return rounded_num;
+}
+
 void ImuHilPlugin::HandleNamedValueFloat(const mavlink_named_value_float_t &value)
 {
     std::string name(value.name, strnlen(value.name, sizeof(value.name)));
@@ -303,15 +313,15 @@ void ImuHilPlugin::HandleNamedValueFloat(const mavlink_named_value_float_t &valu
         {
             if (m_latestGroundTruth.valid)
             {
-                m_currentLogFields["truth_x"] = m_latestGroundTruth.x;
-                m_currentLogFields["truth_y"] = m_latestGroundTruth.y;
-                m_currentLogFields["truth_z"] = m_latestGroundTruth.z;
-                m_currentLogFields["truth_vx"] = m_latestGroundTruth.vx;
-                m_currentLogFields["truth_vy"] = m_latestGroundTruth.vy;
-                m_currentLogFields["truth_vz"] = m_latestGroundTruth.vz;
-                m_currentLogFields["truth_roll"] = m_latestGroundTruth.roll;
-                m_currentLogFields["truth_pitch"] = m_latestGroundTruth.pitch;
-                m_currentLogFields["truth_yaw"] = m_latestGroundTruth.yaw;
+                m_currentLogFields["truth_x"] = GetRoundedFloat(m_latestGroundTruth.x);
+                m_currentLogFields["truth_y"] = GetRoundedFloat(m_latestGroundTruth.y);
+                m_currentLogFields["truth_z"] = GetRoundedFloat(m_latestGroundTruth.z);
+                m_currentLogFields["truth_vx"] = GetRoundedFloat(m_latestGroundTruth.vx);
+                m_currentLogFields["truth_vy"] = GetRoundedFloat(m_latestGroundTruth.vy);
+                m_currentLogFields["truth_vz"] = GetRoundedFloat(m_latestGroundTruth.vz);
+                m_currentLogFields["truth_roll"] = GetRoundedFloat(m_latestGroundTruth.roll);
+                m_currentLogFields["truth_pitch"] = GetRoundedFloat(m_latestGroundTruth.pitch);
+                m_currentLogFields["truth_yaw"] = GetRoundedFloat(m_latestGroundTruth.yaw);
             }
 
             m_csvLogger.Log(m_currentLogFields);
@@ -326,7 +336,7 @@ void ImuHilPlugin::HandleNamedValueFloat(const mavlink_named_value_float_t &valu
         return;
     }
 
-    m_currentLogFields[name] = value.value;
+    m_currentLogFields[name] = GetRoundedFloat(value.value);
 }
 
 void ImuHilPlugin::OnImu(const gz::msgs::IMU &msg)

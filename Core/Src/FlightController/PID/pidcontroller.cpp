@@ -38,7 +38,7 @@ float PidController::Update(float target, float measured, float dt)
         derivative = (measured - m_previousError) / dt;
     }
 
-    m_previousError = error;
+    m_previousError = measured;
     m_hasPreviousError = true;
 
     const float output =

@@ -61,6 +61,11 @@ MotorCommand Mixer::Mix(float throttle, const ControlOutput& control) const
     float pitch = control.pitch * m_controlDirectionConfig.pitchSign;
     float yaw = control.yaw * m_controlDirectionConfig.yawSign;
 
+
+    // float r_p_y = roll + pitch + yaw;
+    constexpr float maxTuningThrottle = 0.75f;;
+    throttle = MathUtils::Clamp(throttle, 0.0f, maxTuningThrottle);
+
     motors.m1 = throttle - roll + pitch + yaw; // front right
     motors.m2 = throttle + roll - pitch + yaw; // rear left
     motors.m3 = throttle + roll + pitch - yaw; // front left
