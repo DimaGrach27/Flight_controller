@@ -97,7 +97,7 @@ ControlOutput RateController::Update(
         dt
     );
 
-    constexpr float ROLL_PITCH_DEADBAND = 0.015f;
+    constexpr float ROLL_PITCH_DEADBAND = 0.005f;
     constexpr float YAW_DEADBAND = 0.005f;
 
     output.roll = MathUtils::ApplyDeadband(output.roll, ROLL_PITCH_DEADBAND);
