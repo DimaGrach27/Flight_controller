@@ -24,7 +24,7 @@
 #include "Sensors/sensorsmanager.h"
 
 #if NOT_USE_HIL
-#include "Sensors/imu_driver_lsm6ds3.h"
+#include "Sensors/IMU/imu_driver_lsm6ds3.h"
 #include "Motors/pwmmotoroutput.h"
 #include "RcInput/crsfrcreceiver.h"
 #else

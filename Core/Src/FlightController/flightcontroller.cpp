@@ -164,9 +164,24 @@ void FlightController::Update()
         m_logger.GetLogSample().gyroYawRadSec = m_imu_sample.gyro_rads.z;
         m_logger.GetLogSample().gyroMagnitude = m_imu_sample.gyro_rads.Length();
 
-        m_logger.GetLogSample().accelRoll = m_imu_sample.accel_mps2.x;
-        m_logger.GetLogSample().accelPitch = m_imu_sample.accel_mps2.y;
-        m_logger.GetLogSample().accelYaw = m_imu_sample.accel_mps2.z;
+        m_logger.GetLogSample().accelX = m_imu_sample.accel_mps2.x;
+        m_logger.GetLogSample().accelY = m_imu_sample.accel_mps2.y;
+        m_logger.GetLogSample().accelZ = m_imu_sample.accel_mps2.z;
+
+        const Vector3f& accel = m_imu_sample.accel_mps2;
+
+        const float accelRollRad = std::atan2(
+            accel.y,
+            accel.z
+        );
+
+        const float accelPitchRad = std::atan2(
+            -accel.x,
+            std::sqrt(accel.y * accel.y + accel.z * accel.z)
+        );
+
+        m_logger.GetLogSample().accelRollRad = accelRollRad;
+        m_logger.GetLogSample().accelPitchRad = accelPitchRad;
 
         m_logger.GetLogSample().targetRollRateRadSec = rateData.targetRollRad;
         m_logger.GetLogSample().targetPitchRateRadSec = rateData.targetPitchRad;

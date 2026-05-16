@@ -56,9 +56,11 @@ struct FlightLogSample
 
     float gyroMagnitude = 0.0f;
 
-    float accelRoll = 0.0f;
-    float accelPitch = 0.0f;
-    float accelYaw = 0.0f;
+    float accelX = 0.0f;
+    float accelY = 0.0f;
+    float accelZ = 0.0f;
+    float accelRollRad = 0.0f;
+    float accelPitchRad = 0.0f;
 
     float correctedRoll = 0.0f;
     float correctedPitch = 0.0f;

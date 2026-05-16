@@ -55,11 +55,6 @@ private:
 
     ImuData GetLatestImu() const;
 
-    void UpdateAttitudeEstimator(
-        const ImuData& imu,
-        double dt
-    );
-
     void SendMotorSpeeds(
         double m0,
         double m1,
@@ -105,7 +100,7 @@ private:
     bool m_useJoystick = true;
     int m_joystickIndex = 0;
 
-    double m_hilRateHz = 100.0;
+    double m_hilRateHz = 500.0;
     double m_manualRateHz = 10.0;
 
     double m_lastHilSendSec = -1.0;
