@@ -30,9 +30,9 @@ void RateController::Init()
         Для реального дрона ці значення треба тюнити.
         Для симулятора вони теж можуть бути іншими.
     */
-    m_rollPid.Init(0.08f, 0.00f, 0.002f);
-    m_pitchPid.Init(0.08f, 0.00f, 0.002f);
-    m_yawPid.Init(0.04f, 0.00f, 0.002f);
+    m_rollPid.Init(0.006f, 0.0005f, 0.00005f);
+    m_pitchPid.Init(0.006f, 0.0005f, 0.00005f);
+    m_yawPid.Init(0.004f, 0.0003f, 0.0f);
 
     m_rollPid.SetOutputLimit(-0.4f, 0.4f);
     m_pitchPid.SetOutputLimit(-0.4f, 0.4f);
@@ -70,32 +70,13 @@ ControlOutput RateController::Update(
         return output;
     }
 
-    const float targetRollRate_rads =
-        rcCommand.roll * m_maxRollRate_rads;
+    const float targetRollRate_rads = rcCommand.roll * m_maxRollRate_rads;
+    const float targetPitchRate_rads = rcCommand.pitch * m_maxPitchRate_rads;
+    const float targetYawRate_rads = rcCommand.yaw * m_maxYawRate_rads;
 
-    const float targetPitchRate_rads =
-        rcCommand.pitch * m_maxPitchRate_rads;
-
-    const float targetYawRate_rads =
-        rcCommand.yaw * m_maxYawRate_rads;
-
-    output.roll = m_rollPid.Update(
-        targetRollRate_rads,
-        state.rollRateRadS,
-        dt
-    );
-
-    output.pitch = m_pitchPid.Update(
-        targetPitchRate_rads,
-        state.pitchRateRadS,
-        dt
-    );
-
-    output.yaw = m_yawPid.Update(
-        targetYawRate_rads,
-        state.yawRateRadS,
-        dt
-    );
+    output.roll = m_rollPid.Update(targetRollRate_rads,state.rollRateRadS, dt);
+    output.pitch = m_pitchPid.Update(targetPitchRate_rads,state.pitchRateRadS, dt);
+    output.yaw = m_yawPid.Update(targetYawRate_rads,state.yawRateRadS, dt);
 
     constexpr float ROLL_PITCH_DEADBAND = 0.005f;
     constexpr float YAW_DEADBAND = 0.005f;

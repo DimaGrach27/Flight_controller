@@ -35,7 +35,7 @@ float PidController::Update(float target, float measured, float dt)
 
     if (m_hasPreviousError)
     {
-        derivative = (error - m_previousError) / dt;
+        derivative = (measured - m_previousError) / dt;
     }
 
     m_previousError = error;
@@ -44,7 +44,7 @@ float PidController::Update(float target, float measured, float dt)
     const float output =
         m_kp * error +
         m_ki * m_integral +
-        m_kd * derivative;
+        -m_kd * derivative;
 
     return MathUtils::Clamp(output, m_minOutput, m_maxOutput);
 }
