@@ -309,6 +309,9 @@ void ImuHilPlugin::HandleNamedValueFloat(const mavlink_named_value_float_t &valu
                 m_currentLogFields["truth_vx"] = m_latestGroundTruth.vx;
                 m_currentLogFields["truth_vy"] = m_latestGroundTruth.vy;
                 m_currentLogFields["truth_vz"] = m_latestGroundTruth.vz;
+                m_currentLogFields["truth_roll"] = m_latestGroundTruth.roll;
+                m_currentLogFields["truth_pitch"] = m_latestGroundTruth.pitch;
+                m_currentLogFields["truth_yaw"] = m_latestGroundTruth.yaw;
             }
 
             m_csvLogger.Log(m_currentLogFields);
@@ -355,6 +358,10 @@ void ImuHilPlugin::OnOdometry(const gz::msgs::Odometry &msg)
     m_latestGroundTruth.vx = msg.twist().linear().x();
     m_latestGroundTruth.vy = msg.twist().linear().y();
     m_latestGroundTruth.vz = msg.twist().linear().z();
+
+    m_latestGroundTruth.roll = msg.pose().orientation().x();
+    m_latestGroundTruth.pitch = msg.pose().orientation().y();
+    m_latestGroundTruth.yaw = msg.pose().orientation().z();
 
     m_latestGroundTruth.valid = true;
 }

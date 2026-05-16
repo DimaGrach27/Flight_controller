@@ -12,11 +12,13 @@ class Ahrs
 public:
     struct Config
     {
-        float kp = 1.5f;
+        float kp = 0.8f;
         float ki = 0.00f;
 
         float gravityMagnitude = 9.80665f;
         float accelMagnitudeTolerance = 0.15f;
+
+        float maxLimitedError = 0.15f;
 
         float minDt = 0.0001f;
         float maxDt = 0.02f;

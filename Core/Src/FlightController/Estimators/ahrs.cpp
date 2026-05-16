@@ -11,6 +11,18 @@
 namespace
 {
     constexpr float Epsilon = 1.0e-6f;
+
+    static Vector3f LimitVector(const Vector3f& value, float maxLength)
+    {
+        const float length = value.Length();
+
+        if (length <= maxLength || length < 1.0e-6f)
+        {
+            return value;
+        }
+
+        return value * (maxLength / length);
+    }
 }
 
 Ahrs::Ahrs()
@@ -56,12 +68,13 @@ bool Ahrs::Update(const ImuSample& imuSample)
     {
         const Vector3f accelNormalized = imuSample.accel_mps2.Normalized();
         const Vector3f errorBody = ComputeGravityErrorBody(accelNormalized);
+        const Vector3f limitedErrorBody = LimitVector(errorBody, m_config.maxLimitedError);
 
-        correctedGyro = correctedGyro + errorBody * (m_config.kp * m_accelWeight);
+        correctedGyro = correctedGyro + limitedErrorBody * (m_config.kp * m_accelWeight);
 
         if (m_config.ki > 0.0f)
         {
-            m_gyroBiasRadS = m_gyroBiasRadS - errorBody * (m_config.ki * m_accelWeight * dt);
+            m_gyroBiasRadS = m_gyroBiasRadS - limitedErrorBody * (m_config.ki * m_accelWeight * dt);
         }
     }
 
@@ -165,11 +178,28 @@ float Ahrs::ComputeAccelWeight(const Vector3f &accel) const
         return 0.0f;
     }
 
-    /*
-        error = 0                      -> weight = 1
-        error = accelMagnitudeTolerance -> weight = 0
-    */
-    return 1.0f - error / m_config.accelMagnitudeTolerance;
+    const float magnitudeWeight = 1.0f - error / m_config.accelMagnitudeTolerance;
+
+    const Vector3f accelNormalized = accel.Normalized();
+
+    const Vector3f gravityWorld = {0.0f, 0.0f, 1.0f};
+    const Vector3f estimatedGravityBody = m_q.RotateWorldToBody(gravityWorld);
+
+    float dot = Vector3f::Dot(accelNormalized, estimatedGravityBody);
+    dot = MathUtils::Clamp(dot, -1.0f, 1.0f);
+
+    const float angleErrorRad = std::acos(dot);
+
+    constexpr float MaxAccelAngleErrorRad = 0.45f; // ~26 deg
+
+    if (angleErrorRad >= MaxAccelAngleErrorRad)
+    {
+        return 0.0f;
+    }
+
+    const float angleWeight = 1.0f - angleErrorRad / MaxAccelAngleErrorRad;
+
+    return magnitudeWeight * angleWeight;
 }
 
 Vector3f Ahrs::ComputeGravityErrorBody(const Vector3f& accelBodyNormalized) const
