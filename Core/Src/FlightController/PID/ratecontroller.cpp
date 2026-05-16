@@ -4,16 +4,12 @@
 
 #include "FlightController/PID/ratecontroller.h"
 
+#include "../../../Inc/FlightController/PID/ratesetpointgenerator.h"
+#include "FlightController/Utils/computing.h"
 #include "FlightController/Utils/mathutils.h"
 
 namespace
 {
-    constexpr float DegToRad = 0.01745329252f;
-
-    constexpr float MaxRollRate_dps = 360.0f;
-    constexpr float MaxPitchRate_dps = 360.0f;
-    constexpr float MaxYawRate_dps = 180.0f;
-
     constexpr float MinDtSeconds = 0.000001f;
     constexpr float MaxDtSeconds = 0.05f;
 }
@@ -30,49 +26,45 @@ void RateController::Init()
         Для реального дрона ці значення треба тюнити.
         Для симулятора вони теж можуть бути іншими.
     */
-    m_rollPid.Init(0.016f, 0.0f, 0.0f);
-    m_pitchPid.Init(0.016f, 0.0f, 0.0f);
-    m_yawPid.Init(0.012f, 0.0f, 0.0f);
+    m_rollPid.Init(0.065f, 0.045f, 0.0015f);
+    m_pitchPid.Init(0.065f, 0.045f, 0.0015f);
+    m_yawPid.Init(0.090f, 0.025f, 0.0000f);
 
-    m_rollPid.SetOutputLimit(-0.4f, 0.4f);
-    m_pitchPid.SetOutputLimit(-0.4f, 0.4f);
-    m_yawPid.SetOutputLimit(-0.2f, 0.2f);
+    m_rollPid.SetOutputLimit(-0.65f, 0.65f);
+    m_pitchPid.SetOutputLimit(-0.65f, 0.65f);
+    m_yawPid.SetOutputLimit(-0.35f, 0.35f);
 
-    m_rollPid.SetIntegralLimit(-0.2f, 0.2f);
-    m_pitchPid.SetIntegralLimit(-0.2f, 0.2f);
-    m_yawPid.SetIntegralLimit(-0.1f, 0.1f);
-
-    m_maxRollRate_rads = MaxRollRate_dps * DegToRad;
-    m_maxPitchRate_rads = MaxPitchRate_dps * DegToRad;
-    m_maxYawRate_rads = MaxYawRate_dps * DegToRad;
+    m_rollPid.SetIntegralLimit(-0.25f, 0.25f);
+    m_pitchPid.SetIntegralLimit(-0.25f, 0.25f);
+    m_yawPid.SetIntegralLimit(-0.15f, 0.15f);
 
     Reset();
 }
 
 ControlOutput RateController::Update(
-    const RcCommand& rcCommand,
+    const RateSetpoint& rateSetpoint,
     const VehicleState& state,
     uint32_t nowUs
 )
 {
     ControlOutput output{};
 
-    if (!rcCommand.valid || rcCommand.failsafe || !state.valid)
+    if (!rateSetpoint.valid || !state.valid)
     {
         Reset();
         return output;
     }
 
-    const float dt = ComputeDtSeconds(nowUs);
+    const float dt = Computing::ComputeDtSeconds(nowUs, m_hasLastUpdate, m_lastUpdateUs);
 
     if (dt <= 0.0f)
     {
         return output;
     }
 
-    const float targetRollRate_rads = rcCommand.roll * m_maxRollRate_rads;
-    const float targetPitchRate_rads = rcCommand.pitch * m_maxPitchRate_rads;
-    const float targetYawRate_rads = rcCommand.yaw * m_maxYawRate_rads;
+    const float targetRollRate_rads = rateSetpoint.rollRps;
+    const float targetPitchRate_rads = rateSetpoint.pitchRps;
+    const float targetYawRate_rads = rateSetpoint.yawRps;
 
     output.roll = m_rollPid.Update(targetRollRate_rads,state.rollRateRadS, dt);
     output.pitch = m_pitchPid.Update(targetPitchRate_rads,state.pitchRateRadS, dt);
@@ -114,29 +106,29 @@ const RateData & RateController::GetRateData()
     return m_rateData;
 }
 
-float RateController::ComputeDtSeconds(uint32_t nowUs)
-{
-    if (!m_hasLastUpdate)
-    {
-        m_lastUpdateUs = nowUs;
-        m_hasLastUpdate = true;
-        return 0.0f;
-    }
-
-    const uint32_t dtUs = nowUs - m_lastUpdateUs;
-    const float dt = static_cast<float>(dtUs) / 1000000.0f;
-
-    m_lastUpdateUs = nowUs;
-
-    if (dt < MinDtSeconds)
-    {
-        return 0.0f;
-    }
-
-    if (dt > MaxDtSeconds)
-    {
-        return 0.0f;
-    }
-
-    return dt;
-}
+// float RateController::ComputeDtSeconds(uint32_t nowUs)
+// {
+//     if (!m_hasLastUpdate)
+//     {
+//         m_lastUpdateUs = nowUs;
+//         m_hasLastUpdate = true;
+//         return 0.0f;
+//     }
+//
+//     const uint32_t dtUs = nowUs - m_lastUpdateUs;
+//     const float dt = static_cast<float>(dtUs) / 1000000.0f;
+//
+//     m_lastUpdateUs = nowUs;
+//
+//     if (dt < MinDtSeconds)
+//     {
+//         return 0.0f;
+//     }
+//
+//     if (dt > MaxDtSeconds)
+//     {
+//         return 0.0f;
+//     }
+//
+//     return dt;
+// }

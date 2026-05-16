@@ -34,7 +34,7 @@ private:
 
     bool ValidateSample(const ImuSample& sample) const;
 
-    float ComputeDtSeconds(uint32_t timestampUs);
+    // float ComputeDtSeconds(uint32_t timestampUs);
 
 private:
     Imu_Driver& m_driver;

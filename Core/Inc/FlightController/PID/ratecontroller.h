@@ -8,6 +8,7 @@
 #include "pidcontroller.h"
 #include "FlightController/datastructs.h"
 #include "FlightController/structs.h"
+#include "ratesetpointgenerator.h"
 
 class RateController
 {
@@ -17,7 +18,7 @@ public:
     void Init();
 
     ControlOutput Update(
-        const RcCommand& rcCommand,
+        const RateSetpoint& rateSetpoint,
         const VehicleState& state,
         uint32_t nowUs
     );
@@ -27,7 +28,7 @@ public:
     const RateData& GetRateData();
 
 private:
-    float ComputeDtSeconds(uint32_t nowUs);
+    // float ComputeDtSeconds(uint32_t nowUs);
 
 private:
     PidController m_rollPid;
@@ -36,10 +37,6 @@ private:
 
     uint32_t m_lastUpdateUs = 0;
     bool m_hasLastUpdate = false;
-
-    float m_maxRollRate_rads = 0.0f;
-    float m_maxPitchRate_rads = 0.0f;
-    float m_maxYawRate_rads = 0.0f;
 
     RateData m_rateData;
 };

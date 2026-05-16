@@ -83,6 +83,7 @@ private:
     HilRcReceiver m_hilRcReceiver;
 #endif
     RcInput m_rcInput;
+    RateSetpointGenerator m_rateSetpointGenerator;
 
     StateEstimator m_stateEstimator;
 

@@ -4,6 +4,8 @@
 
 #include "FlightController/Sensors/IMU/imu_sensor.h"
 
+#include "FlightController/Utils/computing.h"
+
 namespace
 {
     constexpr float MaxReasonableAccel_mps2 = 200.0f;
@@ -162,7 +164,7 @@ ImuSample Imu_Sensor::ApplyCalibration(const ImuSample &sample) const
 
 ImuSample Imu_Sensor::ApplyFiltering(const ImuSample &sample)
 {
-    const float dt = ComputeDtSeconds(sample.timestampUs);
+    const float dt = Computing::ComputeDtSeconds(sample.timestampUs, m_hasLastFilterUpdate, m_lastFilterUpdateUs);
 
     if (dt <= 0.0f)
     {
@@ -225,29 +227,29 @@ bool Imu_Sensor::ValidateSample(const ImuSample& sample) const
     return true;
 }
 
-float Imu_Sensor::ComputeDtSeconds(uint32_t timestampUs)
-{
-    if (!m_hasLastFilterUpdate)
-    {
-        m_lastFilterUpdateUs = timestampUs;
-        m_hasLastFilterUpdate = true;
-        return 0.0f;
-    }
-
-    const uint32_t dtUs = timestampUs - m_lastFilterUpdateUs;
-    const float dt = static_cast<float>(dtUs) / 1000000.0f;
-
-    m_lastFilterUpdateUs = timestampUs;
-
-    if (dt < MinDtSeconds)
-    {
-        return 0.0f;
-    }
-
-    if (dt > MaxDtSeconds)
-    {
-        return 0.0f;
-    }
-
-    return dt;
-}
+// float Imu_Sensor::ComputeDtSeconds(uint32_t timestampUs)
+// {
+//     if (!m_hasLastFilterUpdate)
+//     {
+//         m_lastFilterUpdateUs = timestampUs;
+//         m_hasLastFilterUpdate = true;
+//         return 0.0f;
+//     }
+//
+//     const uint32_t dtUs = timestampUs - m_lastFilterUpdateUs;
+//     const float dt = static_cast<float>(dtUs) / 1000000.0f;
+//
+//     m_lastFilterUpdateUs = timestampUs;
+//
+//     if (dt < MinDtSeconds)
+//     {
+//         return 0.0f;
+//     }
+//
+//     if (dt > MaxDtSeconds)
+//     {
+//         return 0.0f;
+//     }
+//
+//     return dt;
+// }

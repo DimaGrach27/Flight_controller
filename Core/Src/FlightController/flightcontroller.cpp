@@ -45,6 +45,7 @@ FlightController::FlightController(UART_HandleTypeDef &serialUart)
     , m_sensorsManager(m_imuSensor)
     , m_hilRcReceiver()
     , m_rcInput(m_hilRcReceiver)
+    , m_rateSetpointGenerator()
     , m_stateEstimator()
     , m_flightModeManager()
     , m_rateController()
@@ -133,6 +134,7 @@ void FlightController::Update()
         m_rcInput.Update(nowUs);
 
         m_flightModeManager.Update(m_rcInput.GetCommand(), nowUs);
+        m_rateSetpointGenerator.Update(m_rcInput.GetCommand(), nowUs);
     }
 
     if (m_scheduler.ConsumeTask(TaskID::Control))
@@ -234,9 +236,6 @@ uint32_t FlightController::GetMicros() const
 
 void FlightController::RunControlLoop(uint32_t nowUs)
 {
-    const RcCommand rcCommand = m_rcInput.GetCommand();
-    const VehicleState& state = m_stateEstimator.GetState();
-
     if (m_flightModeManager.IsFailsafe())
     {
         m_rateController.Reset();
@@ -270,6 +269,8 @@ void FlightController::RunControlLoop(uint32_t nowUs)
         return;
     }
 
+    const VehicleState& state = m_stateEstimator.GetState();
+
     if (!state.valid)
     {
         m_rateController.Reset();
@@ -282,10 +283,12 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     }
 
     ControlOutput control{};
+    const RcCommand rcCommand = m_rcInput.GetCommand();
+    const RateSetpoint rateSetpoint = m_rateSetpointGenerator.GetRateSetpoint();
 
     if (m_flightModeManager.GetMode() == FlightMode::Acro)
     {
-        control = m_rateController.Update(rcCommand, state, nowUs);
+        control = m_rateController.Update(rateSetpoint, state, nowUs);
     }
     else
     {
@@ -294,7 +297,7 @@ void FlightController::RunControlLoop(uint32_t nowUs)
             Поки для safety можна або стопати мотори,
             або тимчасово теж використовувати acro.
         */
-        control = m_rateController.Update(rcCommand, state, nowUs);
+        control = m_rateController.Update(rateSetpoint, state, nowUs);
     }
 
     m_lastControlOutput = control;
