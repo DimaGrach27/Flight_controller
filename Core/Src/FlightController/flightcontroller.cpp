@@ -183,6 +183,7 @@ void FlightController::Update()
         m_logger.GetLogSample().gyroBiasX = state.gyroBias.x;
         m_logger.GetLogSample().gyroBiasY = state.gyroBias.y;
         m_logger.GetLogSample().gyroBiasZ = state.gyroBias.z;
+        m_logger.GetLogSample().accelWeight = state.accelWeight;
         m_logger.GetLogSample().accelMagnitude = m_imu_sample.accel_mps2.Length();
         m_logger.GetLogSample().ahrsValid = state.ahrsValid;
 

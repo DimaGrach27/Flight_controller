@@ -12,11 +12,11 @@ class Ahrs
 public:
     struct Config
     {
-        float kp = 4.0f;
-        float ki = 0.05f;
+        float kp = 1.5f;
+        float ki = 0.00f;
 
         float gravityMagnitude = 9.80665f;
-        float accelMagnitudeTolerance = 0.25f;
+        float accelMagnitudeTolerance = 0.15f;
 
         float minDt = 0.0001f;
         float maxDt = 0.02f;
@@ -32,6 +32,7 @@ public:
     const Quaternion& GetQuaternion() const;
     EulerAngles GetEuler() const;
     Vector3f GetGyroBiasRadS() const;
+    float GetAccelWeight() const;
 
     float GetLastDt() const;
     bool IsValid() const;
@@ -39,6 +40,7 @@ public:
 private:
     float ComputeDt(uint32_t timestampUs);
     bool IsAccelUsable(const Vector3f& accel) const;
+    float ComputeAccelWeight(const Vector3f& accel) const;
 
     Vector3f ComputeGravityErrorBody(const Vector3f& accelBodyNormalized) const;
     void IntegrateGyro(const Vector3f& gyroRadS, float dt);
@@ -51,6 +53,8 @@ private:
 
     uint32_t m_lastTimestampUs = 0;
     bool m_hasTimestamp = false;
+
+    float m_accelWeight = 0.0f;
 
     float m_lastDt = 0.0f;
     bool m_valid = false;

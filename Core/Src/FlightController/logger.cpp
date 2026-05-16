@@ -83,6 +83,7 @@ void Logger::SendFlightLogCsv()
     sendNamed("gyr_b_y", m_logSample.gyroBiasY);
     sendNamed("gyr_b_z", m_logSample.gyroBiasZ);
     sendNamed("accel_m", m_logSample.accelMagnitude);
+    sendNamed("accel_w", m_logSample.accelWeight);
     sendNamed("ahrs_v", m_logSample.ahrsValid);
     sendNamed("c_roll", m_logSample.controlRoll);
     sendNamed("c_pitch", m_logSample.controlPitch);

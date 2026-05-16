@@ -46,6 +46,7 @@ bool StateEstimator::UpdateImu(const ImuSample& imuSample)
     m_state.yawRad = euler.yawRad;
 
     m_state.gyroBias = m_ahrs.GetGyroBiasRadS();
+    m_state.accelWeight = m_ahrs.GetAccelWeight();
 
     /*
         Для rate controller краще поки залишити raw gyro.

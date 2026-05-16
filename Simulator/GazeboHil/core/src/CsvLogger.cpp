@@ -106,6 +106,7 @@ void CsvLogger::Log(std::unordered_map<std::string, float> map_log)
             << map_log.at("gyr_b_y") << ','
             << map_log.at("gyr_b_z") << ','
             << map_log.at("accel_m") << ','
+            << map_log.at("accel_w") << ','
             << map_log.at("ahrs_v") << ','
             << map_log.at("c_roll") << ','
             << map_log.at("c_pitch") << ','

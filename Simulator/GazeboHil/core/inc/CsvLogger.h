@@ -51,6 +51,7 @@ public:
                                                  "gyr_b_y,"
                                                  "gyr_b_z,"
                                                  "accel_m,"
+                                                 "accel_w,"
                                                  "ahrs_v,"
                                                  "c_roll,"
                                                  "c_pitch,"

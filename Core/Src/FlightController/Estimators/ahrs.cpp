@@ -6,6 +6,8 @@
 #include "FlightController/Utils/mathutils.h"
 #include "FlightController/Math/vector3f.h"
 
+#include <cmath>
+
 namespace
 {
     constexpr float Epsilon = 1.0e-6f;
@@ -28,6 +30,7 @@ void Ahrs::Reset()
     m_lastTimestampUs = 0;
     m_hasTimestamp = false;
     m_lastDt = 0.0f;
+    m_accelWeight = 0.0f;
     m_valid = false;
     m_initialized = false;
 }
@@ -47,17 +50,18 @@ bool Ahrs::Update(const ImuSample& imuSample)
     }
 
     Vector3f correctedGyro = imuSample.gyro_rads - m_gyroBiasRadS;
+    m_accelWeight = ComputeAccelWeight(imuSample.accel_mps2);
 
-    if (IsAccelUsable(imuSample.accel_mps2))
+    if (m_accelWeight > 0.0f)
     {
         const Vector3f accelNormalized = imuSample.accel_mps2.Normalized();
         const Vector3f errorBody = ComputeGravityErrorBody(accelNormalized);
 
-        correctedGyro = correctedGyro + errorBody * m_config.kp;
+        correctedGyro = correctedGyro + errorBody * (m_config.kp * m_accelWeight);
 
         if (m_config.ki > 0.0f)
         {
-            m_gyroBiasRadS = m_gyroBiasRadS - errorBody * m_config.ki * dt;
+            m_gyroBiasRadS = m_gyroBiasRadS - errorBody * (m_config.ki * m_accelWeight * dt);
         }
     }
 
@@ -82,6 +86,11 @@ EulerAngles Ahrs::GetEuler() const
 Vector3f Ahrs::GetGyroBiasRadS() const
 {
     return m_gyroBiasRadS;
+}
+
+float Ahrs::GetAccelWeight() const
+{
+    return m_accelWeight;
 }
 
 float Ahrs::GetLastDt() const
@@ -137,6 +146,30 @@ bool Ahrs::IsAccelUsable(const Vector3f& accel) const
         m_config.gravityMagnitude * (1.0f + m_config.accelMagnitudeTolerance);
 
     return accelMagnitude >= minAccel && accelMagnitude <= maxAccel;
+}
+
+float Ahrs::ComputeAccelWeight(const Vector3f &accel) const
+{
+    const float accelMagnitude = accel.Length();
+
+    if (accelMagnitude < Epsilon)
+    {
+        return 0.0f;
+    }
+
+    const float gravity = m_config.gravityMagnitude;
+    const float error = std::fabs(accelMagnitude - gravity) / gravity;
+
+    if (error >= m_config.accelMagnitudeTolerance)
+    {
+        return 0.0f;
+    }
+
+    /*
+        error = 0                      -> weight = 1
+        error = accelMagnitudeTolerance -> weight = 0
+    */
+    return 1.0f - error / m_config.accelMagnitudeTolerance;
 }
 
 Vector3f Ahrs::ComputeGravityErrorBody(const Vector3f& accelBodyNormalized) const

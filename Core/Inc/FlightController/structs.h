@@ -75,6 +75,7 @@ struct FlightLogSample
     float gyroBiasZ = 0.0f;
 
     float accelMagnitude = 0.0f;
+    float accelWeight = 0.0f;
     float ahrsValid = 0.0f;
 
     float controlRoll = 0.0f;
