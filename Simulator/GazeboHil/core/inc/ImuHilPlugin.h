@@ -120,5 +120,7 @@ private:
     CsvLogger m_csvLogger;
     std::unordered_map<std::string, float> m_currentLogFields;
     bool m_isCollectingLogSample = false;
+    std::string m_logFilePath = "log";
+
 };
 NAMESPACE_END

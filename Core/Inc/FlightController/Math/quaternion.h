@@ -106,4 +106,27 @@ public:
 
         return euler;
     }
+
+    static Quaternion FromEuler(const EulerAngles& euler)
+    {
+        const float cr = std::cos(euler.rollRad * 0.5f);
+        const float sr = std::sin(euler.rollRad * 0.5f);
+
+        const float cp = std::cos(euler.pitchRad * 0.5f);
+        const float sp = std::sin(euler.pitchRad * 0.5f);
+
+        const float cy = std::cos(euler.yawRad * 0.5f);
+        const float sy = std::sin(euler.yawRad * 0.5f);
+
+        Quaternion q{};
+
+        q.w = cr * cp * cy + sr * sp * sy;
+        q.x = sr * cp * cy - cr * sp * sy;
+        q.y = cr * sp * cy + sr * cp * sy;
+        q.z = cr * cp * sy - sr * sp * cy;
+
+        q.Normalize();
+
+        return q;
+    }
 };

@@ -9,7 +9,8 @@ bool CsvLogger::Open(const std::string& path, const std::string& header)
 {
     Close();
 
-    m_file.open(path);
+    const std::string logPath = "logs/" + path + ".csv";
+    m_file.open(logPath);
 
     if (!m_file.is_open())
         return false;

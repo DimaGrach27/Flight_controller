@@ -61,6 +61,19 @@ bool Ahrs::Update(const ImuSample& imuSample)
         return false;
     }
 
+    if (!m_initialized)
+    {
+        if (!InitFromAccel(imuSample.accel_mps2))
+        {
+            m_valid = false;
+            return false;
+        }
+
+        m_initialized = true;
+        m_valid = true;
+        return true;
+    }
+
     Vector3f correctedGyro = imuSample.gyro_rads - m_gyroBiasRadS;
     m_accelWeight = ComputeAccelWeight(imuSample.accel_mps2);
 
@@ -236,4 +249,46 @@ void Ahrs::IntegrateGyro(const Vector3f& gyroRadS, float dt)
     m_q.z += 0.5f * qDot.z * dt;
 
     m_q.Normalize();
+}
+
+bool Ahrs::InitFromAccel(const Vector3f& accel)
+{
+    const float accelLength = accel.Length();
+
+    if (accelLength < Epsilon)
+    {
+        return false;
+    }
+
+    constexpr float GravityForce = 9.8f;
+    if (std::abs(GravityForce - accelLength) <= 0.2f)
+    {
+        return false;
+    }
+
+    const Vector3f accelNormalized = accel.Normalized();
+
+    const float rollRad = std::atan2(
+        accelNormalized.y,
+        accelNormalized.z
+    );
+
+    const float pitchRad = std::atan2(
+        -accelNormalized.x,
+        std::sqrt(
+            accelNormalized.y * accelNormalized.y +
+            accelNormalized.z * accelNormalized.z
+        )
+    );
+
+    constexpr float yawRad = 0.0f;
+
+    m_q = Quaternion::FromEuler({rollRad, pitchRad, yawRad});
+    m_q.Normalize();
+
+    m_accelWeight = 1.0f;
+    m_valid = true;
+    m_initialized = true;
+
+    return true;
 }

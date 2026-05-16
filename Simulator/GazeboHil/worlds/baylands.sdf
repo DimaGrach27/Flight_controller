@@ -168,6 +168,7 @@
               <joystick_index>0</joystick_index>
               <manual_rate_hz>10</manual_rate_hz>
               <throttle>1</throttle>
+              <log_path>baylands_hil</log_path>
 
           </plugin>
           <plugin

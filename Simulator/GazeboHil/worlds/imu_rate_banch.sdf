@@ -1,0 +1,62 @@
+<model name="imu_bench_body">
+    <pose>0 0 0.5 0 0 0</pose>
+    <link name="body">
+        <inertial>
+            <mass>0.2</mass>
+        </inertial>
+
+        <visual name="visual">
+            <geometry>
+                <box>
+                    <size>0.25 0.25 0.05</size>
+                </box>
+            </geometry>
+        </visual>
+
+        <collision name="collision">
+            <geometry>
+                <box>
+                    <size>0.25 0.25 0.05</size>
+                </box>
+            </geometry>
+        </collision>
+
+        <sensor name="imu_sensor" type="imu">
+            <always_on>1</always_on>
+            <update_rate>500</update_rate>
+            <imu>
+                <angular_velocity>
+                    <x>
+                        <noise type="gaussian">
+                            <mean>0</mean>
+                            <stddev>0.002</stddev>
+                        </noise>
+                    </x>
+                </angular_velocity>
+                <linear_acceleration>
+                    <x>
+                        <noise type="gaussian">
+                            <mean>0</mean>
+                            <stddev>0.02</stddev>
+                        </noise>
+                    </x>
+                </linear_acceleration>
+            </imu>
+        </sensor>
+    </link>
+    <include>
+        <plugin
+                filename="libHilPlugin"
+                name="hil_plugin::ImuHilPlugin">
+
+            <serial_port>/dev/cu.usbmodem103</serial_port>
+            <baud>921600</baud>
+            <use_joystick>true</use_joystick>
+            <joystick_index>0</joystick_index>
+            <manual_rate_hz>10</manual_rate_hz>
+            <throttle>1</throttle>
+            <log_path>imu_rate_banch</log_path>
+
+        </plugin>
+    </include>
+</model>

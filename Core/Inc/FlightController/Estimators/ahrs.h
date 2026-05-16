@@ -46,6 +46,7 @@ private:
 
     Vector3f ComputeGravityErrorBody(const Vector3f& accelBodyNormalized) const;
     void IntegrateGyro(const Vector3f& gyroRadS, float dt);
+    bool InitFromAccel(const Vector3f& accel);
 
 private:
     Config m_config{};

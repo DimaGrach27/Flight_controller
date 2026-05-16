@@ -53,6 +53,9 @@ void ImuHilPlugin::Configure(const gz::sim::Entity &entity, const std::shared_pt
     if (sdf->HasElement("joystick_index"))
         m_joystickIndex = sdf->Get<int>("joystick_index");
 
+    if (sdf->HasElement("log_path"))
+        m_logFilePath = sdf->Get<std::string>("log_path");
+
     m_motorPublisher = m_node.Advertise<gz::msgs::Actuators>(m_motorTopic);
 
     if (!m_motorPublisher)
@@ -114,7 +117,7 @@ void ImuHilPlugin::Configure(const gz::sim::Entity &entity, const std::shared_pt
         printf("[ImuHilPlugin] Mavlink opened on %s", m_serialPortPath.c_str());
     }
 
-    m_csvLogger.Open("imu_hil_log.csv", m_csvLogger.HEADER_LOG_FLIGHT_SAMPLE);
+    m_csvLogger.Open(m_logFilePath, m_csvLogger.HEADER_LOG_FLIGHT_SAMPLE);
 }
 
 void ImuHilPlugin::PreUpdate(const gz::sim::UpdateInfo &info, gz::sim::EntityComponentManager &ecm)
