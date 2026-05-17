@@ -20,15 +20,16 @@ bool BatteryVoltageSensor::Init()
     m_voltageFiltered = 0.0f;
 
     m_initialized = false;
+    m_valid = false;
 
     return true;
 }
 
 bool BatteryVoltageSensor::Update()
 {
-    const uint32_t raw = ReadAdcRawAveraged();
+    uint32_t raw = 0;
 
-    if (raw == 0)
+    if (!ReadAdcRawAveraged(raw))
     {
         m_valid = false;
         return false;
@@ -51,7 +52,7 @@ bool BatteryVoltageSensor::Update()
     return true;
 }
 
-uint32_t BatteryVoltageSensor::ReadAdcRawAveraged()
+bool BatteryVoltageSensor::ReadAdcRawAveraged(uint32_t& raw)
 {
     uint32_t sum = 0;
 
@@ -60,21 +61,21 @@ uint32_t BatteryVoltageSensor::ReadAdcRawAveraged()
         if (HAL_ADC_Start(&m_adc) != HAL_OK)
         {
             HAL_ADC_Stop(&m_adc);
-            return 0;
+            return false;
         }
 
         if (HAL_ADC_PollForConversion(&m_adc, 10) != HAL_OK)
         {
             HAL_ADC_Stop(&m_adc);
-            return 0;
+            return false;
         }
 
         sum += HAL_ADC_GetValue(&m_adc);
-
         HAL_ADC_Stop(&m_adc);
     }
 
-    return sum / kSampleCount;
+    raw = sum / kSampleCount;
+    return true;
 }
 
 float BatteryVoltageSensor::ConvertRawToBatteryVoltage(uint32_t raw) const

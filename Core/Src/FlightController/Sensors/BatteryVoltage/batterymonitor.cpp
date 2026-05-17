@@ -9,6 +9,7 @@
 
 namespace
 {
+    constexpr float kMaxCellVoltage = 4.20f;
     constexpr float kLowCellVoltage = 3.60f;
     constexpr float kCriticalCellVoltage = 3.50f;
     constexpr float kEmergencyCellVoltage = 3.40f;
@@ -23,16 +24,16 @@ namespace
 
     constexpr float kVoltageHysteresis = 0.05f;
 
-    constexpr uint32_t kLowDelayUs = 200000;
-    constexpr uint32_t kCriticalDelayUs = 150000;
-    constexpr uint32_t kEmergencyDelayUs = 100000;
-    constexpr uint32_t kDetectDelayUs = 100000;
+    constexpr float kLowDelaySec = 2.0f;
+    constexpr float kCriticalDelaySec = 1.5f;
+    constexpr float kEmergencyDelaySec = 1.0f;
+    constexpr float kDetectDelaySec = 1.0f;
 
     constexpr float MinDtSeconds = 0.000001f;
-    constexpr float MaxDtSeconds = 0.05f;
+    constexpr float MaxDtSeconds = 0.5f;
 }
 
-BatteryMonitor::BatteryMonitor(uint8_t cellCount)
+BatteryMonitor::BatteryMonitor(const uint8_t cellCount)
 {
     m_batteryConfig = {
         .cellCountMode = CellCountMode::Auto,
@@ -45,19 +46,20 @@ void BatteryMonitor::Init()
     m_batteryData = {};
 }
 
-void BatteryMonitor::Update(float batteryVoltage, float currentA, bool armed, const uint32_t nowUs)
+void BatteryMonitor::Update(const float batteryVoltage, const float currentA, const bool armed, const uint32_t nowUs)
 {
     m_batteryData.voltage_V = batteryVoltage;
     m_batteryData.current_A = currentA;
 
-    const float dtMs = ComputeDtSeconds(nowUs);
+    const float dtSeconds = ComputeDtSeconds(nowUs);
 
-    UpdateCellDetection(m_batteryData.voltage_V, dtMs, armed);
+    UpdateCellDetection(m_batteryData.voltage_V, dtSeconds, armed);
 
     if (m_cellCount == 0)
     {
         m_batteryData.cellVoltage_V = 0.0f;
         m_batteryData.state = BatteryState::Unknown;
+        m_batteryData.valid = false;
         return;
     }
 
@@ -65,11 +67,18 @@ void BatteryMonitor::Update(float batteryVoltage, float currentA, bool armed, co
 
     if (m_batteryData.current_A > 0.0f)
     {
-        const float dtHours = static_cast<float>(dtMs) / 3600000.0f;
+        const float dtHours = static_cast<float>(dtSeconds) / 3600.0f;
         m_consumedMah += m_batteryData.current_A * 1000.0f * dtHours;
     }
 
-    m_batteryData.state = EvaluateVoltageState(m_batteryData.cellVoltage_V, dtMs);
+    m_batteryData.state = EvaluateVoltageState(m_batteryData.cellVoltage_V, dtSeconds);
+
+    m_batteryData.timestampUs = nowUs;
+    m_batteryData.lowVoltage = m_batteryData.state == BatteryState::Low;
+    m_batteryData.criticalVoltage = m_batteryData.state == BatteryState::Critical;
+    m_batteryData.percentage = ComputeBatteryPercentage();
+
+    m_batteryData.valid = true;
 }
 
 BatteryData BatteryMonitor::GetBatteryData() const
@@ -87,7 +96,7 @@ uint8_t BatteryMonitor::GetCellCount() const
     return m_cellCount;
 }
 
-void BatteryMonitor::UpdateCellDetection(float batteryVoltage, float dtUs, bool armed)
+void BatteryMonitor::UpdateCellDetection(const float batteryVoltage, const float dtSeconds, const bool armed)
 {
     if (m_cellDetectState == BatteryCellDetectState::Detected)
     {
@@ -100,9 +109,9 @@ void BatteryMonitor::UpdateCellDetection(float batteryVoltage, float dtUs, bool 
     }
 
     m_cellDetectState = BatteryCellDetectState::Detecting;
-    m_detectTimerUs += dtUs;
+    m_detectTimerSec += dtSeconds;
 
-    if (m_detectTimerUs < kDetectDelayUs)
+    if (m_detectTimerSec < kDetectDelaySec)
     {
         return;
     }
@@ -120,7 +129,7 @@ void BatteryMonitor::UpdateCellDetection(float batteryVoltage, float dtUs, bool 
 }
 
 
-uint8_t BatteryMonitor::DetectCellCount(float batteryVoltage) const
+uint8_t BatteryMonitor::DetectCellCount(const float batteryVoltage) const
 {
     if (batteryVoltage <= 0.0f || batteryVoltage < kBatteryPresentVoltage)
     {
@@ -145,46 +154,46 @@ uint8_t BatteryMonitor::DetectCellCount(float batteryVoltage) const
     return static_cast<uint8_t>(estimatedCells);
 }
 
-BatteryState BatteryMonitor::EvaluateVoltageState(float cellVoltage, const float dtUs)
+BatteryState BatteryMonitor::EvaluateVoltageState(const float cellVoltage, const float dtSeconds)
 {
     if (cellVoltage < kEmergencyCellVoltage)
     {
-        m_emergencyTimerUs += dtUs;
+        m_emergencyTimerSec += dtSeconds;
     }
     else if (cellVoltage > kEmergencyCellVoltage + kVoltageHysteresis)
     {
-        m_emergencyTimerUs = 0;
+        m_emergencyTimerSec = 0.0f;
     }
 
     if (cellVoltage < kCriticalCellVoltage)
     {
-        m_criticalTimerUs += dtUs;
+        m_criticalTimerSec += dtSeconds;
     }
     else if (cellVoltage > kCriticalCellVoltage + kVoltageHysteresis)
     {
-        m_criticalTimerUs = 0;
+        m_criticalTimerSec = 0.0f;
     }
 
     if (cellVoltage < kLowCellVoltage)
     {
-        m_lowTimerUs += dtUs;
+        m_lowTimerSec += dtSeconds;
     }
     else if (cellVoltage > kLowCellVoltage + kVoltageHysteresis)
     {
-        m_lowTimerUs = 0;
+        m_lowTimerSec = 0.0f;
     }
 
-    if (m_emergencyTimerUs >= kEmergencyDelayUs)
+    if (m_emergencyTimerSec >= kEmergencyDelaySec)
     {
         return BatteryState::Emergency;
     }
 
-    if (m_criticalTimerUs >= kCriticalDelayUs)
+    if (m_criticalTimerSec >= kCriticalDelaySec)
     {
         return BatteryState::Critical;
     }
 
-    if (m_lowTimerUs >= kLowDelayUs)
+    if (m_lowTimerSec >= kLowDelaySec)
     {
         return BatteryState::Low;
     }
@@ -192,7 +201,7 @@ BatteryState BatteryMonitor::EvaluateVoltageState(float cellVoltage, const float
     return BatteryState::Normal;
 }
 
-float BatteryMonitor::ComputeDtSeconds(uint32_t nowUs)
+float BatteryMonitor::ComputeDtSeconds(const uint32_t nowUs)
 {
     if (!m_hasLastUpdate)
     {
@@ -202,21 +211,31 @@ float BatteryMonitor::ComputeDtSeconds(uint32_t nowUs)
     }
 
     const uint32_t dtUs = nowUs - m_lastUpdateUs;
-    const float dt = static_cast<float>(dtUs) / 1000000.0f;
+    const float dtSeconds = static_cast<float>(dtUs) / 1000000.0f;
 
     m_lastUpdateUs = nowUs;
 
-    if (dt < MinDtSeconds)
+    if (dtSeconds < MinDtSeconds)
     {
         return 0.0f;
     }
 
-    if (dt > MaxDtSeconds)
+    if (dtSeconds > MaxDtSeconds)
     {
         return 0.0f;
     }
 
-    return dt;
+    return dtSeconds;
+}
+
+float BatteryMonitor::ComputeBatteryPercentage() const
+{
+    const float maxBatteryVoltage = m_cellCount * kMaxCellVoltage;
+    float batteryPercentage = m_batteryData.voltage_V / maxBatteryVoltage;
+
+    batteryPercentage = MathUtils::Clamp01(batteryPercentage);
+
+    return batteryPercentage;
 }
 
 float BatteryMonitor::GetVoltage() const

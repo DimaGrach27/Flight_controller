@@ -73,8 +73,8 @@ void FlightController::Init()
     m_scheduler.AddTask(TaskID::Rc, 5000);          //200 Hz
     m_scheduler.AddTask(TaskID::Control, 2000);     //500 Hz
     m_scheduler.AddTask(TaskID::Telemetry, 100000); //10 Hz
-    m_scheduler.AddTask(TaskID::Loging, 10000); //100 Hz
-    m_scheduler.AddTask(TaskID::Battery, 10000); //100 Hz
+    m_scheduler.AddTask(TaskID::Loging, 10000);     //100 Hz
+    m_scheduler.AddTask(TaskID::Battery, 100000);   //10 Hz
 
     m_batteryVoltageSensor.Init();
 

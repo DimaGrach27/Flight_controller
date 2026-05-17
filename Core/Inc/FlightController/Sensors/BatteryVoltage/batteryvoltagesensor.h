@@ -22,7 +22,7 @@ public:
     bool IsValid() const;
 
 private:
-    uint32_t ReadAdcRawAveraged();
+    bool ReadAdcRawAveraged(uint32_t& raw);
     float ConvertRawToBatteryVoltage(uint32_t raw) const;
 
 private:

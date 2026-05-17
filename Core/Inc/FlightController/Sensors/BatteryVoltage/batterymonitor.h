@@ -48,12 +48,11 @@ public:
     bool CanArm() const;
 
 private:
-    void UpdateCellDetection(float batteryVoltage, float dtUs, bool armed);
+    void UpdateCellDetection(float batteryVoltage, float dtSeconds, bool armed);
     uint8_t DetectCellCount(float batteryVoltage) const;
-    BatteryState EvaluateVoltageState(float cellVoltage, const float dtUs);
+    BatteryState EvaluateVoltageState(float cellVoltage, const float dtSeconds);
     float ComputeDtSeconds(uint32_t nowUs);
-
-private:
+    float ComputeBatteryPercentage() const;
 
 private:
     uint8_t m_cellCount = 0;
@@ -64,10 +63,10 @@ private:
     BatteryCellDetectState m_cellDetectState = BatteryCellDetectState::Unknown;
     BatteryConfig m_batteryConfig = {};
 
-    float m_detectTimerUs = 0;
-    float m_lowTimerUs = 0;
-    float m_criticalTimerUs = 0;
-    float m_emergencyTimerUs = 0;
+    float m_detectTimerSec = 0.0f;
+    float m_lowTimerSec = 0.0f;
+    float m_criticalTimerSec = 0.0f;
+    float m_emergencyTimerSec = 0.0f;
 
     uint32_t m_lastUpdateUs = 0;
     bool m_hasLastUpdate = false;
