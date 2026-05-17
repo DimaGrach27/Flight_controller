@@ -33,14 +33,26 @@ struct ImuSample
     bool valid = false;
 };
 
+enum class BatteryState
+{
+    Unknown,
+    Normal,
+    Low,
+    Critical,
+    Emergency
+};
+
 struct BatteryData
 {
     float voltage_V = 0.0f;
+    float cellVoltage_V = 0.0f;
     float current_A = 0.0f;
     float percentage = 0.0f;
 
     bool lowVoltage = false;
     bool criticalVoltage = false;
+
+    BatteryState state = BatteryState::Unknown;
 
     uint32_t timestampUs = 0;
     bool valid = false;

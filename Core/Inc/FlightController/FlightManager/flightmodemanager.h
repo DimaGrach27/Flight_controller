@@ -15,7 +15,7 @@ public:
 
     void Init();
 
-    void Update(const RcCommand& rcCommand, uint32_t nowUs);
+    void Update(const RcCommand& rcCommand, const BatteryData& batterData, bool batteryValid, uint32_t nowUs);
 
     const FlightModeState& GetState() const;
 
@@ -26,6 +26,7 @@ public:
 private:
     bool IsThrottleLow(float throttle) const;
     bool CanArmFromCommand(const RcCommand& rcCommand) const;
+    bool CanArmFromBattery(const BatteryData& batterData) const;
 
 private:
     FlightModeState m_state{};

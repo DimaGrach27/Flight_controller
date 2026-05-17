@@ -23,13 +23,13 @@ void FlightModeManager::Init()
     m_previousArmSwitch = false;
 }
 
-void FlightModeManager::Update(const RcCommand& rcCommand, uint32_t nowUs)
+void FlightModeManager::Update(const RcCommand& rcCommand, const BatteryData& batterData, bool batteryValid, uint32_t nowUs)
 {
     m_state.timestampUs = nowUs;
 
     m_state.failsafe = rcCommand.failsafe || !rcCommand.valid;
     m_state.throttleLow = IsThrottleLow(rcCommand.throttle);
-    m_state.canArm = CanArmFromCommand(rcCommand);
+    m_state.canArm = CanArmFromCommand(rcCommand) && CanArmFromBattery(batterData) && batteryValid;
 
     const bool armRisingEdge = rcCommand.armSwitch && !m_previousArmSwitch;
 
@@ -125,6 +125,19 @@ bool FlightModeManager::CanArmFromCommand(const RcCommand& rcCommand) const
     }
 
     if (!IsThrottleLow(rcCommand.throttle))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool FlightModeManager::CanArmFromBattery(const BatteryData &batterData) const
+{
+    if (batterData.state == BatteryState::Unknown
+        || batterData.state == BatteryState::Critical
+        || batterData.state == BatteryState::Emergency
+        )
     {
         return false;
     }

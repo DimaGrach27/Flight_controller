@@ -22,6 +22,7 @@
 #include "RcInput/rcinput.h"
 #include "Scheduler/scheduler.h"
 #include "Sensors/sensorsmanager.h"
+#include "Sensors/BatteryVoltage/batterymonitor.h"
 #include "Sensors/BatteryVoltage/batteryvoltagesensor.h"
 
 #if NOT_USE_HIL
@@ -89,6 +90,7 @@ private:
 
     StateEstimator m_stateEstimator;
 
+    BatteryMonitor m_batteryMonitor;
     FlightModeManager m_flightModeManager;
 
     RateController m_rateController;

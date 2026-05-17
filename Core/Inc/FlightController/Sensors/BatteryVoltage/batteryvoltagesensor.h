@@ -6,6 +6,8 @@
 #include "main.h"
 #include <cstdint>
 
+#include "FlightController/datastructs.h"
+
 class BatteryVoltageSensor
 {
 public:
@@ -39,6 +41,7 @@ private:
     ADC_HandleTypeDef& m_adc;
 
     uint32_t m_adcRaw = 0;
+
 
     float m_voltageRaw = 0.0f;
     float m_voltageFiltered = 0.0f;

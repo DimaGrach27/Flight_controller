@@ -20,7 +20,6 @@ bool BatteryVoltageSensor::Init()
     m_voltageFiltered = 0.0f;
 
     m_initialized = false;
-    m_valid = false;
 
     return true;
 }
@@ -48,7 +47,6 @@ bool BatteryVoltageSensor::Update()
         m_voltageFiltered += kFilterAlpha * (m_voltageRaw - m_voltageFiltered);
     }
 
-    // m_voltageFiltered *= kCalibrationFactor;
     m_valid = true;
     return true;
 }

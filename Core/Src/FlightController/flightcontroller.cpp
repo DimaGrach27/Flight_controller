@@ -30,6 +30,7 @@ FlightController::FlightController(
     , m_stateEstimator()
     , m_crsfRcReceiver(m_stm32UartDmaCrsfRc)
     , m_rcInput(m_crsfRcReceiver)
+    , m_batteryMonitor(4)
     , m_flightModeManager()
     , m_rateController()
     , m_mixer()
@@ -49,6 +50,7 @@ FlightController::FlightController(UART_HandleTypeDef& serialUart, ADC_HandleTyp
     , m_hilRcReceiver()
     , m_rcInput(m_hilRcReceiver)
     , m_stateEstimator()
+    , m_batteryMonitor(4)
     , m_flightModeManager()
     , m_rateController()
     , m_mixer()
@@ -74,6 +76,8 @@ void FlightController::Init()
     m_scheduler.AddTask(TaskID::Loging, 10000); //100 Hz
     m_scheduler.AddTask(TaskID::Battery, 10000); //100 Hz
 
+    m_batteryVoltageSensor.Init();
+
     if (!m_sensorsManager.Init())
     {
         return;
@@ -86,6 +90,7 @@ void FlightController::Init()
         return;
     }
 
+    m_batteryMonitor.Init();
     m_flightModeManager.Init();
     m_rateController.Init();
     m_mixer.Init();
@@ -135,13 +140,22 @@ void FlightController::Update()
     if (m_scheduler.ConsumeTask(TaskID::Battery))
     {
         m_batteryVoltageSensor.Update();
+
+        const float currentVoltage = m_batteryVoltageSensor.GetVoltageFiltered();
+        const float currecntCurrect = 0.0f;
+        m_batteryMonitor.Update(
+            currentVoltage,
+            currecntCurrect,
+            m_flightModeManager.GetState().armState == ArmState::Armed,
+            nowUs);
     }
+    const BatteryData& batteryData = m_batteryMonitor.GetBatteryData();
 
     if (m_scheduler.ConsumeTask(TaskID::Rc))
     {
         m_rcInput.Update(nowUs);
 
-        m_flightModeManager.Update(m_rcInput.GetCommand(), nowUs);
+        m_flightModeManager.Update(m_rcInput.GetCommand(), batteryData, m_batteryMonitor.CanArm(), nowUs);
     }
 
     if (m_scheduler.ConsumeTask(TaskID::Control))
