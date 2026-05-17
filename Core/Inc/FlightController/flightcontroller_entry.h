@@ -15,7 +15,8 @@ void flight_controller_Create(
     UART_HandleTypeDef* huart1,
     UART_HandleTypeDef* huart2,
     SPI_HandleTypeDef* hspi2,
-    TIM_HandleTypeDef* htim1
+    TIM_HandleTypeDef* htim1,
+    ADC_HandleTypeDef* hadc1
     );
 void flight_controller_Destroy();
 

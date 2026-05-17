@@ -22,6 +22,7 @@
 #include "RcInput/rcinput.h"
 #include "Scheduler/scheduler.h"
 #include "Sensors/sensorsmanager.h"
+#include "Sensors/BatteryVoltage/batteryvoltagesensor.h"
 
 #if NOT_USE_HIL
 #include "Sensors/imu_driver_lsm6ds3.h"
@@ -42,9 +43,10 @@ public:
         UART_HandleTypeDef& serialUart,
         UART_HandleTypeDef& rcUart,
         SPI_HandleTypeDef& spiImuHandler,
+        ADC_HandleTypeDef& batterAdc,
         std::array<PwmMotorOutput::MotorChannel, 4> motorChannels);
 #else
-    FlightController(UART_HandleTypeDef& serialUart);
+    FlightController(UART_HandleTypeDef& serialUart, ADC_HandleTypeDef& batterAdc);
 #endif
 
     ~FlightController();
@@ -75,6 +77,7 @@ private:
 #endif
     Imu_Driver m_imuDriver;
     Imu_Sensor m_imuSensor;
+    BatteryVoltageSensor m_batteryVoltageSensor;
     SensorsManager m_sensorsManager;
 
 #if NOT_USE_HIL

@@ -33,7 +33,8 @@ extern "C" void flight_controller_Create(
     UART_HandleTypeDef* huart1,
     UART_HandleTypeDef* huart2,
     SPI_HandleTypeDef* hspi2,
-    TIM_HandleTypeDef* htim1)
+    TIM_HandleTypeDef* htim1,
+    ADC_HandleTypeDef* hadc1)
 {
     FlightControllerHandler* handler = &g_FlightControllerHandler;
 #if NOT_USE_HIL
@@ -44,9 +45,9 @@ extern "C" void flight_controller_Create(
         { htim1, TIM_CHANNEL_4 }  // m4
     }};
 
-    new (handler->storage) FlightController(*huart1, *huart2, *hspi2, motorChannels);
+    new (handler->storage) FlightController(*huart1, *huart2, *hspi2, *hadc1, motorChannels);
 #else
-    new (handler->storage) FlightController(*huart2);
+    new (handler->storage) FlightController(*huart2, *hadc1);
 #endif
 
     handler->constructed = true;

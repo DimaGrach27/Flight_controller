@@ -17,6 +17,7 @@ FlightController::FlightController(
     UART_HandleTypeDef& serialUart,
     UART_HandleTypeDef& rcUart,
     SPI_HandleTypeDef& spiImuHandler,
+    ADC_HandleTypeDef& batterAdc,
     std::array<PwmMotorOutput::MotorChannel, 4> motorChannels)
     : m_scheduler()
     , m_stm32SpiBusImu(spiImuHandler, CS_SPI2_GPIO_Port, CS_SPI2_Pin)
@@ -24,6 +25,7 @@ FlightController::FlightController(
     , m_imuLsm6ds3(m_stm32SpiBusImu)
     , m_imuDriver(m_imuLsm6ds3)
     , m_imuSensor(m_imuDriver)
+    , m_batteryVoltageSensor(batterAdc)
     , m_sensorsManager(m_imuSensor)
     , m_stateEstimator()
     , m_crsfRcReceiver(m_stm32UartDmaCrsfRc)
@@ -37,11 +39,12 @@ FlightController::FlightController(
 {
 }
 #else
-FlightController::FlightController(UART_HandleTypeDef &serialUart)
+FlightController::FlightController(UART_HandleTypeDef& serialUart, ADC_HandleTypeDef& batterAdc)
     : m_scheduler()
     , m_imuDriverHil()
     , m_imuDriver(m_imuDriverHil)
     , m_imuSensor(m_imuDriver)
+    , m_batteryVoltageSensor(batterAdc)
     , m_sensorsManager(m_imuSensor)
     , m_hilRcReceiver()
     , m_rcInput(m_hilRcReceiver)
@@ -69,6 +72,7 @@ void FlightController::Init()
     m_scheduler.AddTask(TaskID::Control, 2000);     //500 Hz
     m_scheduler.AddTask(TaskID::Telemetry, 100000); //10 Hz
     m_scheduler.AddTask(TaskID::Loging, 10000); //100 Hz
+    m_scheduler.AddTask(TaskID::Battery, 10000); //100 Hz
 
     if (!m_sensorsManager.Init())
     {
@@ -126,6 +130,11 @@ void FlightController::Update()
     {
         m_sensorsManager.UpdateImu(nowUs);
         m_stateEstimator.UpdateImu(m_sensorsManager.GetImuData());
+    }
+
+    if (m_scheduler.ConsumeTask(TaskID::Battery))
+    {
+        m_batteryVoltageSensor.Update();
     }
 
     if (m_scheduler.ConsumeTask(TaskID::Rc))

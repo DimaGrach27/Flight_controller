@@ -283,7 +283,7 @@ int main(void)
   MX_SPI2_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
-  flight_controller_Create(&huart1, &huart2, &hspi2, &htim3);
+  flight_controller_Create(&huart1, &huart2, &hspi2, &htim3, &hadc1);
   flight_controller_Init();
   /* USER CODE END 2 */
 
@@ -403,7 +403,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
