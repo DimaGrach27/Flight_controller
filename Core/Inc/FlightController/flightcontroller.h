@@ -14,6 +14,7 @@
 
 #include "Estimators/stateestimator.h"
 #include "FlightManager/flightmodemanager.h"
+#include "Motors/dshotmotoroutput.h"
 #include "Motors/imotoroutput.h"
 #include "Motors/mixer.h"
 #include "PID/ratecontroller.h"
@@ -26,8 +27,9 @@
 #include "Sensors/BatteryVoltage/batteryvoltagesensor.h"
 
 #if NOT_USE_HIL
-#include "Sensors/imu_driver_lsm6ds3.h"
+#include "Sensors/IMU/imu_driver_lsm6ds3.h"
 #include "Motors/pwmmotoroutput.h"
+#include "Motors/motorchannel.h"
 #include "RcInput/crsfrcreceiver.h"
 #else
 #include "Sensors/IMU/imu_driver_hil.h"
@@ -45,7 +47,9 @@ public:
         UART_HandleTypeDef& rcUart,
         SPI_HandleTypeDef& spiImuHandler,
         ADC_HandleTypeDef& batterAdc,
-        std::array<PwmMotorOutput::MotorChannel, 4> motorChannels);
+        TIM_HandleTypeDef& dshotTimer
+        // std::array<MotorChannel, 4> motorChannels
+        );
 #else
     FlightController(UART_HandleTypeDef& serialUart, ADC_HandleTypeDef& batterAdc);
 #endif
@@ -56,6 +60,7 @@ public:
     void Heartbeat();
     void Update();
     void MavlinkParseByte(uint8_t byte);
+    void OnDmaComplete(TIM_HandleTypeDef* htim);
 
     uint32_t GetMicros() const;
 
@@ -68,6 +73,11 @@ private:
 
 private:
     Scheduler m_scheduler;
+
+#if NOT_USE_HIL
+    static constexpr uint16_t kReceiveBufferSizeRcCommand = 512;
+    std::array<uint8_t, kReceiveBufferSizeRcCommand> m_receiveBufferRcCommand{};
+#endif
 
 #if NOT_USE_HIL
     Stm32SpiBus m_stm32SpiBusImu;
@@ -97,18 +107,15 @@ private:
     Mixer m_mixer;
 
 #if NOT_USE_HIL
-    PwmMotorOutput m_pwmMotorOutput;
+    DshotMotorOutput::Config m_dshotMotorOutputConfig{};
+    DshotMotorOutput m_dshotMotorOutput;
+    // PwmMotorOutput m_pwmMotorOutput;
 #else
     HilMotorOutput m_hilMotorOutput;
 #endif
 
     ControlOutput m_lastControlOutput{};
     MotorCommand m_lastMotorCommand{};
-
-#if NOT_USE_HIL
-    uint8_t* m_receiveBufferRcCommand;
-    const uint16_t m_receiveBufferSizeRcCommand = 512;
-#endif
 
     UART_HandleTypeDef& m_serialUart;
     //DEBUG

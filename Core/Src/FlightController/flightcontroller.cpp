@@ -7,34 +7,37 @@
 #include <algorithm>
 
 #include "main.h"
-#include "../../Inc/FlightController/Utils/lowpassfilter.h"
+#include "FlightController/Utils/lowpassfilter.h"
 #include "FlightController/Utils/mathutils.h"
 #include "FlightController/PID.h"
 #include "FlightController/RcInput/rcchannelutils.h"
-
 #if NOT_USE_HIL
 FlightController::FlightController(
     UART_HandleTypeDef& serialUart,
     UART_HandleTypeDef& rcUart,
     SPI_HandleTypeDef& spiImuHandler,
     ADC_HandleTypeDef& batterAdc,
-    std::array<PwmMotorOutput::MotorChannel, 4> motorChannels)
+    TIM_HandleTypeDef& dshotTimer
+    // std::array<MotorChannel, 4> motorChannels
+    )
     : m_scheduler()
+    // , m_receiveBufferRcCommand()
     , m_stm32SpiBusImu(spiImuHandler, CS_SPI2_GPIO_Port, CS_SPI2_Pin)
-    , m_stm32UartDmaCrsfRc(rcUart, m_receiveBufferRcCommand, m_receiveBufferSizeRcCommand)
+    , m_stm32UartDmaCrsfRc(rcUart, m_receiveBufferRcCommand.data(), kReceiveBufferSizeRcCommand)
     , m_imuLsm6ds3(m_stm32SpiBusImu)
     , m_imuDriver(m_imuLsm6ds3)
     , m_imuSensor(m_imuDriver)
     , m_batteryVoltageSensor(batterAdc)
     , m_sensorsManager(m_imuSensor)
-    , m_stateEstimator()
     , m_crsfRcReceiver(m_stm32UartDmaCrsfRc)
     , m_rcInput(m_crsfRcReceiver)
+    , m_stateEstimator()
     , m_batteryMonitor(4)
     , m_flightModeManager()
     , m_rateController()
     , m_mixer()
-    , m_pwmMotorOutput(motorChannels)
+    , m_dshotMotorOutput(&dshotTimer, m_dshotMotorOutputConfig)
+    // , m_pwmMotorOutput(motorChannels)
     , m_serialUart(serialUart)
     , m_logger(serialUart)
 {
@@ -78,10 +81,10 @@ void FlightController::Init()
 
     m_batteryVoltageSensor.Init();
 
-    if (!m_sensorsManager.Init())
-    {
-        return;
-    }
+    // if (!m_sensorsManager.Init())
+    // {
+    //     return;
+    // }
 
     m_stateEstimator.Init();
 
@@ -96,8 +99,10 @@ void FlightController::Init()
     m_mixer.Init();
 
 #if NOT_USE_HIL
-    m_pwmMotorOutput.Init();
-    m_pwmMotorOutput.StopAll();
+    m_dshotMotorOutput.Init();
+    m_dshotMotorOutput.StopAll();
+    // m_pwmMotorOutput.Init();
+    // m_pwmMotorOutput.StopAll();
 #else
     m_hilMotorOutput.Init();
     m_hilMotorOutput.StopAll();
@@ -226,6 +231,11 @@ void FlightController::MavlinkParseByte(uint8_t byte)
     }
 }
 
+void FlightController::OnDmaComplete(TIM_HandleTypeDef *htim)
+{
+    m_dshotMotorOutput.OnDmaComplete(htim);
+}
+
 uint32_t FlightController::GetMicros() const
 {
     return HAL_GetTick() * 1000U;
@@ -240,7 +250,8 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     {
         m_rateController.Reset();
 #if NOT_USE_HIL
-        m_pwmMotorOutput.StopAll();
+        // m_pwmMotorOutput.StopAll();
+        m_dshotMotorOutput.StopAll();
 #else
         m_hilMotorOutput.StopAll();
 #endif
@@ -251,7 +262,8 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     {
         m_rateController.Reset();
 #if NOT_USE_HIL
-        m_pwmMotorOutput.StopAll();
+        m_dshotMotorOutput.StopAll();
+        // m_pwmMotorOutput.StopAll();
 #else
         m_hilMotorOutput.StopAll();
 #endif
@@ -261,7 +273,8 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     if (!m_sensorsManager.IsImuReady())
     {
 #if NOT_USE_HIL
-        m_pwmMotorOutput.StopAll();
+        m_dshotMotorOutput.StopAll();
+        // m_pwmMotorOutput.StopAll();
 #else
         m_hilMotorOutput.StopAll();
 #endif
@@ -273,7 +286,8 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     {
         m_rateController.Reset();
 #if NOT_USE_HIL
-        m_pwmMotorOutput.StopAll();
+        m_dshotMotorOutput.StopAll();
+        // m_pwmMotorOutput.StopAll();
 #else
         m_hilMotorOutput.StopAll();
 #endif
@@ -303,7 +317,8 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     m_lastMotorCommand = motors;
 
 #if NOT_USE_HIL
-    m_pwmMotorOutput.Write(motors);
+    m_dshotMotorOutput.Write(motors);
+    // m_pwmMotorOutput.Write(motors);
 #else
     m_hilMotorOutput.Write(motors);
 #endif

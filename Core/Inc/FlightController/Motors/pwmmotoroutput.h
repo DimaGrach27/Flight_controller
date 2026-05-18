@@ -7,6 +7,7 @@
 
 #include "imotoroutput.h"
 #include "main.h"
+#include "motorchannel.h"
 
 struct MotorOutputConfig
 {
@@ -20,13 +21,6 @@ struct MotorOutputConfig
 
 class PwmMotorOutput final : public IMotorOutput
 {
-public:
-    struct MotorChannel
-    {
-        TIM_HandleTypeDef* timer = nullptr;
-        uint32_t channel = 0;
-    };
-
 public:
     PwmMotorOutput(const std::array<MotorChannel, 4>& channels);
 

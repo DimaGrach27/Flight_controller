@@ -9,7 +9,7 @@
 #include <new>
 
 #if NOT_USE_HIL
-#include "FlightController/Motors/pwmmotoroutput.h"
+#include "FlightController/Motors/motorchannel.h"
 #endif
 
 struct FlightControllerHandler
@@ -21,7 +21,7 @@ struct FlightControllerHandler
 static FlightControllerHandler g_FlightControllerHandler;
 
 #if NOT_USE_HIL
-std::array<PwmMotorOutput::MotorChannel, 4> motorChannels;
+std::array<MotorChannel, 4> motorChannels;
 #endif
 
 static FlightController* GetFlightController(FlightControllerHandler* handle)
@@ -45,7 +45,7 @@ extern "C" void flight_controller_Create(
         { htim1, TIM_CHANNEL_4 }  // m4
     }};
 
-    new (handler->storage) FlightController(*huart1, *huart2, *hspi2, *hadc1, motorChannels);
+    new (handler->storage) FlightController(*huart2, *huart1, *hspi2, *hadc1, *htim1);
 #else
     new (handler->storage) FlightController(*huart2, *hadc1);
 #endif
@@ -85,4 +85,9 @@ extern "C" void flight_controller_ParseRcCommandByte(uint8_t byte)
 extern "C" void flight_controller_Update()
 {
     GetFlightController(&g_FlightControllerHandler)->Update();
+}
+
+extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+{
+    GetFlightController(&g_FlightControllerHandler)->OnDmaComplete(htim);
 }
