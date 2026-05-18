@@ -27,7 +27,9 @@ FlightController::FlightController(
     , m_imuLsm6ds3(m_stm32SpiBusImu)
     , m_imuDriver(m_imuLsm6ds3)
     , m_imuSensor(m_imuDriver)
-    , m_batteryVoltageSensor(batterAdc)
+    , m_analogInputs(batterAdc)
+    , m_currentSensor()
+    , m_batteryVoltageSensor()
     , m_sensorsManager(m_imuSensor)
     , m_crsfRcReceiver(m_stm32UartDmaCrsfRc)
     , m_rcInput(m_crsfRcReceiver)
@@ -78,6 +80,13 @@ void FlightController::Init()
     m_scheduler.AddTask(TaskID::Telemetry, 100000); //10 Hz
     m_scheduler.AddTask(TaskID::Loging, 10000);     //100 Hz
     m_scheduler.AddTask(TaskID::Battery, 100000);   //10 Hz
+
+
+    bool analogGood = m_analogInputs.Start();
+    if (analogGood)
+    {
+        //analog input good
+    }
 
     m_batteryVoltageSensor.Init();
 
@@ -144,13 +153,15 @@ void FlightController::Update()
 
     if (m_scheduler.ConsumeTask(TaskID::Battery))
     {
-        m_batteryVoltageSensor.Update();
+        m_analogInputs.Update();
+        m_currentSensor.Update(m_analogInputs.GetFilteredRaw(AnalogInputs::Channel::Current));
+        m_batteryVoltageSensor.Update(m_analogInputs.GetFilteredRaw(AnalogInputs::Channel::Vbat));
 
         const float currentVoltage = m_batteryVoltageSensor.GetVoltageFiltered();
-        const float currecntCurrect = 0.0f;
+        const float currentCurrent = m_currentSensor.GetFilteredCurrentA();
         m_batteryMonitor.Update(
             currentVoltage,
-            currecntCurrect,
+            currentCurrent,
             m_flightModeManager.GetState().armState == ArmState::Armed,
             nowUs);
     }
@@ -234,6 +245,11 @@ void FlightController::MavlinkParseByte(uint8_t byte)
 void FlightController::OnDmaComplete(TIM_HandleTypeDef *htim)
 {
     m_dshotMotorOutput.OnDmaComplete(htim);
+}
+
+void FlightController::OnDmaComplete(ADC_HandleTypeDef* hadc)
+{
+    m_analogInputs.OnDmaComplete(hadc);
 }
 
 uint32_t FlightController::GetMicros() const

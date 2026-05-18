@@ -2,15 +2,15 @@
 // Created by Dmytro Hrachov on 17.05.2026.
 //
 
-#include "FlightController/Sensors/BatteryVoltage/batteryvoltagesensor.h"
+#include "FlightController/Sensors/Battery/batteryvoltagesensor.h"
 namespace
 {
     constexpr float kCalibrationFactor = 15.2f / 15.26f; //this value was calibrated with measuring the real voltage
 }
 
-BatteryVoltageSensor::BatteryVoltageSensor(ADC_HandleTypeDef& adc)
-    : m_adc(adc)
+BatteryVoltageSensor::BatteryVoltageSensor()
 {
+
 }
 
 bool BatteryVoltageSensor::Init()
@@ -25,17 +25,9 @@ bool BatteryVoltageSensor::Init()
     return true;
 }
 
-bool BatteryVoltageSensor::Update()
+bool BatteryVoltageSensor::Update(uint32_t adcRaw)
 {
-    uint32_t raw = 0;
-
-    if (!ReadAdcRawAveraged(raw))
-    {
-        m_valid = false;
-        return false;
-    }
-
-    m_adcRaw = raw;
+    m_adcRaw = adcRaw;
     m_voltageRaw = ConvertRawToBatteryVoltage(m_adcRaw);
 
     if (!m_initialized)
@@ -49,32 +41,6 @@ bool BatteryVoltageSensor::Update()
     }
 
     m_valid = true;
-    return true;
-}
-
-bool BatteryVoltageSensor::ReadAdcRawAveraged(uint32_t& raw)
-{
-    uint32_t sum = 0;
-
-    for (uint32_t i = 0; i < kSampleCount; ++i)
-    {
-        if (HAL_ADC_Start(&m_adc) != HAL_OK)
-        {
-            HAL_ADC_Stop(&m_adc);
-            return false;
-        }
-
-        if (HAL_ADC_PollForConversion(&m_adc, 10) != HAL_OK)
-        {
-            HAL_ADC_Stop(&m_adc);
-            return false;
-        }
-
-        sum += HAL_ADC_GetValue(&m_adc);
-        HAL_ADC_Stop(&m_adc);
-    }
-
-    raw = sum / kSampleCount;
     return true;
 }
 

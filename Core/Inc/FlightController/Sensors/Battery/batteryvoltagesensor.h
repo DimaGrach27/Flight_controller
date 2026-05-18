@@ -6,15 +6,13 @@
 #include "main.h"
 #include <cstdint>
 
-#include "FlightController/datastructs.h"
-
 class BatteryVoltageSensor
 {
 public:
-    explicit BatteryVoltageSensor(ADC_HandleTypeDef& adc);
+    explicit BatteryVoltageSensor();
 
     bool Init();
-    bool Update();
+    bool Update(uint32_t adcRaw);
 
     float GetVoltageRaw() const;
     float GetVoltageFiltered() const;
@@ -22,12 +20,9 @@ public:
     bool IsValid() const;
 
 private:
-    bool ReadAdcRawAveraged(uint32_t& raw);
     float ConvertRawToBatteryVoltage(uint32_t raw) const;
 
 private:
-    static constexpr uint32_t kSampleCount = 32;
-
     static constexpr float kVdda = 3.3f;
     static constexpr float kAdcMax = 4095.0f;
 
@@ -38,8 +33,6 @@ private:
     static constexpr float kFilterAlpha = 0.05f;
 
 private:
-    ADC_HandleTypeDef& m_adc;
-
     uint32_t m_adcRaw = 0;
 
 

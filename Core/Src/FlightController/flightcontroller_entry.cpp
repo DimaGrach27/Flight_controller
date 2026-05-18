@@ -91,3 +91,8 @@ extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
     GetFlightController(&g_FlightControllerHandler)->OnDmaComplete(htim);
 }
+
+extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+    GetFlightController(&g_FlightControllerHandler)->OnDmaComplete(hadc);
+}

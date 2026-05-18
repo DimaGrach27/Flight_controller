@@ -22,9 +22,11 @@
 #include "Protocols/stm32uartdmabytestream.h"
 #include "RcInput/rcinput.h"
 #include "Scheduler/scheduler.h"
+#include "Sensors/analoginputs.h"
 #include "Sensors/sensorsmanager.h"
-#include "Sensors/BatteryVoltage/batterymonitor.h"
-#include "Sensors/BatteryVoltage/batteryvoltagesensor.h"
+#include "Sensors/Battery/batterymonitor.h"
+#include "Sensors/Battery/batteryvoltagesensor.h"
+#include "Sensors/Battery/currentsensor.h"
 
 #if NOT_USE_HIL
 #include "Sensors/IMU/imu_driver_lsm6ds3.h"
@@ -61,6 +63,7 @@ public:
     void Update();
     void MavlinkParseByte(uint8_t byte);
     void OnDmaComplete(TIM_HandleTypeDef* htim);
+    void OnDmaComplete(ADC_HandleTypeDef* hadc);
 
     uint32_t GetMicros() const;
 
@@ -88,6 +91,8 @@ private:
 #endif
     Imu_Driver m_imuDriver;
     Imu_Sensor m_imuSensor;
+    AnalogInputs m_analogInputs;
+    CurrentSensor m_currentSensor;
     BatteryVoltageSensor m_batteryVoltageSensor;
     SensorsManager m_sensorsManager;
 

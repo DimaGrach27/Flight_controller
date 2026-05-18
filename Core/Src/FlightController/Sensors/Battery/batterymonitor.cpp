@@ -2,7 +2,7 @@
 // Created by Dmytro Hrachov on 17.05.2026.
 //
 
-#include "FlightController/Sensors/BatteryVoltage/batterymonitor.h"
+#include "FlightController/Sensors/Battery/batterymonitor.h"
 
 #include "FlightController/Utils/mathutils.h"
 #include <cmath>
