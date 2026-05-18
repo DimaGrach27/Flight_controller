@@ -25,7 +25,7 @@ bool BatteryVoltageSensor::Init()
     return true;
 }
 
-bool BatteryVoltageSensor::Update(uint32_t adcRaw)
+bool BatteryVoltageSensor::Update(uint16_t adcRaw)
 {
     m_adcRaw = adcRaw;
     m_voltageRaw = ConvertRawToBatteryVoltage(m_adcRaw);
@@ -44,7 +44,7 @@ bool BatteryVoltageSensor::Update(uint32_t adcRaw)
     return true;
 }
 
-float BatteryVoltageSensor::ConvertRawToBatteryVoltage(uint32_t raw) const
+float BatteryVoltageSensor::ConvertRawToBatteryVoltage(uint16_t raw) const
 {
     const float adcVoltage = static_cast<float>(raw) * kVdda / kAdcMax;
     return adcVoltage * kDividerRatio * kCalibrationFactor;

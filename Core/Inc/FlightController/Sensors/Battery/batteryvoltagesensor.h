@@ -12,7 +12,7 @@ public:
     explicit BatteryVoltageSensor();
 
     bool Init();
-    bool Update(uint32_t adcRaw);
+    bool Update(uint16_t adcRaw);
 
     float GetVoltageRaw() const;
     float GetVoltageFiltered() const;
@@ -20,7 +20,7 @@ public:
     bool IsValid() const;
 
 private:
-    float ConvertRawToBatteryVoltage(uint32_t raw) const;
+    float ConvertRawToBatteryVoltage(uint16_t raw) const;
 
 private:
     static constexpr float kVdda = 3.3f;

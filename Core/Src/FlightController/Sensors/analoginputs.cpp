@@ -44,7 +44,7 @@ void AnalogInputs::Update()
         const uint32_t baseIndex = sample * ChannelCount;
 
         sums[ToIndex(Channel::Vbat)] += m_dmaBuffer[baseIndex + ToIndex(Channel::Vbat)];
-        // sums[ToIndex(Channel::Current)] += m_dmaBuffer[baseIndex + ToIndex(Channel::Current)];
+        sums[ToIndex(Channel::Current)] += m_dmaBuffer[baseIndex + ToIndex(Channel::Current)];
     }
 
     for (uint32_t i = 0; i < ChannelCount; ++i)
@@ -64,12 +64,12 @@ void AnalogInputs::Update()
     m_filterInitialized = true;
 }
 
-uint32_t AnalogInputs::GetRaw(Channel channel) const
+uint16_t AnalogInputs::GetRaw(Channel channel) const
 {
     return m_raw[ToIndex(channel)];
 }
 
-uint32_t AnalogInputs::GetFilteredRaw(Channel channel) const
+uint16_t AnalogInputs::GetFilteredRaw(Channel channel) const
 {
     return static_cast<uint16_t>(m_filteredRaw[ToIndex(channel)]);
 }

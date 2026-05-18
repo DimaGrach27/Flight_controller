@@ -262,6 +262,25 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     const RcCommand rcCommand = m_rcInput.GetCommand();
     const VehicleState& state = m_stateEstimator.GetState();
 
+    //test
+
+    MotorCommand stop{};
+    stop.m1 = 0.0f;
+    stop.m2 = 0.0f;
+    stop.m3 = 0.0f;
+    stop.m4 = 0.0f;
+
+    static uint32_t startMs = HAL_GetTick();
+
+    while ((HAL_GetTick() - startMs) < 3000U)
+    {
+        m_dshotMotorOutput.Write(stop);
+        HAL_Delay(2);
+    }
+
+    m_dshotMotorOutput.Write({rcCommand.throttle, rcCommand.throttle, rcCommand.throttle, rcCommand.throttle});
+    return;
+    ///
     if (m_flightModeManager.IsFailsafe())
     {
         m_rateController.Reset();

@@ -18,13 +18,13 @@ public:
 
     explicit CurrentSensor();
 
-    void Update(uint32_t adcRaw);
+    void Update(uint16_t adcRaw);
 
     float GetCurrentA() const;
     float GetFilteredCurrentA() const;
 
 private:
-    float AdcToVoltage(uint32_t adcRaw) const;
+    float AdcToVoltage(uint16_t adcRaw) const;
     float VoltageToCurrent(float voltage) const;
 
 private:

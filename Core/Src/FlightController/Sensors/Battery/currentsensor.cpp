@@ -8,13 +8,15 @@ CurrentSensor::CurrentSensor()
     m_config =
     {
         .vref = 3.3f,
-        .offsetV = 0.003f,
-        .voltsPerAmp = 0.025f,
+        // .offsetV = 0.50f,
+        .offsetV = 0.030f,
+        // .voltsPerAmp = 0.066f,
+        .voltsPerAmp = 0.0267f,
         .filterAlpha = 0.05f
     };
 }
 
-void CurrentSensor::Update(uint32_t adcRaw)
+void CurrentSensor::Update(uint16_t adcRaw)
 {
     const float voltage = AdcToVoltage(adcRaw);
     m_currentA = VoltageToCurrent(voltage);
@@ -39,7 +41,7 @@ float CurrentSensor::GetFilteredCurrentA() const
     return m_filteredCurrentA;
 }
 
-float CurrentSensor::AdcToVoltage(uint32_t adcRaw) const
+float CurrentSensor::AdcToVoltage(uint16_t adcRaw) const
 {
     constexpr float adcMax = 4095.0f;
     return static_cast<float>(adcRaw) * m_config.vref / adcMax;
