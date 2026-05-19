@@ -4,7 +4,7 @@ enable_language(C ASM)
 # STM32CubeMX generated symbols (macros)
 set(MX_Defines_Syms 
 	USE_HAL_DRIVER 
-	STM32F405xx
+	STM32F411xE
     $<$<CONFIG:Debug>:DEBUG>
 )
 
@@ -24,7 +24,7 @@ set(MX_Application_Src
         ../../Core/Src/stm32f4xx_hal_msp.c
         ../../Core/Src/sysmem.c
         ../../Core/Src/syscalls.c
-        ../../startup_stm32f405xx.s
+        ../../startup_stm32f411xe.s
 )
 
 # STM32 HAL/LL Drivers
