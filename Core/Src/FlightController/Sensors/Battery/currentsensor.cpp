@@ -8,10 +8,10 @@ CurrentSensor::CurrentSensor()
     m_config =
     {
         .vref = 3.3f,
-        // .offsetV = 0.50f,
-        .offsetV = 0.030f,
+        // .offsetV = 0.50f, // 0A 0.34V; 0.5A 0.49V; 1.0A 0.61V
+        .offsetV = 0.034f, // 0.03f
         // .voltsPerAmp = 0.066f,
-        .voltsPerAmp = 0.0267f,
+        .voltsPerAmp = 0.028f, // 0.0267f
         .filterAlpha = 0.05f
     };
 }
