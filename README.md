@@ -27,3 +27,9 @@ Milestone 4:
 Milestone 5:
 - Architecture changing. Separate moduls for Sensors, Estimation, RC Command, Rate control, Mixer, MotorOutput
 - Dynamic using in HIL and real drone, by changing one Definition <code>NOT_USE_HIL 0/1</code>
+
+
+
+
+додати захист по струму,
+додати телеметрію, стану дрона, стану батареї, споживання струм

@@ -263,7 +263,7 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     const VehicleState& state = m_stateEstimator.GetState();
 
     //test
-
+    //TODO: remove it before flight
     MotorCommand stop{};
     stop.m1 = 0.0f;
     stop.m2 = 0.0f;
