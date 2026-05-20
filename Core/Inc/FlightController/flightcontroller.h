@@ -78,6 +78,9 @@ public:
     uint32_t GetMicros() const;
 
 private:
+    void SendTelemetry(uint32_t nowUs);
+    void SendMavlinkMessage(const mavlink_message_t& msg);
+
     void RunControlLoop(uint32_t nowUs);
 
     void MavlinkHandleMessage(const mavlink_message_t* msg);
