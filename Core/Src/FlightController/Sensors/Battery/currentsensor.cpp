@@ -16,10 +16,31 @@ CurrentSensor::CurrentSensor()
     };
 }
 
+void CurrentSensor::StartZeroCalibration()
+{
+    m_zeroCalibrationActive = true;
+}
+
+void CurrentSensor::StopZeroCalibration()
+{
+    m_zeroCalibrationActive = false;
+}
+
 void CurrentSensor::Update(uint16_t adcRaw)
 {
     const float voltage = AdcToVoltage(adcRaw);
+
+    if (m_zeroCalibrationActive)
+    {
+        m_offsetV += m_config.offsetV * (voltage - m_offsetV);
+    }
+
     m_currentA = VoltageToCurrent(voltage);
+
+    if (m_currentA > m_config.maxValidCurrentA)
+    {
+        m_currentA = m_config.maxValidCurrentA;
+    }
 
     if (!m_initialized)
     {
@@ -39,6 +60,11 @@ float CurrentSensor::GetCurrentA() const
 float CurrentSensor::GetFilteredCurrentA() const
 {
     return m_filteredCurrentA;
+}
+
+float CurrentSensor::GetOffsetV() const
+{
+    return m_offsetV;
 }
 
 float CurrentSensor::AdcToVoltage(uint16_t adcRaw) const

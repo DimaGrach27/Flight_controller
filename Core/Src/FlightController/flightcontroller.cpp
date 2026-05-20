@@ -18,7 +18,7 @@ FlightController::FlightController(
     // std::array<MotorChannel, 4> motorChannels
     )
     : m_scheduler()
-    // , m_receiveBufferRcCommand()
+    , m_receiveBufferRcCommand()
     , m_stm32SpiBusImu(spiImuHandler, CS_SPI2_GPIO_Port, CS_SPI2_Pin)
     , m_stm32UartDmaCrsfRc(rcUart, m_receiveBufferRcCommand.data(), kReceiveBufferSizeRcCommand)
     , m_imuLsm6ds3(m_stm32SpiBusImu)
@@ -97,6 +97,7 @@ void FlightController::Init()
         //analog input good
     }
 
+    m_currentSensor.StartZeroCalibration();
     m_batteryVoltageSensor.Init();
 
     // if (!m_sensorsManager.Init())
@@ -183,6 +184,12 @@ void FlightController::Update()
         m_rcInput.Update(nowUs);
 
         m_flightModeManager.Update(m_rcInput.GetCommand(), batteryData, m_batteryMonitor.CanArm(), nowUs);
+    }
+
+    //Should disable calibration befor arm
+    if (m_flightModeManager.GetState().armState == ArmState::Armed)
+    {
+        m_currentSensor.StopZeroCalibration();
     }
 
     if (m_scheduler.ConsumeTask(TaskID::Control))
@@ -414,7 +421,8 @@ void FlightController::RunControlLoop(uint32_t nowUs)
 
     m_lastControlOutput = control;
 
-    const MotorCommand motors = m_mixer.Mix(rcCommand.throttle, control);
+    const float limitedThrottle = rcCommand.throttle * m_batteryMonitor.GetThrottleLimit();
+    const MotorCommand motors = m_mixer.Mix(limitedThrottle, control);
 
     m_lastMotorCommand = motors;
 

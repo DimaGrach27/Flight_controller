@@ -136,7 +136,7 @@ void UsbDebugConsole::ShowBatteryStatus(const BatteryData &batteryData)
     message.Append(static_cast<char>('0' + batteryData.current_A));
     message.Append(" A\r");
     message.Append("Pers: ");
-    message.Append(static_cast<char>('0' + static_cast<uint8_t>(batteryData.percentage * 100)));
+    message.Append(static_cast<char>('0' + batteryData.percentage));
     message.Append('\r');
     message.Append("Cell: ");
     message.Append(static_cast<char>('0' + batteryData.cellVoltage_V));

@@ -63,6 +63,16 @@ void BatteryMonitor::Update(const float batteryVoltage, const float currentA, co
         return;
     }
 
+    if (m_batteryData.voltage_V < m_config.minValidVoltageV ||
+    m_batteryData.voltage_V > m_config.maxValidVoltageV)
+    {
+        m_faults.voltageSensorInvalid = true;
+        m_throttleLimit = 1.0f;
+        m_batteryData.state = BatteryState::Unknown;
+        m_batteryData.valid = false;
+        return;
+    }
+
     m_batteryData.cellVoltage_V = m_batteryData.voltage_V / static_cast<float>(m_cellCount);
 
     if (m_batteryData.current_A > 0.0f)
@@ -71,7 +81,14 @@ void BatteryMonitor::Update(const float batteryVoltage, const float currentA, co
         m_consumedMah += m_batteryData.current_A * 1000.0f * dtHours;
     }
 
+    m_warnings.currentHigh = currentA > m_config.currentWarningA;
+    m_warnings.capacityWarning = m_consumedMah > m_config.capacityWarningMah;
+    m_warnings.capacityCritical = m_consumedMah > m_config.capacityCriticalMah;
+
     m_batteryData.state = EvaluateVoltageState(m_batteryData.cellVoltage_V, dtSeconds);
+    EvaluateCurrentState(armed, currentA, dtSeconds);
+
+    m_throttleLimit = CalculateThrottleLimit(currentA);
 
     m_batteryData.timestampUs = nowUs;
     m_batteryData.lowVoltage = m_batteryData.state == BatteryState::Low;
@@ -201,6 +218,39 @@ BatteryState BatteryMonitor::EvaluateVoltageState(const float cellVoltage, const
     return BatteryState::Normal;
 }
 
+void BatteryMonitor::EvaluateCurrentState(bool armed, float currentA, const float dtSeconds)
+{
+    if (armed && currentA > m_config.instantOverCurrentA)
+    {
+        m_instantOverCurrentTimeSec += dtSeconds;
+    }
+    else
+    {
+        m_instantOverCurrentTimeSec = 0;
+    }
+
+    if (m_instantOverCurrentTimeSec >= m_config.instantOverCurrentDelaySec)
+    {
+        m_faults.instantOverCurrent = true;
+    }
+
+    if (armed && currentA > m_config.sustainedOverCurrentA)
+    {
+        m_sustainedOverCurrentTimeSec += dtSeconds;
+    }
+    else
+    {
+        m_sustainedOverCurrentTimeSec = 0;
+    }
+
+    m_warnings.sustainedCurrentHigh = m_sustainedOverCurrentTimeSec > 0.5f; // 0.5 sec warning
+
+    if (m_sustainedOverCurrentTimeSec >= m_config.sustainedOverCurrentDelaySec)
+    {
+        m_faults.sustainedOverCurrent = true;
+    }
+}
+
 float BatteryMonitor::ComputeDtSeconds(const uint32_t nowUs)
 {
     if (!m_hasLastUpdate)
@@ -228,14 +278,33 @@ float BatteryMonitor::ComputeDtSeconds(const uint32_t nowUs)
     return dtSeconds;
 }
 
-float BatteryMonitor::ComputeBatteryPercentage() const
+uint8_t BatteryMonitor::ComputeBatteryPercentage() const
 {
     const float maxBatteryVoltage = m_cellCount * kMaxCellVoltage;
     float batteryPercentage = m_batteryData.voltage_V / maxBatteryVoltage;
 
     batteryPercentage = MathUtils::Clamp01(batteryPercentage);
 
-    return batteryPercentage;
+    return static_cast<uint8_t>(batteryPercentage * 100.0f);
+}
+
+float BatteryMonitor::CalculateThrottleLimit(const float currentA) const
+{
+    if (currentA <= m_config.currentLimitStartA)
+    {
+        return 1.0f;
+    }
+
+    if (currentA >= m_config.currentLimitFullA)
+    {
+        return m_config.minThrottleLimit;
+    }
+
+    const float t =
+        (currentA - m_config.currentLimitStartA) /
+        (m_config.currentLimitFullA - m_config.currentLimitStartA);
+
+    return 1.0f + t * (m_config.minThrottleLimit - 1.0f);
 }
 
 float BatteryMonitor::GetVoltage() const
@@ -256,6 +325,28 @@ float BatteryMonitor::GetCurrentA() const
 float BatteryMonitor::GetConsumedMah() const
 {
     return m_consumedMah;
+}
+
+float BatteryMonitor::GetThrottleLimit() const
+{
+    return m_throttleLimit;
+}
+
+const BatteryMonitor::Warnings& BatteryMonitor::GetWarnings() const
+{
+    return m_warnings;
+}
+
+const BatteryMonitor::Faults& BatteryMonitor::GetFaults() const
+{
+    return m_faults;
+}
+
+bool BatteryMonitor::HasCriticalFault() const
+{
+    return m_faults.voltageSensorInvalid ||
+           m_faults.currentSensorInvalid ||
+           m_faults.instantOverCurrent;
 }
 
 bool BatteryMonitor::CanArm() const

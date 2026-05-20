@@ -66,7 +66,7 @@ struct BatteryData
     float voltage_V = 0.0f;
     float cellVoltage_V = 0.0f;
     float current_A = 0.0f;
-    float percentage = 0.0f;
+    uint8_t percentage = 0; // 0...100
 
     bool lowVoltage = false;
     bool criticalVoltage = false;
