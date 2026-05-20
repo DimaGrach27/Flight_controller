@@ -7,9 +7,6 @@
 #include <algorithm>
 
 #include "main.h"
-#include "FlightController/Utils/lowpassfilter.h"
-#include "FlightController/Utils/mathutils.h"
-#include "FlightController/PID.h"
 #include "FlightController/RcInput/rcchannelutils.h"
 #if NOT_USE_HIL
 FlightController::FlightController(
@@ -276,6 +273,50 @@ void FlightController::OnUsbReceived(const uint8_t *data, uint32_t size)
 void FlightController::OnTransmitUsbComplete()
 {
     m_debugConsole.OnTransmitComplete();
+}
+
+void FlightController::RunDebugCommand(uint8_t command)
+{
+    switch (static_cast<UsbDebugConsoleCommand>(command))
+    {
+        case UsbDebugConsoleCommand::Status:
+        {
+            const VehicleState& vehicleState = m_stateEstimator.GetState();
+            const FlightModeState& flightMode = m_flightModeManager.GetState();
+
+            m_debugConsole.ShowFlightStatus(flightMode);
+            break;
+        }
+
+        case UsbDebugConsoleCommand::IMU_Status:
+        {
+            break;
+        }
+
+        case UsbDebugConsoleCommand::Battery_Status:
+        {
+            const BatteryData& batteryData = m_batteryMonitor.GetBatteryData();
+            m_debugConsole.ShowBatteryStatus(batteryData);
+            break;
+        }
+
+        case UsbDebugConsoleCommand::CalibrateAccel:
+        {
+            break;
+        }
+
+        case UsbDebugConsoleCommand::CalibrateGyro:
+        {
+            break;
+        }
+
+        case UsbDebugConsoleCommand::Reboot:
+        {
+            break;
+        }
+        default:
+            break;
+    }
 }
 
 uint32_t FlightController::GetMicros() const

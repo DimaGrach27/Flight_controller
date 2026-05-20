@@ -105,5 +105,9 @@ extern "C" void UsbDebugConsole_OnReceived(uint8_t* data, uint32_t size)
 extern "C" void UsbDebugConsole_OnTransmitComplete()
 {
     GetFlightController(&g_FlightControllerHandler)->OnTransmitUsbComplete();
+}
 
+extern "C" void UsbDebugConsole_RunDebugCommand(uint8_t command)
+{
+    GetFlightController(&g_FlightControllerHandler)->RunDebugCommand(command);
 }

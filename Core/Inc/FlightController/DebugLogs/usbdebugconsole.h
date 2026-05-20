@@ -3,9 +3,11 @@
 //
 #pragma once
 
-#include <array>
 #include <cstdint>
 #include <cstddef>
+
+#include "FlightController/datastructs.h"
+#include "FlightController/FlightManager/flightmode.h"
 
 enum class UsbDebugConsoleCommand : uint8_t
 {
@@ -37,6 +39,10 @@ public:
     void Write(const char* text);
     void WriteLine(const char* text);
     void WriteBytes(const uint8_t* data, uint16_t size);
+
+    //Commands
+    void ShowFlightStatus(const FlightModeState& state);
+    void ShowBatteryStatus(const BatteryData& batteryData);
 
 private:
     void ProcessRx();
@@ -76,6 +82,4 @@ private:
     uint8_t m_usbTxChunk[64]{};
 
     uint32_t m_lastStatusUs = 0;
-
-    std::array<DebugCommand, static_cast<uint8_t>(UsbDebugConsoleCommand::COUNT)> m_commandCallbacks;
 };

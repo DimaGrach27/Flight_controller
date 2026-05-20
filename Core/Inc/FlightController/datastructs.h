@@ -42,6 +42,25 @@ enum class BatteryState
     Emergency
 };
 
+static const char* EnumToChar_BatteryState(const BatteryState value)
+{
+    switch (value)
+    {
+        case BatteryState::Normal:
+            return "NORM";
+        case BatteryState::Low:
+            return "LOW";
+        case BatteryState::Critical:
+            return "CRTL";
+        case BatteryState::Emergency:
+            return "EMRG";
+        default:
+            return "UNKNOWN";
+    }
+
+    return "UNKNOWN";
+}
+
 struct BatteryData
 {
     float voltage_V = 0.0f;

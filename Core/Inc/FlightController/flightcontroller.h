@@ -40,7 +40,7 @@
 #include "RcInput/hilrcreceiver.h"
 #endif
 
-static class FlightController
+class FlightController
 {
 public:
 
@@ -73,6 +73,7 @@ public:
 
     void OnUsbReceived(const uint8_t* data, uint32_t size);
     void OnTransmitUsbComplete();
+    void RunDebugCommand(uint8_t command);
 
     uint32_t GetMicros() const;
 
@@ -88,7 +89,7 @@ private:
 
 #if NOT_USE_HIL
     static constexpr uint16_t kReceiveBufferSizeRcCommand = 512;
-    std::array<uint8_t, kReceiveBufferSizeRcCommand> m_receiveBufferRcCommand;
+    std::array<uint8_t, kReceiveBufferSizeRcCommand> m_receiveBufferRcCommand{};
 #endif
 
 #if NOT_USE_HIL

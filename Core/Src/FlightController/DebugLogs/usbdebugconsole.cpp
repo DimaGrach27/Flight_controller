@@ -7,6 +7,9 @@
 #include <cstring>
 #include <cstdio>
 
+#include "FlightController/flightcontroller_entry.h"
+#include "FlightController/Utils/fixedstring.h"
+
 extern "C"
 {
 #include "usbd_cdc_if.h"
@@ -98,6 +101,58 @@ void UsbDebugConsole::WriteBytes(const uint8_t* data, uint16_t size)
     TryStartTransmit();
 }
 
+void UsbDebugConsole::ShowFlightStatus(const FlightModeState &state)
+{
+    FixedString128 message;
+
+    message.Append("Status: \r");
+    message.Append("FM: ");
+    message.Append(EnumToChar_FlightMode(state.mode));
+    message.Append('\r');
+    message.Append("ARM: ");
+    message.Append(EnumToChar_ArmState(state.armState));
+    message.Append('\r');
+    message.Append("FS: ");
+    message.Append(static_cast<char>('0' + state.failsafe));
+    message.Append('\r');
+    message.Append("CanArm: ");
+    message.Append(static_cast<char>('0' + state.canArm));
+    message.Append('\n');
+    message.Append('\r');
+
+    if (!message.IsEmpty())
+    {
+        Write(message.CStr());
+    }
+}
+
+void UsbDebugConsole::ShowBatteryStatus(const BatteryData &batteryData)
+{
+    FixedString128 message;
+
+    message.Append("Battery: \r");
+    message.Append(static_cast<char>('0' + batteryData.voltage_V));
+    message.Append(" V; ");
+    message.Append(static_cast<char>('0' + batteryData.current_A));
+    message.Append(" A\r");
+    message.Append("Pers: ");
+    message.Append(static_cast<char>('0' + static_cast<uint8_t>(batteryData.percentage * 100)));
+    message.Append('\r');
+    message.Append("Cell: ");
+    message.Append(static_cast<char>('0' + batteryData.cellVoltage_V));
+    message.Append(" V;");
+    message.Append('\r');
+    message.Append("Status: ");
+    message.Append(EnumToChar_BatteryState(batteryData.state));
+    message.Append('\n');
+    message.Append('\r');
+
+    if (!message.IsEmpty())
+    {
+        Write(message.CStr());
+    }
+}
+
 void UsbDebugConsole::ProcessRx()
 {
     uint8_t byte = 0;
@@ -160,10 +215,11 @@ void UsbDebugConsole::ProcessCommand(const char* command)
 
     if (std::strcmp(command, "status") == 0)
     {
-        WriteLine("state: DISARMED");
-        WriteLine("mode: ACRO");
-        WriteLine("loop: OK");
-        WriteLine("usb: OK");
+        UsbDebugConsole_RunDebugCommand(static_cast<uint8_t>(UsbDebugConsoleCommand::Status));
+        // WriteLine("state: DISARMED");
+        // WriteLine("mode: ACRO");
+        // WriteLine("loop: OK");
+        // WriteLine("usb: OK");
         return;
     }
 
@@ -177,9 +233,10 @@ void UsbDebugConsole::ProcessCommand(const char* command)
 
     if (std::strcmp(command, "battery") == 0)
     {
+        UsbDebugConsole_RunDebugCommand(static_cast<uint8_t>(UsbDebugConsoleCommand::Battery_Status));
         // Потім сюди підставиш реальні VBAT/current.
-        WriteLine("vbat: 0.00 V");
-        WriteLine("current: 0.00 A");
+        // WriteLine("vbat: 0.00 V");
+        // WriteLine("current: 0.00 A");
         return;
     }
 
