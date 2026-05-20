@@ -336,8 +336,7 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     const RcCommand rcCommand = m_rcInput.GetCommand();
     const VehicleState& state = m_stateEstimator.GetState();
 
-    //test
-    //TODO: remove it before flight
+#if MOTOR_DIRECT_TEST
     MotorCommand stop{};
     stop.m1 = 0.0f;
     stop.m2 = 0.0f;
@@ -354,7 +353,32 @@ void FlightController::RunControlLoop(uint32_t nowUs)
 
     m_dshotMotorOutput.Write({rcCommand.throttle, rcCommand.throttle, rcCommand.throttle, rcCommand.throttle});
     return;
-    ///
+#endif
+
+    if (m_batteryMonitor.HasCriticalFault())
+    {
+        m_rateController.Reset();
+#if NOT_USE_HIL
+        // m_pwmMotorOutput.StopAll();
+        m_dshotMotorOutput.StopAll();
+#else
+        m_hilMotorOutput.StopAll();
+#endif
+        return;
+    }
+
+    if (m_batteryMonitor.ShouldStopMotorsImmediately())
+    {
+        m_rateController.Reset();
+#if NOT_USE_HIL
+        // m_pwmMotorOutput.StopAll();
+        m_dshotMotorOutput.StopAll();
+#else
+        m_hilMotorOutput.StopAll();
+#endif
+        return;
+    }
+
     if (m_flightModeManager.IsFailsafe())
     {
         m_rateController.Reset();

@@ -44,7 +44,7 @@ public:
         float minThrottleLimit = 0.55f;
 
         float instantOverCurrentA = 70.0f;
-        float instantOverCurrentDelaySec = 0.2f; // 20 ms
+        float instantOverCurrentDelaySec = 0.05f; // 50 ms
 
         float sustainedOverCurrentA = 45.0f;
         float sustainedOverCurrentDelaySec = 3.0f; // 3 sec
@@ -52,6 +52,11 @@ public:
         float batteryCapacityMah = 850.0f;
         float capacityWarningMah = 550.0f;
         float capacityCriticalMah = 700.0f;
+
+        float sagCurrentA = 25.0f;
+        float sagCellVoltageV = 3.45f;
+        float sagDelaySec = 0.2f;
+        float sagThrottleLimit = 0.75f;
     };
 
     struct Warnings
@@ -60,6 +65,7 @@ public:
         bool capacityWarning = false;
         bool capacityCritical = false;
         bool sustainedCurrentHigh = false;
+        bool voltageSag = false;
     };
 
     struct Faults
@@ -93,11 +99,18 @@ public:
     bool HasCriticalFault() const;
     bool CanArm() const;
 
+    bool ShouldBlockArm() const;
+    bool ShouldStopMotorsImmediately() const;
+    bool ShouldLimitThrottle() const;
+
 private:
     void UpdateCellDetection(float batteryVoltage, float dtSeconds, bool armed);
     uint8_t DetectCellCount(float batteryVoltage) const;
+
     BatteryState EvaluateVoltageState(float cellVoltage, const float dtSeconds);
     void EvaluateCurrentState(bool armed, float currentA, const float dtSeconds);
+    void EvaluateVoltageSag(float cellVoltage, float currentA, float dtSeconds);
+
     float ComputeDtSeconds(uint32_t nowUs);
     uint8_t ComputeBatteryPercentage() const;
     float CalculateThrottleLimit(float currentA) const;
@@ -118,9 +131,12 @@ private:
     float m_lowTimerSec = 0.0f;
     float m_criticalTimerSec = 0.0f;
     float m_emergencyTimerSec = 0.0f;
-    float m_throttleLimit = 1.0f;
     float m_instantOverCurrentTimeSec = 0;
     float m_sustainedOverCurrentTimeSec = 0;
+    float m_voltageSagTimerSec = 0.0f;
+
+    float m_throttleLimit = 1.0f;
+    float m_voltageBasedThrottleLimit = 1.0f;
 
     uint32_t m_lastUpdateUs = 0;
     bool m_hasLastUpdate = false;

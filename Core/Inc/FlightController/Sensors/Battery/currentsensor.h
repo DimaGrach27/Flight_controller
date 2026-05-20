@@ -14,6 +14,7 @@ public:
         float offsetV = 0.003f;
         float voltsPerAmp = 0.025f;
         float filterAlpha = 0.05f;
+        float zeroCalibrationAlpha = 0.02f;
 
         float maxValidCurrentA = 120.0f;
     };

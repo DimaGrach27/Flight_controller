@@ -4,6 +4,8 @@
 
 #include "FlightController/Sensors/Battery/batterymonitor.h"
 
+#include <algorithm>
+
 #include "FlightController/Utils/mathutils.h"
 #include <cmath>
 
@@ -68,6 +70,16 @@ void BatteryMonitor::Update(const float batteryVoltage, const float currentA, co
     {
         m_faults.voltageSensorInvalid = true;
         m_throttleLimit = 1.0f;
+        m_batteryData.state = BatteryState::Unknown;
+        m_batteryData.valid = false;
+        return;
+    }
+
+    if (currentA < -0.5f || currentA > m_config.maxPlausibleCurrentA || std::isnan(currentA))
+    {
+        m_faults.currentSensorInvalid = true;
+        m_throttleLimit = 1.0f;
+
         m_batteryData.state = BatteryState::Unknown;
         m_batteryData.valid = false;
         return;
@@ -251,6 +263,24 @@ void BatteryMonitor::EvaluateCurrentState(bool armed, float currentA, const floa
     }
 }
 
+void BatteryMonitor::EvaluateVoltageSag(float cellVoltage, float currentA, float dtSeconds)
+{
+    if (currentA > m_config.sagCurrentA && cellVoltage < m_config.sagCellVoltageV)
+    {
+        m_voltageSagTimerSec += dtSeconds;
+    }
+    else if (cellVoltage > m_config.sagCellVoltageV + 0.08f || currentA < m_config.sagCurrentA * 0.7f)
+    {
+        m_voltageSagTimerSec = 0.0f;
+    }
+
+    m_warnings.voltageSag = m_voltageSagTimerSec >= m_config.sagDelaySec;
+
+    m_voltageBasedThrottleLimit = m_warnings.voltageSag
+        ? m_config.sagThrottleLimit
+        : 1.0f;
+}
+
 float BatteryMonitor::ComputeDtSeconds(const uint32_t nowUs)
 {
     if (!m_hasLastUpdate)
@@ -329,7 +359,7 @@ float BatteryMonitor::GetConsumedMah() const
 
 float BatteryMonitor::GetThrottleLimit() const
 {
-    return m_throttleLimit;
+    return std::min(m_throttleLimit, m_voltageBasedThrottleLimit);
 }
 
 const BatteryMonitor::Warnings& BatteryMonitor::GetWarnings() const
@@ -345,8 +375,8 @@ const BatteryMonitor::Faults& BatteryMonitor::GetFaults() const
 bool BatteryMonitor::HasCriticalFault() const
 {
     return m_faults.voltageSensorInvalid ||
-           m_faults.currentSensorInvalid ||
-           m_faults.instantOverCurrent;
+           m_faults.instantOverCurrent ||
+           m_batteryData.state == BatteryState::Emergency;
 }
 
 bool BatteryMonitor::CanArm() const
@@ -356,5 +386,51 @@ bool BatteryMonitor::CanArm() const
         return false;
     }
 
-    return m_batteryData.state == BatteryState::Normal || m_batteryData.state == BatteryState::Low;
+    if (!m_batteryData.valid)
+    {
+        return false;
+    }
+
+    if (m_faults.voltageSensorInvalid)
+    {
+        return false;
+    }
+
+    if (m_faults.currentSensorInvalid)
+    {
+        return false;
+    }
+
+    if (m_batteryData.cellVoltage_V < 3.55f)
+    {
+        return false;
+    }
+
+    if (m_batteryData.current_A > 3.0f)
+    {
+        return false;
+    }
+
+    if (m_warnings.capacityCritical)
+    {
+        return false;
+    }
+
+    return m_batteryData.state == BatteryState::Normal;
+}
+
+bool BatteryMonitor::ShouldBlockArm() const
+{
+
+}
+
+bool BatteryMonitor::ShouldStopMotorsImmediately() const
+{
+    return m_faults.instantOverCurrent ||
+           m_faults.voltageSensorInvalid;
+}
+
+bool BatteryMonitor::ShouldLimitThrottle() const
+{
+
 }

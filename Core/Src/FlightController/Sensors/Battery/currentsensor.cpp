@@ -14,6 +14,8 @@ CurrentSensor::CurrentSensor()
         .voltsPerAmp = 0.028f, // 0.0267f
         .filterAlpha = 0.05f
     };
+
+    m_offsetV = m_config.offsetV;
 }
 
 void CurrentSensor::StartZeroCalibration()
@@ -32,7 +34,7 @@ void CurrentSensor::Update(uint16_t adcRaw)
 
     if (m_zeroCalibrationActive)
     {
-        m_offsetV += m_config.offsetV * (voltage - m_offsetV);
+        m_offsetV += m_config.zeroCalibrationAlpha * (voltage - m_offsetV);
     }
 
     m_currentA = VoltageToCurrent(voltage);
@@ -75,7 +77,7 @@ float CurrentSensor::AdcToVoltage(uint16_t adcRaw) const
 
 float CurrentSensor::VoltageToCurrent(float voltage) const
 {
-    float current = (voltage - m_config.offsetV) / m_config.voltsPerAmp;
+    float current = (voltage - m_offsetV) / m_config.voltsPerAmp;
 
     if (current < 0.0f)
     {
