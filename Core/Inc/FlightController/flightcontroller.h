@@ -6,11 +6,12 @@
 
 #include <cstdint>
 
-#include "logger.h"
+#include "DebugLogs/logger.h"
 #include "main.h"
 
 #include "mavlink/common/mavlink.h"
 #include "structs.h"
+#include "DebugLogs/usbdebugconsole.h"
 
 #include "Estimators/stateestimator.h"
 #include "FlightManager/flightmodemanager.h"
@@ -39,7 +40,7 @@
 #include "RcInput/hilrcreceiver.h"
 #endif
 
-class FlightController
+static class FlightController
 {
 public:
 
@@ -58,12 +59,20 @@ public:
 
     ~FlightController();
 
+    void PreInit(UART_HandleTypeDef& serialUart,
+        UART_HandleTypeDef& rcUart,
+        SPI_HandleTypeDef& spiImuHandler,
+        ADC_HandleTypeDef& batterAdc,
+        TIM_HandleTypeDef& dshotTimer);
     void Init();
     void Heartbeat();
     void Update();
     void MavlinkParseByte(uint8_t byte);
     void OnDmaComplete(TIM_HandleTypeDef* htim);
     void OnDmaComplete(ADC_HandleTypeDef* hadc);
+
+    void OnUsbReceived(const uint8_t* data, uint32_t size);
+    void OnTransmitUsbComplete();
 
     uint32_t GetMicros() const;
 
@@ -79,7 +88,7 @@ private:
 
 #if NOT_USE_HIL
     static constexpr uint16_t kReceiveBufferSizeRcCommand = 512;
-    std::array<uint8_t, kReceiveBufferSizeRcCommand> m_receiveBufferRcCommand{};
+    std::array<uint8_t, kReceiveBufferSizeRcCommand> m_receiveBufferRcCommand;
 #endif
 
 #if NOT_USE_HIL
@@ -125,4 +134,5 @@ private:
     UART_HandleTypeDef& m_serialUart;
     //DEBUG
     Logger m_logger;
+    UsbDebugConsole m_debugConsole;
 };

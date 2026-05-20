@@ -96,3 +96,14 @@ extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
     GetFlightController(&g_FlightControllerHandler)->OnDmaComplete(hadc);
 }
+
+extern "C" void UsbDebugConsole_OnReceived(uint8_t* data, uint32_t size)
+{
+    GetFlightController(&g_FlightControllerHandler)->OnUsbReceived(data, size);
+}
+
+extern "C" void UsbDebugConsole_OnTransmitComplete()
+{
+    GetFlightController(&g_FlightControllerHandler)->OnTransmitUsbComplete();
+
+}

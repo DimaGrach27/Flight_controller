@@ -42,6 +42,7 @@ FlightController::FlightController(
     // , m_pwmMotorOutput(motorChannels)
     , m_serialUart(serialUart)
     , m_logger(serialUart)
+    , m_debugConsole()
 {
 }
 #else
@@ -62,12 +63,23 @@ FlightController::FlightController(UART_HandleTypeDef& serialUart, ADC_HandleTyp
     , m_hilMotorOutput(serialUart)
     , m_serialUart(serialUart)
     , m_logger(serialUart)
+    , m_debugConsole()
 {
 }
 
 #endif
 
 FlightController::~FlightController()
+{
+
+}
+
+void FlightController::PreInit(
+    UART_HandleTypeDef &serialUart,
+    UART_HandleTypeDef &rcUart,
+    SPI_HandleTypeDef &spiImuHandler,
+    ADC_HandleTypeDef &batterAdc,
+    TIM_HandleTypeDef &dshotTimer)
 {
 
 }
@@ -116,6 +128,8 @@ void FlightController::Init()
     m_hilMotorOutput.Init();
     m_hilMotorOutput.StopAll();
 #endif
+
+    m_debugConsole.Init();
 }
 
 void FlightController::Heartbeat()
@@ -228,6 +242,8 @@ void FlightController::Update()
         m_logger.GetLogSample().motorM4 = m_lastMotorCommand.m4;
 
         m_logger.SendFlightLogCsv();
+
+        m_debugConsole.Update(nowUs);
     }
 }
 
@@ -250,6 +266,16 @@ void FlightController::OnDmaComplete(TIM_HandleTypeDef *htim)
 void FlightController::OnDmaComplete(ADC_HandleTypeDef* hadc)
 {
     m_analogInputs.OnDmaComplete(hadc);
+}
+
+void FlightController::OnUsbReceived(const uint8_t *data, uint32_t size)
+{
+    m_debugConsole.OnUsbReceived(data, size);
+}
+
+void FlightController::OnTransmitUsbComplete()
+{
+    m_debugConsole.OnTransmitComplete();
 }
 
 uint32_t FlightController::GetMicros() const

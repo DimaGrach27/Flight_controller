@@ -27,6 +27,8 @@ void flight_controller_Update(void);
 
 void flight_controller_MavlinkParseByte(uint8_t byte);
 void flight_controller_ParseRcCommandByte(uint8_t byte);
+void UsbDebugConsole_OnReceived(uint8_t* data, uint32_t size);
+void UsbDebugConsole_OnTransmitComplete();
 
 #ifdef __cplusplus
 }
