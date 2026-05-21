@@ -101,10 +101,10 @@ void FlightController::Init()
     m_currentSensor.StartZeroCalibration();
     m_batteryVoltageSensor.Init();
 
-    // if (!m_sensorsManager.Init())
-    // {
-    //     return;
-    // }
+    if (!m_sensorsManager.Init())
+    {
+        return;
+    }
 
     m_stateEstimator.Init();
 
