@@ -18,8 +18,6 @@ namespace
     constexpr uint8_t CTRL2_G  = 0x11;
     constexpr uint8_t CTRL3_C  = 0x12;
 
-    constexpr uint8_t OUT_TEMP_L = 0x20;
-
     /*
         CTRL1_XL:
         ODR_XL = 0111 -> 833 Hz
@@ -116,7 +114,6 @@ bool IMU_Lsm6ds3::StartReadRaw()
         m_txBuffer[i] = 0x00;
     }
 
-    m_sampleReady = false;
     m_spiBus.ResetState();
 
     return m_spiBus.TransmitReceive(m_txBuffer, m_rxBuffer, SpiFrameSize);
@@ -152,7 +149,12 @@ bool IMU_Lsm6ds3::ReadRaw(ImuRawData& outRawData, const uint32_t nowUs)
     outRawData.rawAccelZ = MakeInt16(data[10], data[11]);
 
     m_spiBus.ResetState();
-    m_sampleReady = false;
+
+    if (!StartReadRaw())
+    {
+        outRawData.valid = false;
+        return false;
+    }
 
     outRawData.timestampUs = nowUs;
     outRawData.valid = true;
@@ -179,7 +181,7 @@ bool IMU_Lsm6ds3::Read(ImuSample &outData, const uint32_t nowUs)
 
     // Для LSM6DS3 температура приблизно:
     // 25 + raw / 16
-    outData.temperature_C = 25.0f + static_cast<float>(outRawData.temperature) / 16.0f;
+    outData.temperature_C = 25.0f;
 
     outData.timestampUs = nowUs;
     outData.valid = true;
@@ -222,7 +224,6 @@ bool IMU_Lsm6ds3::ConfigureDevice()
 void IMU_Lsm6ds3::Reset()
 {
     m_spiBus.ResetState();
-    m_sampleReady = false;
 }
 
 int16_t IMU_Lsm6ds3::MakeInt16(uint8_t low, uint8_t high) const

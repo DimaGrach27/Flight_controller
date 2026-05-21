@@ -45,6 +45,4 @@ private:
 
     uint8_t m_txBuffer[SpiFrameSize] = {};
     uint8_t m_rxBuffer[SpiFrameSize] = {};
-
-    bool m_sampleReady = false;
 };
