@@ -6,6 +6,7 @@
 
 #include <cstdint>
 
+#include "crsftelemetry.h"
 #include "DebugLogs/logger.h"
 #include "main.h"
 
@@ -110,6 +111,7 @@ private:
     SensorsManager m_sensorsManager;
 
 #if NOT_USE_HIL
+    CrsfTelemetry m_crsfTelemetry;
     CrsfRcReceiver m_crsfRcReceiver;
 #else
     HilRcReceiver m_hilRcReceiver;
@@ -136,6 +138,7 @@ private:
     MotorCommand m_lastMotorCommand{};
 
     UART_HandleTypeDef& m_serialUart;
+    UART_HandleTypeDef& m_rcUart;
     //DEBUG
     Logger m_logger;
     UsbDebugConsole m_debugConsole;

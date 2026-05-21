@@ -38,6 +38,7 @@ FlightController::FlightController(
     , m_dshotMotorOutput(&dshotTimer, m_dshotMotorOutputConfig)
     // , m_pwmMotorOutput(motorChannels)
     , m_serialUart(serialUart)
+    , m_rcUart(rcUart)
     , m_logger(serialUart)
     , m_debugConsole()
 {
@@ -111,6 +112,7 @@ void FlightController::Init()
     {
         return;
     }
+    m_crsfTelemetry.Init(m_rcUart);
 
     m_batteryMonitor.Init();
     m_flightModeManager.Init();
@@ -132,40 +134,13 @@ void FlightController::Init()
 
 void FlightController::Heartbeat()
 {
-    const FlightModeState& flightModeState = m_flightModeManager.GetState();
-
-    uint8_t baseMode = MAV_MODE_FLAG_MANUAL_INPUT_ENABLED | MAV_MODE_FLAG_CUSTOM_MODE_ENABLED;
-    if (flightModeState.armState == ArmState::Armed)
-    {
-        baseMode |= MAV_MODE_FLAG_SAFETY_ARMED;
-    }
-
-    uint32_t customMode = 0;
-    if (flightModeState.mode == FlightMode::Angle)
-    {
-        customMode = 1;
-    }
-
-    uint8_t systemStatus = MAV_STATE_ACTIVE;
-    if (flightModeState.failsafe)
-    {
-        systemStatus = MAV_STATE_CRITICAL;
-    }
-
-    mavlink_message_t msg;
-
-    mavlink_msg_heartbeat_pack(
-        1,                      // system_id
-        1,                      // component_id
-        &msg,
-        MAV_TYPE_QUADROTOR,
-        MAV_AUTOPILOT_GENERIC,
-        baseMode,
-        customMode,
-        systemStatus
-    );
-
-    SendMavlinkMessage(msg);
+    const FlightModeState& state = m_flightModeManager.GetState();
+    char modeText[17]{};
+    std::snprintf(modeText, sizeof(modeText), "%s %s%s",
+        EnumToChar_FlightMode(state.mode),
+        state.armState == ArmState::Armed ? "ARM" : "DIS",
+        state.failsafe ? " FS" : "");
+    m_crsfTelemetry.SendFlightMode(modeText);
 }
 
 void FlightController::Update()
@@ -586,64 +561,16 @@ void FlightController::HandleRcCommand(const mavlink_message_t* msg)
 
 void FlightController::SendTelemetry(uint32_t nowUs)
 {
-    const FlightModeState& flightModeState = m_flightModeManager.GetState();
+    (void)nowUs;
     const BatteryData& batteryData = m_batteryMonitor.GetBatteryData();
-    const VehicleState& state = m_stateEstimator.GetState();
 
     Heartbeat();
-
-    mavlink_message_t msg;
-
-    const uint16_t voltageMv = static_cast<uint16_t>(std::clamp(batteryData.voltage_V * 1000.0f, 0.0f, 65535.0f));
-    const int16_t currentCa = static_cast<int16_t>(std::clamp(batteryData.current_A * 100.0f, -32768.0f, 32767.0f));
-    const int8_t batteryRemaining = static_cast<int8_t>(std::clamp(static_cast<int32_t>(batteryData.percentage), 0, 100));
-    const uint32_t sensorsPresent = MAV_SYS_STATUS_SENSOR_3D_GYRO |
-                                    MAV_SYS_STATUS_SENSOR_3D_ACCEL |
-                                    MAV_SYS_STATUS_SENSOR_RC_RECEIVER |
-                                    MAV_SYS_STATUS_SENSOR_BATTERY;
-
-    uint32_t sensorsEnabled = MAV_SYS_STATUS_SENSOR_BATTERY | MAV_SYS_STATUS_SENSOR_RC_RECEIVER;
-    if (m_sensorsManager.IsImuReady())
-    {
-        sensorsEnabled |= MAV_SYS_STATUS_SENSOR_3D_GYRO | MAV_SYS_STATUS_SENSOR_3D_ACCEL;
-    }
-
-    uint32_t sensorsHealth = sensorsEnabled;
-    if (flightModeState.failsafe || m_batteryMonitor.HasCriticalFault())
-    {
-        sensorsHealth &= ~MAV_SYS_STATUS_SENSOR_RC_RECEIVER;
-    }
-
-    mavlink_msg_sys_status_pack(
-        1, 1, &msg,
-        sensorsPresent,
-        sensorsEnabled,
-        sensorsHealth,
-        0,
-        voltageMv,
-        currentCa,
-        batteryRemaining,
-        0, 0, 0, 0, 0, 0,
-        0, 0, 0);
-    SendMavlinkMessage(msg);
-
-    mavlink_msg_attitude_pack(
-        1, 1, &msg,
-        nowUs / 1000U,
-        state.rollRad,
-        state.pitchRad,
-        state.yawRad,
-        state.rollRateRadS,
-        state.pitchRateRadS,
-        state.yawRateRadS);
-    SendMavlinkMessage(msg);
-
-    mavlink_msg_statustext_pack(
-        1, 1, &msg,
-        MAV_SEVERITY_INFO,
-        flightModeState.armState == ArmState::Armed ? "ARMED" : "DISARMED",
-        0, 0);
-    SendMavlinkMessage(msg);
+    const uint32_t consumedMah = static_cast<uint32_t>(std::clamp(m_batteryMonitor.GetConsumedMah(), 0.0f, 16777215.0f));
+    m_crsfTelemetry.SendBattery(
+        batteryData.voltage_V,
+        batteryData.current_A,
+        consumedMah,
+        batteryData.percentage);
 }
 
 void FlightController::SendMavlinkMessage(const mavlink_message_t& msg)
