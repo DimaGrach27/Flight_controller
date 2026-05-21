@@ -76,6 +76,9 @@ public:
     void OnTransmitUsbComplete();
     void RunDebugCommand(uint8_t command);
 
+    void SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
+    void SPI_ErrorCallback(SPI_HandleTypeDef* hspi);
+
     uint32_t GetMicros() const;
 
 private:
@@ -97,7 +100,9 @@ private:
 #endif
 
 #if NOT_USE_HIL
-    Stm32SpiBus m_stm32SpiBusImu;
+    SpiDmaBus m_dmaBusImu;
+
+    // Stm32SpiBus m_stm32SpiBusImu;
     Stm32UartDmaByteStream m_stm32UartDmaCrsfRc;
     IMU_Lsm6ds3 m_imuLsm6ds3;
 #else
@@ -139,6 +144,7 @@ private:
 
     UART_HandleTypeDef& m_serialUart;
     UART_HandleTypeDef& m_rcUart;
+
     //DEBUG
     Logger m_logger;
     UsbDebugConsole m_debugConsole;

@@ -2,7 +2,7 @@
 // Created by Dmytro Hrachov on 10.05.2026.
 //
 
-#include "../../../../Inc/FlightController/Sensors/IMU/imu_driver_lsm6ds3.h"
+#include "FlightController/Sensors/IMU/imu_driver_lsm6ds3.h"
 
 #include <cstdint>
 
@@ -65,9 +65,12 @@ namespace
 
     constexpr uint8_t SpiReadBit = 0x80;
     constexpr uint8_t SpiWriteMask = 0x7F;
+
+    //register for burst read Gyro and Accel
+    constexpr uint8_t OUTX_L_G = 0x22;
 }
 
-IMU_Lsm6ds3::IMU_Lsm6ds3(ISpiBus& spiBus)
+IMU_Lsm6ds3::IMU_Lsm6ds3(SpiDmaBus& spiBus)
     : m_spiBus(spiBus)
 {
 
@@ -87,6 +90,11 @@ bool IMU_Lsm6ds3::Init()
         return false;
     }
 
+    if (!StartReadRaw())
+    {
+        return false;
+    }
+
     m_accelScale_mps2 = AccelSensitivity_gPerLsb * G;
     m_gyroScale_rads = GyroSensitivity_dpsPerLsb * DegToRad;
 
@@ -94,41 +102,57 @@ bool IMU_Lsm6ds3::Init()
     return true;
 }
 
-bool IMU_Lsm6ds3::ReadRaw(ImuRawData& outRawData, uint32_t nowUs)
+bool IMU_Lsm6ds3::StartReadRaw()
 {
-    if (!m_initialized)
+    if (m_spiBus.IsBusy())
+    {
+        return false;
+    }
+
+    m_txBuffer[0] = OUTX_L_G | SpiReadBit;
+
+    for (uint8_t i = 1; i < SpiFrameSize; ++i)
+    {
+        m_txBuffer[i] = 0x00;
+    }
+
+    m_sampleReady = false;
+    m_spiBus.ResetState();
+
+    return m_spiBus.TransmitReceive(m_txBuffer, m_rxBuffer, SpiFrameSize);
+}
+
+bool IMU_Lsm6ds3::IsReadComplete() const
+{
+    return m_spiBus.IsDone();
+}
+
+bool IMU_Lsm6ds3::HasError() const
+{
+    return m_spiBus.HasError();
+}
+
+bool IMU_Lsm6ds3::ReadRaw(ImuRawData& outRawData, const uint32_t nowUs)
+{
+    if (!m_spiBus.IsDone())
     {
         outRawData.valid = false;
         return false;
     }
 
-    uint8_t buffer[14] = {};
+    // rx[0] — garbage byte, реальні дані починаються з rx[1]
+    const uint8_t* data = &m_rxBuffer[1];
 
-    const bool ok = m_spiBus.ReadRegisters(OUT_TEMP_L, buffer, sizeof(buffer), SpiReadBit);
-    if (!ok)
-    {
-        outRawData.valid = false;
-        return false;
-    }
+    outRawData.rawGyroX  = MakeInt16(data[0],  data[1]);
+    outRawData.rawGyroY  = MakeInt16(data[2],  data[3]);
+    outRawData.rawGyroZ  = MakeInt16(data[4],  data[5]);
 
-    // LSM6DS3 order from OUT_TEMP_L:
-    // TEMP_L, TEMP_H,
-    // GYRO_X_L, GYRO_X_H,
-    // GYRO_Y_L, GYRO_Y_H,
-    // GYRO_Z_L, GYRO_Z_H,
-    // ACCEL_X_L, ACCEL_X_H,
-    // ACCEL_Y_L, ACCEL_Y_H,
-    // ACCEL_Z_L, ACCEL_Z_H
+    outRawData.rawAccelX = MakeInt16(data[6],  data[7]);
+    outRawData.rawAccelY = MakeInt16(data[8],  data[9]);
+    outRawData.rawAccelZ = MakeInt16(data[10], data[11]);
 
-    outRawData.temperature = ReadInt16Le(buffer, 0);
-
-    outRawData.rawGyroX = ReadInt16Le(buffer, 2);
-    outRawData.rawGyroY = ReadInt16Le(buffer, 4);
-    outRawData.rawGyroZ = ReadInt16Le(buffer, 6);
-
-    outRawData.rawAccelX = ReadInt16Le(buffer, 8);
-    outRawData.rawAccelY = ReadInt16Le(buffer, 10);
-    outRawData.rawAccelZ = ReadInt16Le(buffer, 12);
+    m_spiBus.ResetState();
+    m_sampleReady = false;
 
     outRawData.timestampUs = nowUs;
     outRawData.valid = true;
@@ -136,7 +160,7 @@ bool IMU_Lsm6ds3::ReadRaw(ImuRawData& outRawData, uint32_t nowUs)
     return true;
 }
 
-bool IMU_Lsm6ds3::Read(ImuSample &outData, uint32_t nowUs)
+bool IMU_Lsm6ds3::Read(ImuSample &outData, const uint32_t nowUs)
 {
     ImuRawData outRawData;
     if (!ReadRaw(outRawData, nowUs))
@@ -163,7 +187,7 @@ bool IMU_Lsm6ds3::Read(ImuSample &outData, uint32_t nowUs)
     return true;
 }
 
-bool IMU_Lsm6ds3::CheckDeviceId()
+bool IMU_Lsm6ds3::CheckDeviceId() const
 {
     uint8_t whoAmI = 0;
 
@@ -195,10 +219,13 @@ bool IMU_Lsm6ds3::ConfigureDevice()
     return true;
 }
 
-int16_t IMU_Lsm6ds3::ReadInt16Le(const uint8_t *buffer, uint8_t lowIndex) const
+void IMU_Lsm6ds3::Reset()
 {
-    const uint16_t low = static_cast<uint16_t>(buffer[lowIndex]);
-    const uint16_t high = static_cast<uint16_t>(buffer[lowIndex + 1]);
+    m_spiBus.ResetState();
+    m_sampleReady = false;
+}
 
-    return static_cast<int16_t>((high << 8) | low);
+int16_t IMU_Lsm6ds3::MakeInt16(uint8_t low, uint8_t high) const
+{
+    return static_cast<int16_t>((static_cast<uint16_t>(high) << 8) | low);
 }

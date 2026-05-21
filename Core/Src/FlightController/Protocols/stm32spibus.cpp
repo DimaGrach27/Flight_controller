@@ -72,12 +72,12 @@ bool Stm32SpiBus::ReadRegisters(uint8_t startReg, uint8_t* buffer, uint16_t size
     return status == HAL_OK;
 }
 
-void Stm32SpiBus::Select()
+void Stm32SpiBus::Select() const
 {
     HAL_GPIO_WritePin(m_csPort, m_csPin, GPIO_PIN_RESET);
 }
 
-void Stm32SpiBus::Deselect()
+void Stm32SpiBus::Deselect() const
 {
     HAL_GPIO_WritePin(m_csPort, m_csPin, GPIO_PIN_SET);
 }

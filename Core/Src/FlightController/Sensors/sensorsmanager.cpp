@@ -25,9 +25,9 @@ bool SensorsManager::Init()
     return true;
 }
 
-void SensorsManager::UpdateImu(uint32_t nowUs)
+bool SensorsManager::UpdateImu(uint32_t nowUs)
 {
-    m_imuSensor.Update(nowUs);
+    return m_imuSensor.Update(nowUs);
 }
 
 const ImuSample& SensorsManager::GetImuData() const

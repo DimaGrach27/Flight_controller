@@ -9,6 +9,14 @@
 class Stm32SpiBus final : public ISpiBus
 {
 public:
+    enum class State : uint8_t
+    {
+        Idle,
+        Busy,
+        Done,
+        Error
+    };
+
     Stm32SpiBus(
         SPI_HandleTypeDef& spiHandle,
         GPIO_TypeDef* csPort,
@@ -19,8 +27,8 @@ public:
     bool ReadRegisters(uint8_t startReg, uint8_t* buffer, uint16_t size, const uint8_t spiReadBit) override;
 
 private:
-    void Select();
-    void Deselect();
+    void Select() const;
+    void Deselect() const;
 
 private:
     SPI_HandleTypeDef& m_spiHandle;

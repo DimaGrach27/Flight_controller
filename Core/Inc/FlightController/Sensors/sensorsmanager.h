@@ -14,7 +14,7 @@ public:
     ~SensorsManager();
 
     bool Init();
-    void UpdateImu(uint32_t nowUs);
+    bool UpdateImu(uint32_t nowUs);
 
     const ImuSample& GetImuData() const;
 

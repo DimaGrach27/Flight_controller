@@ -8,29 +8,43 @@
 #include "main.h"
 
 #include "FlightController/datastructs.h"
-#include "FlightController/Protocols/ispibus.h"
+#include "FlightController/Protocols/spidmabus.h"
 
 class IMU_Lsm6ds3
 {
 public:
-    explicit IMU_Lsm6ds3(ISpiBus& spiBus);
+    static constexpr uint8_t RawFrameSize = 12;
+    static constexpr uint8_t SpiFrameSize = RawFrameSize + 1;
+
+    explicit IMU_Lsm6ds3(SpiDmaBus& spiBus);
 
     bool Init();
+
+    bool StartReadRaw();
+    bool IsReadComplete() const;
+    bool HasError() const;
+
+    void Reset();
 
     bool ReadRaw(ImuRawData& outRawData, uint32_t nowUs);
     bool Read(ImuSample& outData, uint32_t nowUs);
 
 private:
-    bool CheckDeviceId();
+    bool CheckDeviceId() const;
     bool ConfigureDevice();
 
-    int16_t ReadInt16Le(const uint8_t* buffer, uint8_t lowIndex) const;
+    int16_t MakeInt16(uint8_t low, uint8_t high) const;
 
 private:
-    ISpiBus& m_spiBus;
+    SpiDmaBus& m_spiBus;
 
     bool m_initialized = false;
 
     float m_accelScale_mps2 = 0.0f;
     float m_gyroScale_rads = 0.0f;
+
+    uint8_t m_txBuffer[SpiFrameSize] = {};
+    uint8_t m_rxBuffer[SpiFrameSize] = {};
+
+    bool m_sampleReady = false;
 };

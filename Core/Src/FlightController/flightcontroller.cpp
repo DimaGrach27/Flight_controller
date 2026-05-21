@@ -19,9 +19,10 @@ FlightController::FlightController(
     )
     : m_scheduler()
     , m_receiveBufferRcCommand()
-    , m_stm32SpiBusImu(spiImuHandler, CS_SPI2_GPIO_Port, CS_SPI2_Pin)
+    , m_dmaBusImu(&spiImuHandler, CS_SPI2_GPIO_Port, CS_SPI2_Pin)
+    // , m_stm32SpiBusImu(spiImuHandler, CS_SPI2_GPIO_Port, CS_SPI2_Pin)
     , m_stm32UartDmaCrsfRc(rcUart, m_receiveBufferRcCommand.data(), kReceiveBufferSizeRcCommand)
-    , m_imuLsm6ds3(m_stm32SpiBusImu)
+    , m_imuLsm6ds3(m_dmaBusImu)
     , m_imuDriver(m_imuLsm6ds3)
     , m_imuSensor(m_imuDriver)
     , m_analogInputs(batterAdc)
@@ -152,6 +153,7 @@ void FlightController::Update()
     if (m_scheduler.ConsumeTask(TaskID::Imu))
     {
         m_sensorsManager.UpdateImu(nowUs);
+
         m_stateEstimator.UpdateImu(m_sensorsManager.GetImuData());
     }
 
@@ -316,6 +318,16 @@ void FlightController::RunDebugCommand(uint8_t command)
         default:
             break;
     }
+}
+
+void FlightController::SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+    m_dmaBusImu.OnDmaComplete(hspi);
+}
+
+void FlightController::SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
+{
+    m_dmaBusImu.OnDmaError(hspi);
 }
 
 uint32_t FlightController::GetMicros() const

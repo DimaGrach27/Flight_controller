@@ -87,16 +87,7 @@ extern "C" void flight_controller_Update()
     GetFlightController(&g_FlightControllerHandler)->Update();
 }
 
-extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
-{
-    GetFlightController(&g_FlightControllerHandler)->OnDmaComplete(htim);
-}
-
-extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
-{
-    GetFlightController(&g_FlightControllerHandler)->OnDmaComplete(hadc);
-}
-
+//USB_DEBUG_CONSOL
 extern "C" void UsbDebugConsole_OnReceived(uint8_t* data, uint32_t size)
 {
     GetFlightController(&g_FlightControllerHandler)->OnUsbReceived(data, size);
@@ -110,4 +101,25 @@ extern "C" void UsbDebugConsole_OnTransmitComplete()
 extern "C" void UsbDebugConsole_RunDebugCommand(uint8_t command)
 {
     GetFlightController(&g_FlightControllerHandler)->RunDebugCommand(command);
+}
+
+//INTERAPT CALLBACKS from HAL
+extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+{
+    GetFlightController(&g_FlightControllerHandler)->OnDmaComplete(htim);
+}
+
+extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+    GetFlightController(&g_FlightControllerHandler)->OnDmaComplete(hadc);
+}
+
+extern "C" void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi)
+{
+    GetFlightController(&g_FlightControllerHandler)->SPI_TxRxCpltCallback(hspi);
+}
+
+extern "C" void HAL_SPI_ErrorCallback(SPI_HandleTypeDef* hspi)
+{
+    GetFlightController(&g_FlightControllerHandler)->SPI_ErrorCallback(hspi);
 }
