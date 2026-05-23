@@ -5,7 +5,8 @@
 #include "FlightController/Sensors/Battery/batteryvoltagesensor.h"
 namespace
 {
-    constexpr float kCalibrationFactor = 15.2f / 15.26f; //this value was calibrated with measuring the real voltage
+    constexpr float kCalibrationFactor = 15.7f / 15.618f; //this value was calibrated with measuring the real voltage
+    // constexpr float kCalibrationFactor = 15.2f / 15.26f; //this value was calibrated with measuring the real voltage
 }
 
 BatteryVoltageSensor::BatteryVoltageSensor()
