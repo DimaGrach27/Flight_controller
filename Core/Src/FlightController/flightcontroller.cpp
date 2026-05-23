@@ -18,10 +18,9 @@ FlightController::FlightController(
     // std::array<MotorChannel, 4> motorChannels
     )
     : m_scheduler()
-    , m_receiveBufferRcCommand()
     , m_dmaBusImu(&spiImuHandler, CS_SPI2_GPIO_Port, CS_SPI2_Pin)
-    // , m_stm32SpiBusImu(spiImuHandler, CS_SPI2_GPIO_Port, CS_SPI2_Pin)
-    , m_stm32UartDmaCrsfRc(rcUart, m_receiveBufferRcCommand.data(), kReceiveBufferSizeRcCommand)
+    , m_stm32UartDmaCrsfRc(rcUart)
+    , m_uartByteStream(m_stm32UartDmaCrsfRc)
     , m_imuLsm6ds3(m_dmaBusImu)
     , m_imuDriver(m_imuLsm6ds3)
     , m_imuSensor(m_imuDriver)
@@ -29,7 +28,7 @@ FlightController::FlightController(
     , m_currentSensor()
     , m_batteryVoltageSensor()
     , m_sensorsManager(m_imuSensor)
-    , m_crsfRcReceiver(m_stm32UartDmaCrsfRc)
+    , m_crsfRcReceiver(m_uartByteStream)
     , m_rcReceiver(m_crsfRcReceiver)
     , m_rcInput(m_rcReceiver)
     , m_stateEstimator()
@@ -87,7 +86,7 @@ void FlightController::PreInit(
 void FlightController::Init()
 {
     m_scheduler.AddTask(TaskID::Imu, 2000);         //500 Hz
-    m_scheduler.AddTask(TaskID::Rc, 5000);          //200 Hz
+    m_scheduler.AddTask(TaskID::Rc, 2000);          //500 Hz
     m_scheduler.AddTask(TaskID::Control, 2000);     //500 Hz
     m_scheduler.AddTask(TaskID::Telemetry, 100000); //10 Hz
     m_scheduler.AddTask(TaskID::Loging, 10000);     //100 Hz
@@ -97,7 +96,7 @@ void FlightController::Init()
     bool analogGood = m_analogInputs.Start();
     if (analogGood)
     {
-        //analog input good
+        //TODO: faild
     }
 
     m_currentSensor.StartZeroCalibration();
@@ -105,14 +104,14 @@ void FlightController::Init()
 
     if (!m_sensorsManager.Init())
     {
-        return;
+        //TODO: faild
     }
 
     m_stateEstimator.Init();
 
     if (!m_rcInput.Init())
     {
-        return;
+        //TODO: faild
     }
     m_crsfTelemetry.Init(m_rcUart);
 
@@ -267,6 +266,11 @@ void FlightController::OnDmaComplete(ADC_HandleTypeDef* hadc)
     m_analogInputs.OnDmaComplete(hadc);
 }
 
+void FlightController::OnIdleRcUart()
+{
+    m_stm32UartDmaCrsfRc.OnIdleIrq();
+}
+
 void FlightController::OnUsbReceived(const uint8_t *data, uint32_t size)
 {
     m_debugConsole.OnUsbReceived(data, size);
@@ -329,6 +333,22 @@ void FlightController::SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 void FlightController::SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 {
     m_dmaBusImu.OnDmaError(hspi);
+}
+
+void FlightController::UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart == &m_rcUart)
+    {
+        m_stm32UartDmaCrsfRc.OnDmaProgressIrq();
+    }
+}
+
+void FlightController::UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart == &m_rcUart)
+    {
+        m_stm32UartDmaCrsfRc.OnDmaProgressIrq();
+    }
 }
 
 uint32_t FlightController::GetMicros() const

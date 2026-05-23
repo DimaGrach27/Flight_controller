@@ -4,31 +4,23 @@
 
 #include "FlightController/Protocols/stm32uartdmabytestream.h"
 
-Stm32UartDmaByteStream::Stm32UartDmaByteStream(
-    UART_HandleTypeDef& uartHandle,
-    uint8_t* dmaBuffer,
-    uint16_t dmaBufferSize
-)
+Stm32UartDmaByteStream::Stm32UartDmaByteStream(UART_HandleTypeDef &uartHandle)
     : m_uartHandle(uartHandle)
-    , m_dmaBuffer(dmaBuffer)
-    , m_dmaBufferSize(dmaBufferSize)
 {
+
 }
 
 bool Stm32UartDmaByteStream::Init()
 {
-    if (m_dmaBuffer == nullptr || m_dmaBufferSize == 0)
-    {
-        m_initialized = false;
-        return false;
-    }
-
-    m_readPos = 0;
+    m_dmaReadPos = 0;
+    m_ringWritePos = 0;
+    m_ringReadPos = 0;
+    m_overflowCount = 0;
 
     const HAL_StatusTypeDef status = HAL_UART_Receive_DMA(
         &m_uartHandle,
         m_dmaBuffer,
-        m_dmaBufferSize
+        DmaBufferSize
     );
 
     if (status != HAL_OK)
@@ -37,53 +29,100 @@ bool Stm32UartDmaByteStream::Init()
         return false;
     }
 
+    __HAL_UART_ENABLE_IT(&m_uartHandle, UART_IT_IDLE);
     m_initialized = true;
     return true;
 }
 
-uint16_t Stm32UartDmaByteStream::Read(uint8_t* outData, uint16_t maxSize)
+void Stm32UartDmaByteStream::OnIdleIrq()
 {
-    if (!m_initialized || outData == nullptr || maxSize == 0)
+    if (__HAL_UART_GET_FLAG(&m_uartHandle, UART_FLAG_IDLE) != RESET)
     {
-        return 0;
+        __HAL_UART_CLEAR_IDLEFLAG(&m_uartHandle);
+
+        CaptureNewBytesFromDma();
     }
-
-    const uint16_t writePos = GetDmaWritePosition();
-
-    if (writePos == m_readPos)
-    {
-        return 0;
-    }
-
-    uint16_t readCount = 0;
-
-    while (m_readPos != writePos && readCount < maxSize)
-    {
-        outData[readCount] = m_dmaBuffer[m_readPos];
-
-        ++readCount;
-        ++m_readPos;
-
-        if (m_readPos >= m_dmaBufferSize)
-        {
-            m_readPos = 0;
-        }
-    }
-
-    return readCount;
 }
 
-uint16_t Stm32UartDmaByteStream::GetDmaWritePosition() const
+void Stm32UartDmaByteStream::OnDmaProgressIrq()
 {
-    /*
-        NDTR = скільки байтів ще залишилось DMA до кінця buffer.
-        Якщо buffer size = 256 і NDTR = 200,
-        значить DMA вже записав 56 байтів.
+    CaptureNewBytesFromDma();
+}
 
-        writePos = size - NDTR
-    */
-    const uint16_t remaining =
-        static_cast<uint16_t>(__HAL_DMA_GET_COUNTER(m_uartHandle.hdmarx));
+void Stm32UartDmaByteStream::CaptureNewBytesFromDma()
+{
+    const uint16_t dmaWritePos =
+        static_cast<uint16_t>(DmaBufferSize - __HAL_DMA_GET_COUNTER(m_uartHandle.hdmarx));
 
-    return static_cast<uint16_t>(m_dmaBufferSize - remaining);
+    while (m_dmaReadPos != dmaWritePos)
+    {
+        const uint8_t byte = m_dmaBuffer[m_dmaReadPos];
+
+        m_dmaReadPos++;
+        if (m_dmaReadPos >= DmaBufferSize)
+        {
+            m_dmaReadPos = 0;
+        }
+
+        if (!PushToRing(byte))
+        {
+            m_overflowCount++;
+            break;
+        }
+    }
+}
+
+bool Stm32UartDmaByteStream::PushToRing(const uint8_t byte)
+{
+    uint16_t nextWritePos = m_ringWritePos + 1;
+    if (nextWritePos >= RingBufferSize)
+    {
+        nextWritePos = 0;
+    }
+
+    if (nextWritePos == m_ringReadPos)
+    {
+        return false;
+    }
+
+    m_ringBuffer[m_ringWritePos] = byte;
+    m_ringWritePos = nextWritePos;
+
+    return true;
+}
+
+bool Stm32UartDmaByteStream::ReadByte(uint8_t& byte)
+{
+    if (m_ringReadPos == m_ringWritePos)
+    {
+        return false;
+    }
+
+    byte = m_ringBuffer[m_ringReadPos];
+
+    m_ringReadPos++;
+    if (m_ringReadPos >= RingBufferSize)
+    {
+        m_ringReadPos = 0;
+    }
+
+    return true;
+}
+
+uint16_t Stm32UartDmaByteStream::Available() const
+{
+    const uint16_t writePos = m_ringWritePos;
+    const uint16_t readPos = m_ringReadPos;
+
+    if (writePos >= readPos)
+    {
+        return writePos - readPos;
+    }
+
+    return RingBufferSize - readPos + writePos;
+}
+
+uint32_t Stm32UartDmaByteStream::GetOverflowCount() const
+{
+    return m_overflowCount;
 }

@@ -123,3 +123,18 @@ extern "C" void HAL_SPI_ErrorCallback(SPI_HandleTypeDef* hspi)
 {
     GetFlightController(&g_FlightControllerHandler)->SPI_ErrorCallback(hspi);
 }
+
+extern "C" void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef* huart)
+{
+    GetFlightController(&g_FlightControllerHandler)->UART_RxHalfCpltCallback(huart);
+}
+
+extern "C" void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart)
+{
+    GetFlightController(&g_FlightControllerHandler)->UART_RxCpltCallback(huart);
+}
+
+extern "C" void flight_controller_OnIdleDmaReceive_UART1()
+{
+    GetFlightController(&g_FlightControllerHandler)->OnIdleRcUart();
+}

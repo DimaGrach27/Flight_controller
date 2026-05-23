@@ -6,12 +6,12 @@
 #include <cstdint>
 
 #include "rcrawframe.h"
-#include "FlightController/Protocols/iuartbytestrem.h"
+#include "FlightController/Protocols/uartbytestrem.h"
 
 class CrsfRcReceiver
 {
 public:
-    CrsfRcReceiver(IUartByteStream& byteStream);
+    CrsfRcReceiver(UartByteStream& byteStream);
 
     bool Init();
     bool Update(uint32_t nowUs);
@@ -47,7 +47,7 @@ private:
     static constexpr uint16_t TempReadBufferSize = 64;
 
 private:
-    IUartByteStream& m_byteStream;
+    UartByteStream& m_byteStream;
 
     RcRawFrame m_latestFrame{};
 

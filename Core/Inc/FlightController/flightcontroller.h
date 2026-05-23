@@ -73,12 +73,16 @@ public:
     void OnDmaComplete(TIM_HandleTypeDef* htim);
     void OnDmaComplete(ADC_HandleTypeDef* hadc);
 
+    void OnIdleRcUart();
+
     void OnUsbReceived(const uint8_t* data, uint32_t size);
     void OnTransmitUsbComplete();
     void RunDebugCommand(uint8_t command);
 
     void SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
     void SPI_ErrorCallback(SPI_HandleTypeDef* hspi);
+    void UART_RxHalfCpltCallback(UART_HandleTypeDef* huart);
+    void UART_RxCpltCallback(UART_HandleTypeDef* huart);
 
     uint32_t GetMicros() const;
 
@@ -96,15 +100,11 @@ private:
     Scheduler m_scheduler;
 
 #if NOT_USE_HIL
-    static constexpr uint16_t kReceiveBufferSizeRcCommand = 512;
-    std::array<uint8_t, kReceiveBufferSizeRcCommand> m_receiveBufferRcCommand{};
-#endif
-
-#if NOT_USE_HIL
     SpiDmaBus m_dmaBusImu;
 
     // Stm32SpiBus m_stm32SpiBusImu;
     Stm32UartDmaByteStream m_stm32UartDmaCrsfRc;
+    UartByteStream m_uartByteStream;
     IMU_Lsm6ds3 m_imuLsm6ds3;
 #else
     IMU_Driver_Hil m_imuDriverHil;

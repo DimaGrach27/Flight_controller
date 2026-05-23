@@ -28,6 +28,10 @@ void flight_controller_Update(void);
 void flight_controller_MavlinkParseByte(uint8_t byte);
 void flight_controller_ParseRcCommandByte(uint8_t byte);
 
+//hard callbacks begin
+void flight_controller_OnIdleDmaReceive_UART1();
+//hard callbacks end
+
 //debug block begin
 void UsbDebugConsole_OnReceived(uint8_t* data, uint32_t size);
 void UsbDebugConsole_OnTransmitComplete();

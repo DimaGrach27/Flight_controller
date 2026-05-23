@@ -51,7 +51,7 @@ namespace
     constexpr uint8_t CrcPolynomial = 0xD5;
 }
 
-CrsfRcReceiver::CrsfRcReceiver(IUartByteStream& byteStream)
+CrsfRcReceiver::CrsfRcReceiver(UartByteStream& byteStream)
     : m_byteStream(byteStream)
 {
 }
@@ -79,27 +79,14 @@ bool CrsfRcReceiver::Update(uint32_t nowUs)
         return false;
     }
 
-    uint8_t tempBuffer[TempReadBufferSize]{};
+    constexpr uint16_t MaxBytesPerUpdate = 64;
 
-    /*
-        Забираємо ВСІ нові байти з DMA/ring stream.
-
-        Якщо прийшло більше ніж TempReadBufferSize — Read() буде викликаний
-        декілька разів, поки stream не поверне 0.
-    */
-    while (true)
+    uint16_t processed = 0;
+    uint8_t dataByte = 0;
+    while (processed < MaxBytesPerUpdate && m_byteStream.ReadByte(dataByte))
     {
-        const uint16_t readCount = m_byteStream.Read(
-            tempBuffer,
-            TempReadBufferSize
-        );
-
-        if (readCount == 0)
-        {
-            break;
-        }
-
-        PushBytes(tempBuffer, readCount);
+        PushByte(dataByte);
+        processed++;
     }
 
     return TryParseBuffer(nowUs);
