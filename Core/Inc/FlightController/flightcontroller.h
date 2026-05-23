@@ -71,8 +71,8 @@ public:
     void Heartbeat();
     void Update();
     void MavlinkParseByte(uint8_t byte);
-    void OnDmaComplete(TIM_HandleTypeDef* htim);
-    void OnDmaComplete(ADC_HandleTypeDef* hadc);
+    void TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim);
+    void ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc);
 
     void OnIdleRcUart();
 
@@ -90,6 +90,8 @@ public:
     uint32_t GetMicros() const;
 
 private:
+    void StopMotors();
+
     void SendTelemetry(uint32_t nowUs);
     void SendMavlinkMessage(const mavlink_message_t& msg);
 

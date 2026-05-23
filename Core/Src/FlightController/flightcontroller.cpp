@@ -258,12 +258,12 @@ void FlightController::MavlinkParseByte(uint8_t byte)
     }
 }
 
-void FlightController::OnDmaComplete(TIM_HandleTypeDef *htim)
+void FlightController::TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     m_dshotMotorOutput.OnDmaComplete(htim);
 }
 
-void FlightController::OnDmaComplete(ADC_HandleTypeDef* hadc)
+void FlightController::ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
     m_analogInputs.OnDmaComplete(hadc);
 }
@@ -374,6 +374,17 @@ uint32_t FlightController::GetMicros() const
     return HAL_GetTick() * 1000U;
 }
 
+void FlightController::StopMotors()
+{
+    m_rateController.Reset();
+#if NOT_USE_HIL
+    // m_pwmMotorOutput.StopAll();
+    m_dshotMotorOutput.StopAll();
+#else
+    m_hilMotorOutput.StopAll();
+#endif
+}
+
 void FlightController::RunControlLoop(uint32_t nowUs)
 {
     const RcCommand rcCommand = m_rcInput.GetCommand();
@@ -400,73 +411,37 @@ void FlightController::RunControlLoop(uint32_t nowUs)
 
     if (m_batteryMonitor.HasCriticalFault())
     {
-        m_rateController.Reset();
-#if NOT_USE_HIL
-        // m_pwmMotorOutput.StopAll();
-        m_dshotMotorOutput.StopAll();
-#else
-        m_hilMotorOutput.StopAll();
-#endif
+        StopMotors();
         return;
     }
 
     if (m_batteryMonitor.ShouldStopMotorsImmediately())
     {
-        m_rateController.Reset();
-#if NOT_USE_HIL
-        // m_pwmMotorOutput.StopAll();
-        m_dshotMotorOutput.StopAll();
-#else
-        m_hilMotorOutput.StopAll();
-#endif
+        StopMotors();
         return;
     }
 
     if (m_flightModeManager.IsFailsafe())
     {
-        m_rateController.Reset();
-#if NOT_USE_HIL
-        // m_pwmMotorOutput.StopAll();
-        m_dshotMotorOutput.StopAll();
-#else
-        m_hilMotorOutput.StopAll();
-#endif
+        StopMotors();
         return;
     }
 
     if (!m_flightModeManager.IsArmed())
     {
-        m_rateController.Reset();
-#if NOT_USE_HIL
-        m_dshotMotorOutput.StopAll();
-        // m_pwmMotorOutput.StopAll();
-#else
-        m_hilMotorOutput.StopAll();
-#endif
+        StopMotors();
         return;
     }
 
     if (!m_sensorsManager.IsImuReady())
     {
-#if NOT_USE_HIL
-        m_dshotMotorOutput.StopAll();
-        // m_pwmMotorOutput.StopAll();
-#else
-        m_hilMotorOutput.StopAll();
-#endif
-        m_rateController.Reset();
+        StopMotors();
         return;
     }
 
     if (!state.valid)
     {
-        m_rateController.Reset();
-#if NOT_USE_HIL
-        m_dshotMotorOutput.StopAll();
-        // m_pwmMotorOutput.StopAll();
-#else
-        m_hilMotorOutput.StopAll();
-#endif
+        StopMotors();
         return;
     }
 

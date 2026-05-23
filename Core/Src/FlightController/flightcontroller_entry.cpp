@@ -106,12 +106,12 @@ extern "C" void UsbDebugConsole_RunDebugCommand(uint8_t command)
 //INTERAPT CALLBACKS from HAL
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
-    GetFlightController(&g_FlightControllerHandler)->OnDmaComplete(htim);
+    GetFlightController(&g_FlightControllerHandler)->TIM_PeriodElapsedCallback(htim);
 }
 
 extern "C" void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-    GetFlightController(&g_FlightControllerHandler)->OnDmaComplete(hadc);
+    GetFlightController(&g_FlightControllerHandler)->ADC_ConvCpltCallback(hadc);
 }
 
 extern "C" void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi)
