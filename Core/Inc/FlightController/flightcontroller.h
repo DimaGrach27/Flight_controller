@@ -22,6 +22,7 @@
 #include "PID/ratecontroller.h"
 #include "Protocols/stm32spibus.h"
 #include "Protocols/stm32uartdmabytestream.h"
+#include "RcInput/rcreceiver.h"
 #include "RcInput/rcinput.h"
 #include "Scheduler/scheduler.h"
 #include "Sensors/analoginputs.h"
@@ -121,6 +122,7 @@ private:
 #else
     HilRcReceiver m_hilRcReceiver;
 #endif
+    RcReceiver m_rcReceiver;
     RcInput m_rcInput;
 
     StateEstimator m_stateEstimator;

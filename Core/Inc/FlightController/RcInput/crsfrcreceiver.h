@@ -2,20 +2,20 @@
 // Created by Dmytro Hrachov on 11.05.2026.
 //
 #pragma once
-#include "ircreceiver.h"
 
 #include <cstdint>
 
+#include "rcrawframe.h"
 #include "FlightController/Protocols/iuartbytestrem.h"
 
-class CrsfRcReceiver final : public IRcReceiver
+class CrsfRcReceiver
 {
 public:
     CrsfRcReceiver(IUartByteStream& byteStream);
 
-    bool Init() override;
-    bool Update(uint32_t nowUs) override;
-    bool ReadFrame(RcRawFrame& outFrame) override;
+    bool Init();
+    bool Update(uint32_t nowUs);
+    bool ReadFrame(RcRawFrame& outFrame);
 
 private:
     void PushByte(uint8_t byte);

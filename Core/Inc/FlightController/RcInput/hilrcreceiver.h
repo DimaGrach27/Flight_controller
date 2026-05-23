@@ -2,16 +2,19 @@
 // Created by Dmytro Hrachov on 11.05.2026.
 //
 #pragma once
-#include "ircreceiver.h"
+#include <cstdint>
 
-class HilRcReceiver final : public IRcReceiver
+#include "rcrawframe.h"
+
+
+class HilRcReceiver
 {
 public:
     HilRcReceiver();
 
-    bool Init() override;
-    bool Update(uint32_t nowUs) override;
-    bool ReadFrame(RcRawFrame& outFrame) override;
+    bool Init();
+    bool Update(uint32_t nowUs);
+    bool ReadFrame(RcRawFrame& outFrame);
 
     void SetFrame(const RcRawFrame& frame);
     void Clear();

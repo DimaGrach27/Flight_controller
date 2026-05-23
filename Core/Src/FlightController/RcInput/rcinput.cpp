@@ -6,7 +6,7 @@
 
 #include "FlightController/Utils/mathutils.h"
 
-RcInput::RcInput(IRcReceiver& receiver)
+RcInput::RcInput(RcReceiver& receiver)
     : m_receiver(receiver)
 {
 }

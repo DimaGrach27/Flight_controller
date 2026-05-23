@@ -3,7 +3,7 @@
 //
 #pragma once
 
-#include "FlightController/RcInput/ircreceiver.h"
+#include "FlightController/RcInput/rcreceiver.h"
 #include "FlightController/RcInput/rcrawframe.h"
 #include "FlightController/datastructs.h"
 
@@ -12,7 +12,7 @@
 class RcInput
 {
 public:
-    explicit RcInput(IRcReceiver& receiver);
+    explicit RcInput(RcReceiver& receiver);
 
     bool Init();
 
@@ -29,7 +29,7 @@ private:
     bool IsSwitchHigh(uint16_t value) const;
 
 private:
-    IRcReceiver& m_receiver;
+    RcReceiver& m_receiver;
 
     RcCommand m_command{};
 
