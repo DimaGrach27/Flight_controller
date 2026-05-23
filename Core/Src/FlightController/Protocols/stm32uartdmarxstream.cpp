@@ -2,15 +2,15 @@
 // Created by Dmytro Hrachov on 11.05.2026.
 //
 
-#include "FlightController/Protocols/stm32uartdmabytestream.h"
+#include "FlightController/Protocols/stm32uartdmarxstream.h"
 
-Stm32UartDmaByteStream::Stm32UartDmaByteStream(UART_HandleTypeDef &uartHandle)
+Stm32UartDmaRxStream::Stm32UartDmaRxStream(UART_HandleTypeDef &uartHandle)
     : m_uartHandle(uartHandle)
 {
 
 }
 
-bool Stm32UartDmaByteStream::Init()
+bool Stm32UartDmaRxStream::Init()
 {
     m_dmaReadPos = 0;
     m_ringWritePos = 0;
@@ -34,7 +34,7 @@ bool Stm32UartDmaByteStream::Init()
     return true;
 }
 
-void Stm32UartDmaByteStream::OnIdleIrq()
+void Stm32UartDmaRxStream::OnIdleIrq()
 {
     if (__HAL_UART_GET_FLAG(&m_uartHandle, UART_FLAG_IDLE) != RESET)
     {
@@ -44,12 +44,12 @@ void Stm32UartDmaByteStream::OnIdleIrq()
     }
 }
 
-void Stm32UartDmaByteStream::OnDmaProgressIrq()
+void Stm32UartDmaRxStream::OnDmaProgressIrq()
 {
     CaptureNewBytesFromDma();
 }
 
-void Stm32UartDmaByteStream::CaptureNewBytesFromDma()
+void Stm32UartDmaRxStream::CaptureNewBytesFromDma()
 {
     const uint16_t dmaWritePos =
         static_cast<uint16_t>(DmaBufferSize - __HAL_DMA_GET_COUNTER(m_uartHandle.hdmarx));
@@ -72,7 +72,7 @@ void Stm32UartDmaByteStream::CaptureNewBytesFromDma()
     }
 }
 
-bool Stm32UartDmaByteStream::PushToRing(const uint8_t byte)
+bool Stm32UartDmaRxStream::PushToRing(const uint8_t byte)
 {
     uint16_t nextWritePos = m_ringWritePos + 1;
     if (nextWritePos >= RingBufferSize)
@@ -91,7 +91,7 @@ bool Stm32UartDmaByteStream::PushToRing(const uint8_t byte)
     return true;
 }
 
-bool Stm32UartDmaByteStream::ReadByte(uint8_t& byte)
+bool Stm32UartDmaRxStream::ReadByte(uint8_t& byte)
 {
     if (m_ringReadPos == m_ringWritePos)
     {
@@ -109,7 +109,7 @@ bool Stm32UartDmaByteStream::ReadByte(uint8_t& byte)
     return true;
 }
 
-uint16_t Stm32UartDmaByteStream::Available() const
+uint16_t Stm32UartDmaRxStream::Available() const
 {
     const uint16_t writePos = m_ringWritePos;
     const uint16_t readPos = m_ringReadPos;
@@ -122,7 +122,7 @@ uint16_t Stm32UartDmaByteStream::Available() const
     return RingBufferSize - readPos + writePos;
 }
 
-uint32_t Stm32UartDmaByteStream::GetOverflowCount() const
+uint32_t Stm32UartDmaRxStream::GetOverflowCount() const
 {
     return m_overflowCount;
 }

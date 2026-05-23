@@ -5,27 +5,41 @@
 
 #include <cstdint>
 
-#include "stm32uartdmabytestream.h"
+#include "stm32uartdmarxstream.h"
+#include "stm32uartdmatxstream.h"
 
 class UartByteStream
 {
 public:
-    explicit UartByteStream(Stm32UartDmaByteStream& byteStream)
-        : m_byteStream(byteStream)
+    explicit UartByteStream(Stm32UartDmaRxStream& byteRxStream,
+        Stm32UartDmaTxStream& byteTxStream)
+        : m_byteRxStream(byteRxStream)
+        , m_byteTxStream(byteTxStream)
     {
 
     }
 
     bool Init()
     {
-        return m_byteStream.Init();
+        return m_byteRxStream.Init() && m_byteTxStream.Init();
     }
 
     bool ReadByte(uint8_t& byte)
     {
-        return m_byteStream.ReadByte(byte);
+        return m_byteRxStream.ReadByte(byte);
+    }
+
+    bool Write(const uint8_t* data, uint16_t size)
+    {
+        return m_byteTxStream.Write(data, size);
+    }
+
+    bool WriteString(const char* str, uint16_t size)
+    {
+        return m_byteTxStream.WriteString(str, size);
     }
 
 private:
-    Stm32UartDmaByteStream& m_byteStream;
+    Stm32UartDmaRxStream& m_byteRxStream;
+    Stm32UartDmaTxStream& m_byteTxStream;
 };

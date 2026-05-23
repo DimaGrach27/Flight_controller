@@ -21,7 +21,8 @@
 #include "Motors/mixer.h"
 #include "PID/ratecontroller.h"
 #include "Protocols/stm32spibus.h"
-#include "Protocols/stm32uartdmabytestream.h"
+#include "Protocols/stm32uartdmarxstream.h"
+#include "Protocols/stm32uartdmatxstream.h"
 #include "RcInput/rcreceiver.h"
 #include "RcInput/rcinput.h"
 #include "Scheduler/scheduler.h"
@@ -83,6 +84,8 @@ public:
     void SPI_ErrorCallback(SPI_HandleTypeDef* hspi);
     void UART_RxHalfCpltCallback(UART_HandleTypeDef* huart);
     void UART_RxCpltCallback(UART_HandleTypeDef* huart);
+    void UART_TxCpltCallback(UART_HandleTypeDef* huart);
+    void UART_ErrorCallback(UART_HandleTypeDef* huart);
 
     uint32_t GetMicros() const;
 
@@ -103,7 +106,8 @@ private:
     SpiDmaBus m_dmaBusImu;
 
     // Stm32SpiBus m_stm32SpiBusImu;
-    Stm32UartDmaByteStream m_stm32UartDmaCrsfRc;
+    Stm32UartDmaRxStream m_stm32UartRxDmaCrsfRc;
+    Stm32UartDmaTxStream m_stm32UartTxDmaCrsfRc;
     UartByteStream m_uartByteStream;
     IMU_Lsm6ds3 m_imuLsm6ds3;
 #else

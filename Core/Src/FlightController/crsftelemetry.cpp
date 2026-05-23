@@ -8,9 +8,14 @@
 
 #include "main.h"
 
-void CrsfTelemetry::Init(UART_HandleTypeDef& huart1)
+CrsfTelemetry::CrsfTelemetry(UartByteStream& byteStream)
+    :m_byteStream(byteStream)
 {
-    m_huart1 = &huart1;
+
+}
+
+void CrsfTelemetry::Init()
+{
 }
 
 void CrsfTelemetry::SendBattery(float voltage, float current, uint32_t consumedMah, uint8_t remainingPercent)
@@ -97,22 +102,15 @@ void CrsfTelemetry::SendFrame(uint8_t address, uint8_t type, const uint8_t* payl
 
 void CrsfTelemetry::SendByte(uint8_t byte)
 {
-    if (m_huart1 == nullptr)
-    {
-        return;
-    }
+    m_byteStream.Write(&byte, 1);
 
-    HAL_UART_Transmit(m_huart1, &byte, 1, 1);
+    // HAL_UART_Transmit(m_huart1, &byte, 1, 1);
 }
 
 void CrsfTelemetry::SendData(const uint8_t* data, uint8_t size)
 {
-    if (m_huart1 == nullptr)
-    {
-        return;
-    }
-
-    HAL_UART_Transmit(m_huart1, const_cast<uint8_t*>(data), size, 10);
+    m_byteStream.Write(data, size);
+    // HAL_UART_Transmit(m_huart1, const_cast<uint8_t*>(data), size, 10);
 }
 
 uint8_t CrsfTelemetry::Crc8DvbS2(const uint8_t* data, uint8_t len)

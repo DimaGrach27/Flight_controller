@@ -138,3 +138,13 @@ extern "C" void flight_controller_OnIdleDmaReceive_UART1()
 {
     GetFlightController(&g_FlightControllerHandler)->OnIdleRcUart();
 }
+
+extern "C" void HAL_UART_TxCpltCallback(UART_HandleTypeDef* huart)
+{
+    GetFlightController(&g_FlightControllerHandler)->UART_TxCpltCallback(huart);
+}
+
+extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart)
+{
+    GetFlightController(&g_FlightControllerHandler)->UART_ErrorCallback(huart);
+}

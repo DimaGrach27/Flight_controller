@@ -5,13 +5,13 @@
 
 #include "main.h"
 
-class Stm32UartDmaByteStream
+class Stm32UartDmaRxStream
 {
 public:
     static constexpr uint16_t DmaBufferSize = 256;
     static constexpr uint16_t RingBufferSize = 512;
 
-    explicit Stm32UartDmaByteStream(UART_HandleTypeDef& uartHandle);
+    explicit Stm32UartDmaRxStream(UART_HandleTypeDef& uartHandle);
 
     bool Init();
 

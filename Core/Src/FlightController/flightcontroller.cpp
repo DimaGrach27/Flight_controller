@@ -19,8 +19,9 @@ FlightController::FlightController(
     )
     : m_scheduler()
     , m_dmaBusImu(&spiImuHandler, CS_SPI2_GPIO_Port, CS_SPI2_Pin)
-    , m_stm32UartDmaCrsfRc(rcUart)
-    , m_uartByteStream(m_stm32UartDmaCrsfRc)
+    , m_stm32UartRxDmaCrsfRc(rcUart)
+    , m_stm32UartTxDmaCrsfRc(rcUart)
+    , m_uartByteStream(m_stm32UartRxDmaCrsfRc, m_stm32UartTxDmaCrsfRc)
     , m_imuLsm6ds3(m_dmaBusImu)
     , m_imuDriver(m_imuLsm6ds3)
     , m_imuSensor(m_imuDriver)
@@ -28,6 +29,7 @@ FlightController::FlightController(
     , m_currentSensor()
     , m_batteryVoltageSensor()
     , m_sensorsManager(m_imuSensor)
+    , m_crsfTelemetry(m_uartByteStream)
     , m_crsfRcReceiver(m_uartByteStream)
     , m_rcReceiver(m_crsfRcReceiver)
     , m_rcInput(m_rcReceiver)
@@ -113,7 +115,7 @@ void FlightController::Init()
     {
         //TODO: faild
     }
-    m_crsfTelemetry.Init(m_rcUart);
+    m_crsfTelemetry.Init();
 
     m_batteryMonitor.Init();
     m_flightModeManager.Init();
@@ -268,7 +270,7 @@ void FlightController::OnDmaComplete(ADC_HandleTypeDef* hadc)
 
 void FlightController::OnIdleRcUart()
 {
-    m_stm32UartDmaCrsfRc.OnIdleIrq();
+    m_stm32UartRxDmaCrsfRc.OnIdleIrq();
 }
 
 void FlightController::OnUsbReceived(const uint8_t *data, uint32_t size)
@@ -339,7 +341,7 @@ void FlightController::UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart == &m_rcUart)
     {
-        m_stm32UartDmaCrsfRc.OnDmaProgressIrq();
+        m_stm32UartRxDmaCrsfRc.OnDmaProgressIrq();
     }
 }
 
@@ -347,7 +349,23 @@ void FlightController::UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart == &m_rcUart)
     {
-        m_stm32UartDmaCrsfRc.OnDmaProgressIrq();
+        m_stm32UartRxDmaCrsfRc.OnDmaProgressIrq();
+    }
+}
+
+void FlightController::UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart == &m_rcUart)
+    {
+        m_stm32UartTxDmaCrsfRc.OnTxComplete();
+    }
+}
+
+void FlightController::UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    if (huart == &m_rcUart)
+    {
+        m_stm32UartTxDmaCrsfRc.OnTxError();
     }
 }
 

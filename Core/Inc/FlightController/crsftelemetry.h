@@ -5,18 +5,14 @@
 
 #include <cstdint>
 #include "main.h"
+#include "Protocols/uartbytestrem.h"
 
 class CrsfTelemetry
 {
 public:
-    using SendByteCallback = void(*)(uint8_t byte);
+    explicit CrsfTelemetry(UartByteStream& byteStream);
 
-    // explicit CrsfTelemetry(SendByteCallback SendByte)
-    //     : m_sendByte(SendByte)
-    // {
-    // }
-
-    void Init(UART_HandleTypeDef& huart1);
+    void Init();
 
     void SendBattery(float voltage, float current, uint32_t consumedMah, uint8_t remainingPercent);
     void SendFlightMode(const char* text);
@@ -35,6 +31,5 @@ private:
     static uint8_t Crc8DvbS2(const uint8_t* data, uint8_t len);
 
 private:
-    SendByteCallback m_sendByte = nullptr;
-    UART_HandleTypeDef* m_huart1 = nullptr;
+    UartByteStream& m_byteStream;
 };
