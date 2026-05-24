@@ -2,7 +2,7 @@
 // Created by Dmytro Hrachov on 11.05.2026.
 //
 
-#include "../../../../Inc/FlightController/Sensors/IMU/imu_driver_hil.h"
+#include "FlightController/Sensors/IMU/imu_driver_hil.h"
 
 namespace
 {

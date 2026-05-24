@@ -478,11 +478,7 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     }
     else
     {
-        /*
-            Angle mode додамо пізніше.
-            Поки для safety можна або стопати мотори,
-            або тимчасово теж використовувати acro.
-        */
+        //TODO: add angle mode
         control = m_rateController.Update(rcCommand, state, nowUs);
     }
 

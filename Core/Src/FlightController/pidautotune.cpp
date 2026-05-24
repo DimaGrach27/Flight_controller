@@ -173,7 +173,6 @@ void PidAutoTune::DetectPeriod(float measuredRateRadSec)
 
     m_lastPositiveCrossTime = m_timeSec;
 
-    // Після повного циклу очищаємо піки для наступного періоду.
     m_positivePeak = 0.0f;
     m_negativePeak = 0.0f;
     m_havePositivePeak = false;
@@ -210,8 +209,6 @@ void PidAutoTune::CalculateGains()
     // Ku = 4d / (pi * a)
     const float Ku = (4.0f * d) / (3.1415926f * a);
 
-    // Для дрона я б НЕ брав агресивний Ziegler-Nichols.
-    // Нижче більш м'які коефіцієнти для rate loop.
     PidGains gains;
     gains.kp = 0.35f * Ku;
     gains.ki = 0.50f * Ku / Tu;
