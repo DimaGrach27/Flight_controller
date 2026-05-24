@@ -4,6 +4,8 @@
 
 #include "../../../../Inc/FlightController/Sensors/IMU/imu_sensor.h"
 
+#include "FlightController/Sensors/IMU/imuaxismapper.h"
+
 namespace
 {
     constexpr float MaxReasonableAccel_mps2 = 200.0f;
@@ -81,6 +83,11 @@ bool Imu_Sensor::Update(uint32_t nowUs)
     {
         calibrated = ApplyFiltering(calibrated);
     }
+
+    ImuAxisMapper axismapper = ImuAxisMapper();
+
+    calibrated.accel_mps2 = axismapper.MapAccel(calibrated.accel_mps2);
+    calibrated.gyro_rads = axismapper.MapGyro(calibrated.gyro_rads);
 
     calibrated.valid = true;
     m_data = calibrated;

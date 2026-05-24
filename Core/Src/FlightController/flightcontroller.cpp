@@ -8,6 +8,7 @@
 
 #include "main.h"
 #include "FlightController/RcInput/rcchannelutils.h"
+#include "FlightController/Sensors/IMU/imuaxismapper.h"
 #if NOT_USE_HIL
 FlightController::FlightController(
     UART_HandleTypeDef& serialUart,
@@ -205,6 +206,29 @@ void FlightController::Update()
         const VehicleState& state = m_stateEstimator.GetState();
         const FlightModeState& flightModeState = m_flightModeManager.GetState();
         const RateData& rateData = m_rateController.GetRateData();
+
+        // ImuAxisMapper imuAxisMapper = ImuAxisMapper();
+
+        // Vector3 mappedAccel = imuAxisMapper.MapAccel(m_imu_sample.accel_mps2);
+        // Vector3 mappedGyro = imuAxisMapper.MapGyro(m_imu_sample.gyro_rads);
+        // Vector3 mappedAccel = m_imu_sample.accel_mps2;
+        // Vector3 mappedGyro = m_imu_sample.gyro_rads;
+
+        // char logData[128];
+        //
+        // int len = snprintf(
+        //     logData,
+        //     sizeof(logData),
+        //     "accel: %.3f %.3f %.3f gyro: %.3f %.3f %.3f\r\n",
+        //     mappedAccel.x,
+        //     mappedAccel.y,
+        //     mappedAccel.z,
+        //     mappedGyro.x,
+        //     mappedGyro.y,
+        //     mappedGyro.z
+        // );
+        //
+        // m_debugConsole.WriteLine(logData);
 
         m_logger.GetLogSample().timeMs = nowUs / 1000.0f;
         m_logger.GetLogSample().imuDt = state.imuDt;
@@ -405,6 +429,7 @@ void FlightController::RunControlLoop(uint32_t nowUs)
         HAL_Delay(2);
     }
 
+    // m_dshotMotorOutput.Write({0, 0, 0, 0});
     m_dshotMotorOutput.Write({rcCommand.throttle, rcCommand.throttle, rcCommand.throttle, rcCommand.throttle});
     return;
 #endif
@@ -603,5 +628,5 @@ void FlightController::SendMavlinkMessage(const mavlink_message_t& msg)
 {
     uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
     const uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
-    HAL_UART_Transmit(&m_serialUart, buffer, len, 100);
+    // HAL_UART_Transmit(&m_serialUart, buffer, len, 100);
 }
