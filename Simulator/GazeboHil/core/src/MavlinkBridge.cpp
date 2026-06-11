@@ -9,11 +9,18 @@
 #include <cmath>
 #include <iostream>
 
+#include "SerialPort_UART.h"
+
 NAMESPACE_BEGIN
+MavlinkBridge::MavlinkBridge()
+{
+    m_serial = std::make_unique<SerialPort_UART>();
+}
+
 bool MavlinkBridge::Open(const std::string& port, int baud, std::function<void(const mavlink_named_value_float_t&)> callback)
 {
     m_callback = callback;
-    return serial_.Open(port, baud);
+    return m_serial->Open(port, baud);
 }
 
 void MavlinkBridge::Poll()
@@ -22,7 +29,7 @@ void MavlinkBridge::Poll()
 
     while (true)
     {
-        int n = serial_.Read(buffer, sizeof(buffer));
+        int n = m_serial->Read(buffer, sizeof(buffer));
 
         if (n <= 0)
             break;
@@ -52,7 +59,7 @@ void MavlinkBridge::SendHilSensor(
 {
     (void)yawRad; // Поки yaw angle не потрібен для accel gravity vector
 
-    if (!serial_.IsOpen())
+    if (!m_serial->IsOpen())
         return;
 
     constexpr double g = 9.80665;
@@ -103,12 +110,12 @@ void MavlinkBridge::SendHilSensor(
 
     uint16_t len = mavlink_msg_to_send_buffer(txBuffer, &msg);
 
-    serial_.Write(txBuffer, len);
+    m_serial->Write(txBuffer, len);
 }
 
 void MavlinkBridge::SendHilSensorFromImu(uint64_t timeUsec, const ImuData& imuData)
 {
-    if (!serial_.IsOpen())
+    if (!m_serial->IsOpen())
         return;
 
     mavlink_message_t msg;
@@ -141,7 +148,7 @@ void MavlinkBridge::SendHilSensorFromImu(uint64_t timeUsec, const ImuData& imuDa
 
     uint16_t len = mavlink_msg_to_send_buffer(txBuffer, &msg);
 
-    serial_.Write(txBuffer, len);
+    m_serial->Write(txBuffer, len);
 }
 
 void MavlinkBridge::SendManualControl(
@@ -194,7 +201,7 @@ void MavlinkBridge::SendManualControl(
     );
 
     uint16_t len = mavlink_msg_to_send_buffer(txBuffer, &msg);
-    serial_.Write(txBuffer, len);
+    m_serial->Write(txBuffer, len);
 }
 
 const MotorOutputs& MavlinkBridge::Motors() const
@@ -239,7 +246,7 @@ void MavlinkBridge::HandleMessage(const mavlink_message_t& msg)
             }
 
             m_lastServoWallSec = nowWallSec;
-
+            printf("[MavlinkBridge] Get servo output\n");
             break;
         }
         case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:

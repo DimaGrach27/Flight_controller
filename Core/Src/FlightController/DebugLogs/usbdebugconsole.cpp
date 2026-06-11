@@ -159,6 +159,11 @@ void UsbDebugConsole::ProcessRx()
 
     while (PopRx(byte))
     {
+        if (flight_controller_MavlinkParseByte(byte))
+        {
+            continue;
+        }
+
         if (byte == '\r' || byte == '\n')
         {
             if (m_commandLength > 0)

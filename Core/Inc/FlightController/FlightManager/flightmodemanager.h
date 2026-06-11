@@ -16,6 +16,7 @@ public:
     void Init();
 
     void Update(const RcCommand& rcCommand, const BatteryData& batterData, bool batteryValid, uint32_t nowUs);
+    void Update(const RcCommand& rcCommand, uint32_t nowUs);
 
     const FlightModeState& GetState() const;
 

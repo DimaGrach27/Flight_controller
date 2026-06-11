@@ -59,6 +59,7 @@ UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
 DMA_HandleTypeDef hdma_usart2_rx;
+DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
 uint8_t m_uartVirtualRxDmaBuffer[256];
@@ -82,9 +83,9 @@ void ProcessVirtualUartRxDma(void);
 /* USER CODE BEGIN 0 */
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t size)
 {
-    if (huart->Instance == USART2)
+    if (huart->Instance == USART1)
     {
-        HAL_UARTEx_ReceiveToIdle_DMA(&huart2, m_uartVirtualRxDmaBuffer, sizeof(m_uartVirtualRxDmaBuffer));
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart1, m_uartVirtualRxDmaBuffer, sizeof(m_uartVirtualRxDmaBuffer));
     }
 }
 
@@ -99,7 +100,7 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 void ProcessVirtualUartRxDma()
 {
     const uint16_t currentPos =
-        sizeof(m_uartVirtualRxDmaBuffer) - __HAL_DMA_GET_COUNTER(huart2.hdmarx);
+        sizeof(m_uartVirtualRxDmaBuffer) - __HAL_DMA_GET_COUNTER(huart1.hdmarx);
 
     if (currentPos == m_lastVirtualRxDmaPos)
     {
@@ -250,11 +251,20 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
+
+    // const char msg[] = "hello from f405\r\n";
+    //
+    // while (1)
+    // {
+    //     HAL_UART_Transmit(&huart1, (uint8_t*)msg, sizeof(msg) - 1, 100);
+    //     HAL_Delay(500);
+    // }
+
   flight_controller_Create(&huart1, &huart2, &hspi2, &htim3, &hadc1);
   flight_controller_Init();
 
   // HAL_UARTEx_ReceiveToIdle_DMA(&huart1, m_uartRCRxDmaBuffer, sizeof(m_uartRCRxDmaBuffer));
-  HAL_UARTEx_ReceiveToIdle_DMA(&huart2, m_uartVirtualRxDmaBuffer, sizeof(m_uartVirtualRxDmaBuffer));
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart1, m_uartVirtualRxDmaBuffer, sizeof(m_uartVirtualRxDmaBuffer));
 
   /* USER CODE END 2 */
 
@@ -265,6 +275,13 @@ int main(void)
     ProcessPwmSequence_Test();
 
     ProcessVirtualUartRxDma();
+
+      // HAL_StatusTypeDef uartStatus = HAL_UART_Receive_DMA(&huart2, m_uartVirtualRxDmaBuffer, sizeof(m_uartVirtualRxDmaBuffer));
+      // if (uartStatus == HAL_OK)
+      // {
+          // hall busy
+          // OK
+      // }
 
     flight_controller_Update();
     /* USER CODE END WHILE */
@@ -505,7 +522,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 420000;
+  huart1.Init.BaudRate = 921600;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -578,6 +595,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Stream5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
+  /* DMA1_Stream6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);

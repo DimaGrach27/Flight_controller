@@ -161,7 +161,8 @@
                   filename="libHilPlugin"
                   name="hil_plugin::ImuHilPlugin">
 
-              <serial_port>/dev/cu.usbmodem103</serial_port>
+              <serial_port>/dev/cu.usbmodem3872398031351</serial_port>
+<!--              <serial_port>/dev/cu.usbmodem103</serial_port>-->
               <imu_topic>/world/baylands/model/X3/link/base_link/sensor/imu_sensor/imu</imu_topic>
               <baud>921600</baud>
               <use_joystick>true</use_joystick>

@@ -2,7 +2,7 @@
 // Created by Dmytro Hrachov on 01.05.2026.
 //
 
-#include "SerialPort.h"
+#include "SerialPort_UART.h"
 
 #include <fcntl.h>
 #include <iostream>
@@ -35,12 +35,12 @@ static speed_t BaudToTermios(int baud)
     }
 }
 
-SerialPort::~SerialPort()
+SerialPort_UART::~SerialPort_UART()
 {
-    Close();
+    CloseInternal();
 }
 
-bool SerialPort::Open(const std::string& path, int baud)
+bool SerialPort_UART::Open(const std::string& path, int baud)
 {
     Close();
 
@@ -68,7 +68,6 @@ bool SerialPort::Open(const std::string& path, int baud)
     tty.c_cflag |= CS8;
     tty.c_cflag &= static_cast<tcflag_t>(~PARENB);
     tty.c_cflag &= static_cast<tcflag_t>(~CSTOPB);
-
 #ifdef CRTSCTS
     tty.c_cflag &= static_cast<tcflag_t>(~CRTSCTS);
 #endif
@@ -109,7 +108,12 @@ bool SerialPort::Open(const std::string& path, int baud)
     return true;
 }
 
-void SerialPort::Close()
+void SerialPort_UART::Close()
+{
+    CloseInternal();
+}
+
+void SerialPort_UART::CloseInternal()
 {
     if (fd_ >= 0)
     {
@@ -118,12 +122,12 @@ void SerialPort::Close()
     }
 }
 
-bool SerialPort::IsOpen() const
+bool SerialPort_UART::IsOpen() const
 {
     return fd_ >= 0;
 }
 
-int SerialPort::Read(uint8_t* buffer, size_t maxLen)
+int SerialPort_UART::Read(uint8_t* buffer, size_t maxLen)
 {
     if (fd_ < 0)
         return -1;
@@ -136,13 +140,14 @@ int SerialPort::Read(uint8_t* buffer, size_t maxLen)
     return static_cast<int>(n);
 }
 
-bool SerialPort::Write(const uint8_t* data, size_t len)
+bool SerialPort_UART::Write(const uint8_t* data, size_t len)
 {
     if (fd_ < 0)
         return false;
 
     ssize_t written = write(fd_, data, len);
 
+    // printf("[SerialPort] Send data");
     return written == static_cast<ssize_t>(len);
 }
 NAMESPACE_END

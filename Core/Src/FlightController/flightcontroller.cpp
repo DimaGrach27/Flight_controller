@@ -50,22 +50,21 @@ FlightController::FlightController(
 #else
 FlightController::FlightController(UART_HandleTypeDef& serialUart, ADC_HandleTypeDef& batterAdc)
     : m_scheduler()
+    , m_debugConsole()
     , m_imuDriverHil()
     , m_imuDriver(m_imuDriverHil)
     , m_imuSensor(m_imuDriver)
-    , m_batteryVoltageSensor(batterAdc)
     , m_sensorsManager(m_imuSensor)
     , m_hilRcReceiver()
-    , m_rcInput(m_hilRcReceiver)
+    , m_rcReceiver(m_hilRcReceiver)
+    , m_rcInput(m_rcReceiver)
     , m_stateEstimator()
-    , m_batteryMonitor(4)
     , m_flightModeManager()
     , m_rateController()
     , m_mixer()
-    , m_hilMotorOutput(serialUart)
+    , m_hilMotorOutput(m_debugConsole)
     , m_serialUart(serialUart)
     , m_logger(serialUart)
-    , m_debugConsole()
 {
 }
 
@@ -96,6 +95,7 @@ void FlightController::Init()
     m_scheduler.AddTask(TaskID::Battery, 100000);   //10 Hz
 
 
+#if NOT_USE_HIL
     bool analogGood = m_analogInputs.Start();
     if (analogGood)
     {
@@ -104,6 +104,7 @@ void FlightController::Init()
 
     m_currentSensor.StartZeroCalibration();
     m_batteryVoltageSensor.Init();
+#endif
 
     if (!m_sensorsManager.Init())
     {
@@ -116,9 +117,13 @@ void FlightController::Init()
     {
         //TODO: faild
     }
+
+#if NOT_USE_HIL
     m_crsfTelemetry.Init();
 
     m_batteryMonitor.Init();
+#endif
+
     m_flightModeManager.Init();
     m_rateController.Init();
     m_mixer.Init();
@@ -138,13 +143,19 @@ void FlightController::Init()
 
 void FlightController::Heartbeat()
 {
+
     const FlightModeState& state = m_flightModeManager.GetState();
     char modeText[17]{};
     std::snprintf(modeText, sizeof(modeText), "%s %s%s",
         EnumToChar_FlightMode(state.mode),
         state.armState == ArmState::Armed ? "ARM" : "DIS",
         state.failsafe ? " FS" : "");
+
+#if NOT_USE_HIL
     m_crsfTelemetry.SendFlightMode(modeText);
+#else
+    //TODO:send telemetry to Gazebo
+#endif
 }
 
 void FlightController::Update()
@@ -160,6 +171,7 @@ void FlightController::Update()
         m_stateEstimator.UpdateImu(m_sensorsManager.GetImuData());
     }
 
+#if NOT_USE_HIL
     if (m_scheduler.ConsumeTask(TaskID::Battery))
     {
         m_analogInputs.Update();
@@ -175,19 +187,26 @@ void FlightController::Update()
             nowUs);
     }
     const BatteryData& batteryData = m_batteryMonitor.GetBatteryData();
+#endif
 
     if (m_scheduler.ConsumeTask(TaskID::Rc))
     {
         m_rcInput.Update(nowUs);
 
+#if NOT_USE_HIL
         m_flightModeManager.Update(m_rcInput.GetCommand(), batteryData, m_batteryMonitor.CanArm(), nowUs);
+#else
+        m_flightModeManager.Update(m_rcInput.GetCommand(), nowUs);
+#endif
     }
 
+#if NOT_USE_HIL
     //Should disable calibration befor arm
     if (m_flightModeManager.GetState().armState == ArmState::Armed)
     {
         m_currentSensor.StopZeroCalibration();
     }
+#endif
 
     if (m_scheduler.ConsumeTask(TaskID::Control))
     {
@@ -271,7 +290,7 @@ void FlightController::Update()
     }
 }
 
-void FlightController::MavlinkParseByte(uint8_t byte)
+bool FlightController::MavlinkParseByte(uint8_t byte)
 {
     mavlink_message_t msg;
     mavlink_status_t status;
@@ -279,22 +298,33 @@ void FlightController::MavlinkParseByte(uint8_t byte)
     if (mavlink_parse_char(MAVLINK_COMM_0, byte, &msg, &status))
     {
         MavlinkHandleMessage(&msg);
+
+        return true;
     }
+
+    return false;
 }
 
 void FlightController::TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+#if NOT_USE_HIL
     m_dshotMotorOutput.OnDmaComplete(htim);
+#endif
+
 }
 
 void FlightController::ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
+#if NOT_USE_HIL
     m_analogInputs.OnDmaComplete(hadc);
+#endif
 }
 
 void FlightController::OnIdleRcUart()
 {
+#if NOT_USE_HIL
     m_stm32UartRxDmaCrsfRc.OnIdleIrq();
+#endif
 }
 
 void FlightController::OnUsbReceived(const uint8_t *data, uint32_t size)
@@ -327,8 +357,11 @@ void FlightController::RunDebugCommand(uint8_t command)
 
         case UsbDebugConsoleCommand::Battery_Status:
         {
+#if NOT_USE_HIL
+
             const BatteryData& batteryData = m_batteryMonitor.GetBatteryData();
             m_debugConsole.ShowBatteryStatus(batteryData);
+#endif
             break;
         }
 
@@ -353,44 +386,56 @@ void FlightController::RunDebugCommand(uint8_t command)
 
 void FlightController::SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
+#if NOT_USE_HIL
     m_dmaBusImu.OnDmaComplete(hspi);
+#endif
 }
 
 void FlightController::SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 {
+#if NOT_USE_HIL
     m_dmaBusImu.OnDmaError(hspi);
+#endif
 }
 
 void FlightController::UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
+#if NOT_USE_HIL
     if (huart == &m_rcUart)
     {
         m_stm32UartRxDmaCrsfRc.OnDmaProgressIrq();
     }
+#endif
 }
 
 void FlightController::UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
+#if NOT_USE_HIL
     if (huart == &m_rcUart)
     {
         m_stm32UartRxDmaCrsfRc.OnDmaProgressIrq();
     }
+#endif
 }
 
 void FlightController::UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
+#if NOT_USE_HIL
     if (huart == &m_rcUart)
     {
         m_stm32UartTxDmaCrsfRc.OnTxComplete();
     }
+#endif
 }
 
 void FlightController::UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
+#if NOT_USE_HIL
     if (huart == &m_rcUart)
     {
         m_stm32UartTxDmaCrsfRc.OnTxError();
     }
+#endif
 }
 
 uint32_t FlightController::GetMicros() const
@@ -434,6 +479,7 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     return;
 #endif
 
+#if NOT_USE_HIL
     if (m_batteryMonitor.HasCriticalFault())
     {
         StopMotors();
@@ -445,6 +491,7 @@ void FlightController::RunControlLoop(uint32_t nowUs)
         StopMotors();
         return;
     }
+#endif
 
     if (m_flightModeManager.IsFailsafe())
     {
@@ -484,7 +531,11 @@ void FlightController::RunControlLoop(uint32_t nowUs)
 
     m_lastControlOutput = control;
 
+#if NOT_USE_HIL
     const float limitedThrottle = rcCommand.throttle * m_batteryMonitor.GetThrottleLimit();
+#else
+    const float limitedThrottle = rcCommand.throttle;
+#endif
     const MotorCommand motors = m_mixer.Mix(limitedThrottle, control);
 
     m_lastMotorCommand = motors;
@@ -608,6 +659,7 @@ void FlightController::HandleRcCommand(const mavlink_message_t* msg)
 
 void FlightController::SendTelemetry(uint32_t nowUs)
 {
+#if NOT_USE_HIL
     (void)nowUs;
     const BatteryData& batteryData = m_batteryMonitor.GetBatteryData();
 
@@ -618,6 +670,7 @@ void FlightController::SendTelemetry(uint32_t nowUs)
         batteryData.current_A,
         consumedMah,
         batteryData.percentage);
+#endif
 }
 
 void FlightController::SendMavlinkMessage(const mavlink_message_t& msg)

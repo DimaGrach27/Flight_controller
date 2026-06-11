@@ -5,11 +5,12 @@
 
 #include "imotoroutput.h"
 #include "main.h"
+#include "FlightController/DebugLogs/usbdebugconsole.h"
 
 class HilMotorOutput final : public IMotorOutput
 {
 public:
-    explicit HilMotorOutput(UART_HandleTypeDef& serialUart);
+    explicit HilMotorOutput(UsbDebugConsole& debugConsole);
 
     bool Init() override;
 
@@ -23,5 +24,5 @@ private:
 private:
     MotorCommand m_lastCommand{};
     bool m_initialized = false;
-    UART_HandleTypeDef& m_serialUart;
+    UsbDebugConsole& m_debugConsole;
 };

@@ -7,8 +7,8 @@
 #include "main.h"
 #include "mavlink/common/mavlink.h"
 
-HilMotorOutput::HilMotorOutput(UART_HandleTypeDef& serialUart)
-    : m_serialUart(serialUart)
+HilMotorOutput::HilMotorOutput(UsbDebugConsole& debugConsole)
+    : m_debugConsole(debugConsole)
 {
 }
 
@@ -79,5 +79,6 @@ void HilMotorOutput::SendServoOutput(const MotorCommand &command)
     );
 
     uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
-    HAL_UART_Transmit(&m_serialUart, buffer, len, 100);
+    m_debugConsole.WriteBytes(buffer, len);
+    // HAL_UART_Transmit(&m_serialUart, buffer, len, 100);
 }

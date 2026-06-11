@@ -4,6 +4,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "main.h"
 
@@ -25,7 +26,7 @@ void flight_controller_Init();
 void flight_controller_Heartbeat(void);
 void flight_controller_Update(void);
 
-void flight_controller_MavlinkParseByte(uint8_t byte);
+bool flight_controller_MavlinkParseByte(uint8_t byte);
 void flight_controller_ParseRcCommandByte(uint8_t byte);
 
 //hard callbacks begin

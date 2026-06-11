@@ -10,7 +10,7 @@
 #include "mavlink/common/mavlink.h"
 #include "GlobalDef.h"
 #include "Structs.h"
-#include "SerialPort.h"
+#include "ISerialPort.h"
 
 NAMESPACE_BEGIN
 struct MotorOutputs
@@ -24,6 +24,8 @@ struct MotorOutputs
 class MavlinkBridge
 {
 public:
+    MavlinkBridge();
+
     bool Open(const std::string& port, int baud, std::function<void(const mavlink_named_value_float_t&)> callback);
 
     void Poll();
@@ -66,7 +68,7 @@ private:
     static double PwmToMotor(uint16_t pwm);
 
 private:
-    SerialPort serial_;
+    std::unique_ptr<ISerialPort> m_serial = nullptr;
     MotorOutputs motors_;
 
     std::function<void(const mavlink_named_value_float_t&)> m_callback;

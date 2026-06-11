@@ -72,9 +72,9 @@ extern "C" void flight_controller_Heartbeat(void)
     GetFlightController(&g_FlightControllerHandler)->Heartbeat();
 }
 
-extern "C" void flight_controller_MavlinkParseByte(uint8_t byte)
+extern "C" bool flight_controller_MavlinkParseByte(uint8_t byte)
 {
-    GetFlightController(&g_FlightControllerHandler)->MavlinkParseByte(byte);
+    return GetFlightController(&g_FlightControllerHandler)->MavlinkParseByte(byte);
 }
 
 extern "C" void flight_controller_ParseRcCommandByte(uint8_t byte)

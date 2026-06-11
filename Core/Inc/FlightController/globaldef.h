@@ -3,5 +3,5 @@
 //
 #pragma once
 
-#define NOT_USE_HIL 1
+#define NOT_USE_HIL 0
 #define MOTOR_DIRECT_TEST 0

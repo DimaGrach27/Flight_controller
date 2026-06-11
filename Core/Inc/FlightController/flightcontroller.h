@@ -70,7 +70,7 @@ public:
     void Init();
     void Heartbeat();
     void Update();
-    void MavlinkParseByte(uint8_t byte);
+    bool MavlinkParseByte(uint8_t byte);
     void TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim);
     void ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc);
 
@@ -104,6 +104,8 @@ private:
 private:
     Scheduler m_scheduler;
 
+    UsbDebugConsole m_debugConsole;
+
 #if NOT_USE_HIL
     SpiDmaBus m_dmaBusImu;
 
@@ -117,9 +119,12 @@ private:
 #endif
     Imu_Driver m_imuDriver;
     Imu_Sensor m_imuSensor;
+#if NOT_USE_HIL
     AnalogInputs m_analogInputs;
     CurrentSensor m_currentSensor;
     BatteryVoltageSensor m_batteryVoltageSensor;
+#endif
+
     SensorsManager m_sensorsManager;
 
 #if NOT_USE_HIL
@@ -132,8 +137,10 @@ private:
     RcInput m_rcInput;
 
     StateEstimator m_stateEstimator;
-
+#if NOT_USE_HIL
     BatteryMonitor m_batteryMonitor;
+#endif
+
     FlightModeManager m_flightModeManager;
 
     RateController m_rateController;
@@ -151,9 +158,10 @@ private:
     MotorCommand m_lastMotorCommand{};
 
     UART_HandleTypeDef& m_serialUart;
+#if NOT_USE_HIL
     UART_HandleTypeDef& m_rcUart;
+#endif
 
     //DEBUG
     Logger m_logger;
-    UsbDebugConsole m_debugConsole;
 };

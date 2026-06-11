@@ -23,6 +23,14 @@ void FlightModeManager::Init()
     m_previousArmSwitch = false;
 }
 
+void FlightModeManager::Update(const RcCommand& rcCommand, uint32_t nowUs)
+{
+    Update(rcCommand,
+        {0.0f, 0.0f, 0.0f, 0, false, false, BatteryState::Normal, nowUs, true},
+        false,
+        nowUs);
+}
+
 void FlightModeManager::Update(const RcCommand& rcCommand, const BatteryData& batterData, bool batteryValid, uint32_t nowUs)
 {
     m_state.timestampUs = nowUs;
