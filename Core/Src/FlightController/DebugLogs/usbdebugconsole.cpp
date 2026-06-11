@@ -322,11 +322,12 @@ void UsbDebugConsole::TryStartTransmit()
     }
 
     uint16_t size = 0;
-    uint8_t byte = 0;
+    uint16_t readPos = m_txTail;
 
-    while (size < sizeof(m_usbTxChunk) && PopTx(byte))
+    while (size < sizeof(m_usbTxChunk) && readPos != m_txHead)
     {
-        m_usbTxChunk[size++] = byte;
+        m_usbTxChunk[size++] = m_txBuffer[readPos];
+        readPos = static_cast<uint16_t>((readPos + 1) % TxBufferSize);
     }
 
     if (size == 0)
@@ -338,12 +339,11 @@ void UsbDebugConsole::TryStartTransmit()
 
     if (result == USBD_OK)
     {
+        m_txTail = readPos;
         m_txBusy = true;
     }
     else
     {
-        // Якщо USB busy, цей простий варіант втрачає chunk.
-        // Пізніше можна зробити Peek/Commit, щоб не втрачати дані.
         m_txBusy = false;
     }
 }

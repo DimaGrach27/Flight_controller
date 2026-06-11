@@ -64,7 +64,7 @@ FlightController::FlightController(UART_HandleTypeDef& serialUart, ADC_HandleTyp
     , m_mixer()
     , m_hilMotorOutput(m_debugConsole)
     , m_serialUart(serialUart)
-    , m_logger(serialUart)
+    , m_logger(m_debugConsole)
 {
 }
 
@@ -602,7 +602,7 @@ void FlightController::HandleRcCommand(const mavlink_message_t* msg)
     float roll = manual.y / 1000.0f;
     float pitch = -manual.x / 1000.0f;
     float throttle = manual.z / 1000.0f;
-    float yaw = -manual.r / 1000.0f;
+    float yaw = manual.r / 1000.0f;
 
     constexpr uint8_t armedInputMask = 1u << 1;
     constexpr uint8_t flightModeInputMask = 1u << 2;

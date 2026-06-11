@@ -4,18 +4,19 @@
 #pragma once
 
 #include "main.h"
+#include "usbdebugconsole.h"
 #include "../structs.h"
 
 class Logger
 {
 public:
-    Logger(UART_HandleTypeDef& huart2);
+    Logger(UsbDebugConsole& debugConsole);
 
     FlightLogSample& GetLogSample();
     void SendFlightLogCsv();
 
 private:
-    UART_HandleTypeDef& m_huart2;
+    UsbDebugConsole& m_debugConsole;
 
     uint32_t m_lastDebugMs = 0;
 

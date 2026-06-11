@@ -10,8 +10,8 @@
 #include "mavlink/mavlink_types.h"
 #include "mavlink/common/mavlink.h"
 
-Logger::Logger(UART_HandleTypeDef& huart2)
-    : m_huart2(huart2)
+Logger::Logger(UsbDebugConsole& debugConsole)
+    : m_debugConsole(debugConsole)
 {
 
 }
@@ -47,7 +47,8 @@ void Logger::SendFlightLogCsv()
         );
 
         const uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
-        HAL_UART_Transmit(&m_huart2, buffer, len, 100);
+        // HAL_UART_Transmit(&m_huart2, buffer, len, 100);
+        m_debugConsole.WriteBytes(buffer, len);
     };
 
     sendNamed("+++++", 1); //start log

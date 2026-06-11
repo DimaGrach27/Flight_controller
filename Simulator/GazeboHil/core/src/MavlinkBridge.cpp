@@ -9,12 +9,12 @@
 #include <cmath>
 #include <iostream>
 
-#include "SerialPort_UART.h"
+#include "SerialPort_USB.h"
 
 NAMESPACE_BEGIN
 MavlinkBridge::MavlinkBridge()
 {
-    m_serial = std::make_unique<SerialPort_UART>();
+    m_serial = std::make_unique<SerialPort_USB>();
 }
 
 bool MavlinkBridge::Open(const std::string& port, int baud, std::function<void(const mavlink_named_value_float_t&)> callback)
@@ -246,7 +246,7 @@ void MavlinkBridge::HandleMessage(const mavlink_message_t& msg)
             }
 
             m_lastServoWallSec = nowWallSec;
-            printf("[MavlinkBridge] Get servo output\n");
+            // printf("[MavlinkBridge] Get servo output\n");
             break;
         }
         case MAVLINK_MSG_ID_NAMED_VALUE_FLOAT:

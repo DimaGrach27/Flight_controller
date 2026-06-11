@@ -11,6 +11,7 @@
 NAMESPACE_BEGIN
 class SerialPort_USB : public ISerialPort
 {
+public:
     ~SerialPort_USB() override;
 
     bool Open(const std::string &path, int baud) override;

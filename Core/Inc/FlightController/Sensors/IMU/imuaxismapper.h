@@ -16,10 +16,11 @@ public:
         accel.y = tempAccel.x;
         accel.z = tempAccel.z;
 
+#if NOT_USE_HIL
         accel.x *= -1;
         accel.y *= -1;
         accel.z *= 1;
-
+#endif
         return accel;
     }
 
@@ -32,9 +33,11 @@ public:
         gyro.y = tempGyro.x;
         gyro.z = tempGyro.z;
 
+#if NOT_USE_HIL
         gyro.x *= -1;
         gyro.y *= -1;
         gyro.z *= 1;
+#endif
 
         return gyro;
     }

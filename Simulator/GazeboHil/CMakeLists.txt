@@ -33,6 +33,7 @@ add_library(HilPlugin SHARED
         core/src/HilPlugin.cpp
         core/src/ImuHilPlugin.cpp
         core/src/SerialPort_UART.cpp
+        core/src/SerialPort_USB.cpp
         core/src/MavlinkBridge.cpp
         core/src/CsvLogger.cpp
         core/src/JoystickInput.cpp

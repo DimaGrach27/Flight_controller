@@ -27,7 +27,7 @@ void FlightModeManager::Update(const RcCommand& rcCommand, uint32_t nowUs)
 {
     Update(rcCommand,
         {0.0f, 0.0f, 0.0f, 0, false, false, BatteryState::Normal, nowUs, true},
-        false,
+        true,
         nowUs);
 }
 
