@@ -116,6 +116,8 @@ private:
     IMU_Lsm6ds3 m_imuLsm6ds3;
 #else
     IMU_Driver_Hil m_imuDriverHil;
+    uint32_t m_lastHilEstimatorImuTimestampUs = 0;
+    bool m_hasFreshHilImuForControl = false;
 #endif
     Imu_Driver m_imuDriver;
     Imu_Sensor m_imuSensor;

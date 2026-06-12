@@ -41,5 +41,13 @@ private:
     float m_maxPitchRate_rads = 0.0f;
     float m_maxYawRate_rads = 0.0f;
 
+    int m_rollTargetSign = 1;
+    int m_pitchTargetSign = 1;
+    int m_yawTargetSign = 1;
+
+    int m_rollFeedbackSign = 1;
+    int m_pitchFeedbackSign = 1;
+    int m_yawFeedbackSign = 1;
+
     RateData m_rateData;
 };

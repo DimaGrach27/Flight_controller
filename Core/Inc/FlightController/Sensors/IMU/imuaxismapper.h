@@ -9,6 +9,7 @@ class ImuAxisMapper
 public:
     Vector3 MapAccel(const Vector3& raw) const
     {
+#if NOT_USE_HIL
         Vector3 tempAccel = raw;
         Vector3 accel = {};
 
@@ -16,16 +17,19 @@ public:
         accel.y = tempAccel.x;
         accel.z = tempAccel.z;
 
-#if NOT_USE_HIL
         accel.x *= -1;
         accel.y *= -1;
         accel.z *= 1;
-#endif
+
         return accel;
+#else
+        return raw;
+#endif
     }
 
     Vector3 MapGyro(const Vector3& raw) const
     {
+#if NOT_USE_HIL
         Vector3 tempGyro = raw;
         Vector3 gyro = {};
 
@@ -33,13 +37,14 @@ public:
         gyro.y = tempGyro.x;
         gyro.z = tempGyro.z;
 
-#if NOT_USE_HIL
         gyro.x *= -1;
         gyro.y *= -1;
         gyro.z *= 1;
-#endif
 
         return gyro;
+#else
+        return raw;
+#endif
     }
 
 private:

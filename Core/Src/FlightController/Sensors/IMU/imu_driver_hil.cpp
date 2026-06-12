@@ -32,6 +32,8 @@ void IMU_Driver_Hil::SetHilData(const ImuSample& data)
 
 bool IMU_Driver_Hil::ReadRaw(ImuRawData& outRawData, uint32_t nowUs)
 {
+    (void)nowUs;
+
     if (!m_initialized || !m_hasData)
     {
         outRawData.valid = false;
@@ -63,7 +65,7 @@ bool IMU_Driver_Hil::ReadRaw(ImuRawData& outRawData, uint32_t nowUs)
     );
 
     outRawData.temperature = 0;
-    outRawData.timestampUs = nowUs;
+    outRawData.timestampUs = m_latestData.timestampUs;
     outRawData.valid = true;
 
     return true;
@@ -71,6 +73,8 @@ bool IMU_Driver_Hil::ReadRaw(ImuRawData& outRawData, uint32_t nowUs)
 
 bool IMU_Driver_Hil::Read(ImuSample &outData, uint32_t nowUs)
 {
+    (void)nowUs;
+
     if (!m_initialized || !m_hasData)
     {
         outData.valid = false;
@@ -78,7 +82,6 @@ bool IMU_Driver_Hil::Read(ImuSample &outData, uint32_t nowUs)
     }
 
     outData = m_latestData;
-    outData.timestampUs = nowUs;
     outData.valid = true;
 
     return true;

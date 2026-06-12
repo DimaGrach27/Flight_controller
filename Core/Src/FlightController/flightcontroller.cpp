@@ -168,7 +168,21 @@ void FlightController::Update()
     {
         m_sensorsManager.UpdateImu(nowUs);
 
+#if NOT_USE_HIL
         m_stateEstimator.UpdateImu(m_sensorsManager.GetImuData());
+#else
+        const ImuSample& hilImuSample = m_sensorsManager.GetImuData();
+        if (hilImuSample.valid &&
+            hilImuSample.timestampUs != m_lastHilEstimatorImuTimestampUs)
+        {
+            m_lastHilEstimatorImuTimestampUs = hilImuSample.timestampUs;
+
+            if (m_stateEstimator.UpdateImu(hilImuSample))
+            {
+                m_hasFreshHilImuForControl = true;
+            }
+        }
+#endif
     }
 
 #if NOT_USE_HIL
@@ -210,7 +224,15 @@ void FlightController::Update()
 
     if (m_scheduler.ConsumeTask(TaskID::Control))
     {
+#if !NOT_USE_HIL
+        if (m_hasFreshHilImuForControl)
+        {
+            m_hasFreshHilImuForControl = false;
+            RunControlLoop(nowUs);
+        }
+#else
         RunControlLoop(nowUs);
+#endif
     }
 
     if (m_scheduler.ConsumeTask(TaskID::Telemetry))
@@ -602,7 +624,7 @@ void FlightController::HandleRcCommand(const mavlink_message_t* msg)
     float roll = manual.y / 1000.0f;
     float pitch = -manual.x / 1000.0f;
     float throttle = manual.z / 1000.0f;
-    float yaw = manual.r / 1000.0f;
+    float yaw = -manual.r / 1000.0f;
 
     constexpr uint8_t armedInputMask = 1u << 1;
     constexpr uint8_t flightModeInputMask = 1u << 2;

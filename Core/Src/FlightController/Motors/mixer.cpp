@@ -15,11 +15,19 @@ Mixer::Mixer()
 
 void Mixer::Init()
 {
+#if NOT_USE_HIL
     m_controlDirectionConfig = {
         .rollSign = 1,
         .pitchSign = -1,
         .yawSign = -1,
     };
+#else
+    m_controlDirectionConfig = {
+        .rollSign = 1,
+        .pitchSign = -1,
+        .yawSign = -1,
+    };
+#endif
 }
 
 MotorCommand Mixer::Mix(float throttle, const ControlOutput& control) const

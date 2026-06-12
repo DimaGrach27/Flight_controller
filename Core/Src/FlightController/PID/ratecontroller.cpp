@@ -30,6 +30,7 @@ void RateController::Init()
         Для реального дрона ці значення треба тюнити.
         Для симулятора вони теж можуть бути іншими.
     */
+#if NOT_USE_HIL
     m_rollPid.Init(0.065f, 0.045f, 0.0015f);
     m_pitchPid.Init(0.065f, 0.045f, 0.0015f);
     m_yawPid.Init(0.090f, 0.025f, 0.0000f);
@@ -41,10 +42,41 @@ void RateController::Init()
     m_rollPid.SetIntegralLimit(-0.25f, 0.25f);
     m_pitchPid.SetIntegralLimit(-0.25f, 0.25f);
     m_yawPid.SetIntegralLimit(-0.15f, 0.15f);
+#else
+    m_rollPid.Init(0.035f, 0.0f, 0.0f);
+    m_pitchPid.Init(0.035f, 0.0f, 0.0f);
+    m_yawPid.Init(0.015f, 0.0f, 0.0f);
+
+    m_rollPid.SetOutputLimit(-0.12f, 0.12f);
+    m_pitchPid.SetOutputLimit(-0.12f, 0.12f);
+    m_yawPid.SetOutputLimit(-0.05f, 0.05f);
+
+    m_rollPid.SetIntegralLimit(0.0f, 0.0f);
+    m_pitchPid.SetIntegralLimit(0.0f, 0.0f);
+    m_yawPid.SetIntegralLimit(0.0f, 0.0f);
+#endif
 
     m_maxRollRate_rads = MaxRollRate_dps * DegToRad;
     m_maxPitchRate_rads = MaxPitchRate_dps * DegToRad;
     m_maxYawRate_rads = MaxYawRate_dps * DegToRad;
+
+#if NOT_USE_HIL
+    m_rollTargetSign = 1;
+    m_pitchTargetSign = 1;
+    m_yawTargetSign = 1;
+
+    m_rollFeedbackSign = 1;
+    m_pitchFeedbackSign = 1;
+    m_yawFeedbackSign = 1;
+#else
+    m_rollTargetSign = 1;
+    m_pitchTargetSign = 1;
+    m_yawTargetSign = 1;
+
+    m_rollFeedbackSign = 1;
+    m_pitchFeedbackSign = 1;
+    m_yawFeedbackSign = 1;
+#endif
 
     Reset();
 }
@@ -71,34 +103,48 @@ ControlOutput RateController::Update(
     }
 
     const float targetRollRate_rads =
-        rcCommand.roll * m_maxRollRate_rads;
+        rcCommand.roll * m_rollTargetSign * m_maxRollRate_rads;
 
     const float targetPitchRate_rads =
-        rcCommand.pitch * m_maxPitchRate_rads;
+        rcCommand.pitch * m_pitchTargetSign * m_maxPitchRate_rads;
 
     const float targetYawRate_rads =
-        rcCommand.yaw * m_maxYawRate_rads;
+        rcCommand.yaw * m_yawTargetSign * m_maxYawRate_rads;
+
+    const float measuredRollRate_rads =
+        state.rollRateRadS * m_rollFeedbackSign;
+
+    const float measuredPitchRate_rads =
+        state.pitchRateRadS * m_pitchFeedbackSign;
+
+    const float measuredYawRate_rads =
+        state.yawRateRadS * m_yawFeedbackSign;
 
     output.roll = m_rollPid.Update(
         targetRollRate_rads,
-        state.rollRateRadS,
+        measuredRollRate_rads,
         dt
     );
 
     output.pitch = m_pitchPid.Update(
         targetPitchRate_rads,
-        state.pitchRateRadS,
+        measuredPitchRate_rads,
         dt
     );
 
     output.yaw = m_yawPid.Update(
         targetYawRate_rads,
-        state.yawRateRadS,
+        measuredYawRate_rads,
         dt
     );
 
+#if NOT_USE_HIL
     constexpr float ROLL_PITCH_DEADBAND = 0.015f;
     constexpr float YAW_DEADBAND = 0.005f;
+#else
+    constexpr float ROLL_PITCH_DEADBAND = 0.002f;
+    constexpr float YAW_DEADBAND = 0.002f;
+#endif
 
     output.roll = MathUtils::ApplyDeadband(output.roll, ROLL_PITCH_DEADBAND);
     output.pitch = MathUtils::ApplyDeadband(output.pitch, ROLL_PITCH_DEADBAND);
