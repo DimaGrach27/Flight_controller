@@ -5,10 +5,22 @@
 #include "FlightController/flightcontroller.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "main.h"
 #include "FlightController/RcInput/rcchannelutils.h"
 #include "FlightController/Sensors/IMU/imuaxismapper.h"
+
+namespace
+{
+    constexpr float RadToDeg = 57.2957795131f;
+
+    float BoolToFloat(const bool value)
+    {
+        return value ? 1.0f : 0.0f;
+    }
+}
+
 #if NOT_USE_HIL
 FlightController::FlightController(
     UART_HandleTypeDef& serialUart,
@@ -181,6 +193,7 @@ void FlightController::Update()
     {
         m_sensorsManager.UpdateImu(nowUs);
         m_stateEstimator.UpdateImu(m_sensorsManager.GetImuData());
+        ++m_imuSeq;
     }
 
 #if NOT_USE_HIL
@@ -222,6 +235,7 @@ void FlightController::Update()
 
     if (m_scheduler.ConsumeTask(TaskID::Control))
     {
+        ++m_controlSeq;
         RunControlLoop(nowUs);
     }
 
@@ -232,6 +246,7 @@ void FlightController::Update()
 
     if (m_scheduler.ConsumeTask(TaskID::Loging))
     {
+        ++m_logSeq;
         const ImuSample& m_imu_sample = m_sensorsManager.GetImuData();
         const RcCommand& rcCommand = m_rcInput.GetCommand();
         const VehicleState& state = m_stateEstimator.GetState();
@@ -261,40 +276,122 @@ void FlightController::Update()
         //
         // m_debugConsole.WriteLine(logData);
 
-        m_logger.GetLogSample().timeMs = nowUs / 1000.0f;
-        m_logger.GetLogSample().imuDt = state.imuDt;
+        FlightLogSample& log = m_logger.GetLogSample();
 
-        m_logger.GetLogSample().flightMode = flightModeState.mode == FlightMode::Acro ? 1.0f : 0.0f;
-        m_logger.GetLogSample().armed = flightModeState.armState == ArmState::Armed ? 1.0f : 0.0f;
+        log.timeMs = nowUs / 1000U;
+        log.imuSeq = m_imuSeq;
+        log.controlSeq = m_controlSeq;
+        log.logSeq = m_logSeq;
+        log.imuDt = state.imuDt;
+        log.controlDt = rateData.dt;
 
-        m_logger.GetLogSample().gyroRollDegSec = m_imu_sample.gyro_rads.x;
-        m_logger.GetLogSample().gyroPitchDegSec = m_imu_sample.gyro_rads.y;
-        m_logger.GetLogSample().gyroYawDegSec = m_imu_sample.gyro_rads.z;
+        log.flightMode = static_cast<float>(flightModeState.mode);
+        log.armed = BoolToFloat(flightModeState.armState == ArmState::Armed);
+        log.failsafe = BoolToFloat(flightModeState.failsafe);
+        log.failsafeReason = static_cast<float>(flightModeState.failsafeReason);
+        log.armDenyReason = static_cast<float>(flightModeState.armDenyReason);
+        log.controlStopReason = static_cast<float>(m_lastControlStopReason);
 
-        m_logger.GetLogSample().accelRoll = m_imu_sample.accel_mps2.x;
-        m_logger.GetLogSample().accelPitch = m_imu_sample.accel_mps2.y;
-        m_logger.GetLogSample().accelYaw = m_imu_sample.accel_mps2.z;
+        log.gyroRollDegSec = m_imu_sample.gyro_rads.x * RadToDeg;
+        log.gyroPitchDegSec = m_imu_sample.gyro_rads.y * RadToDeg;
+        log.gyroYawDegSec = m_imu_sample.gyro_rads.z * RadToDeg;
 
-        m_logger.GetLogSample().targetRollRateDegSec = rateData.targetRollRad;
-        m_logger.GetLogSample().targetPitchRateDegSec = rateData.targetPitchRad;
-        m_logger.GetLogSample().targetYawRateDegSec = rateData.targetYawRad;
+        log.accelRoll = m_imu_sample.accel_mps2.x;
+        log.accelPitch = m_imu_sample.accel_mps2.y;
+        log.accelYaw = m_imu_sample.accel_mps2.z;
 
-        m_logger.GetLogSample().rcThrottle = rcCommand.throttle;
-        m_logger.GetLogSample().rcRoll = rcCommand.roll;
-        m_logger.GetLogSample().rcPitch = rcCommand.pitch;
-        m_logger.GetLogSample().rcYaw = rcCommand.yaw;
+        log.targetRollRateDegSec = rateData.targetRollRad * RadToDeg;
+        log.targetPitchRateDegSec = rateData.targetPitchRad * RadToDeg;
+        log.targetYawRateDegSec = rateData.targetYawRad * RadToDeg;
 
-        m_logger.GetLogSample().estimatedRollDeg = state.rollRad;
-        m_logger.GetLogSample().estimatedPitchDeg = state.pitchRad;
+        log.correctedRoll = rateData.measuredRollRad * RadToDeg;
+        log.correctedPitch = rateData.measuredPitchRad * RadToDeg;
+        log.correctedYaw = rateData.measuredYawRad * RadToDeg;
+        log.angleErrorRoll = rateData.rollPid.error * RadToDeg;
+        log.angleErrorPitch = rateData.pitchPid.error * RadToDeg;
+        log.angleErrorYaw = rateData.yawPid.error * RadToDeg;
 
-        m_logger.GetLogSample().controlRoll = m_lastControlOutput.roll;
-        m_logger.GetLogSample().controlPitch = m_lastControlOutput.pitch;
-        m_logger.GetLogSample().controlYaw = m_lastControlOutput.yaw;
+        log.rcThrottle = rcCommand.throttle;
+        log.rcRoll = rcCommand.roll;
+        log.rcPitch = rcCommand.pitch;
+        log.rcYaw = rcCommand.yaw;
+        log.rcValid = BoolToFloat(rcCommand.valid);
+        log.rcArmSwitch = BoolToFloat(rcCommand.armSwitch);
+        log.rcAngleSwitch = BoolToFloat(rcCommand.angleModeSwitch);
+        log.rcAgeMs = rcCommand.timestampUs == 0U
+            ? 0.0f
+            : static_cast<float>(nowUs - rcCommand.timestampUs) / 1000.0f;
 
-        m_logger.GetLogSample().motorM1 = m_lastMotorCommand.m1;
-        m_logger.GetLogSample().motorM2 = m_lastMotorCommand.m2;
-        m_logger.GetLogSample().motorM3 = m_lastMotorCommand.m3;
-        m_logger.GetLogSample().motorM4 = m_lastMotorCommand.m4;
+        log.estimatedRollDeg = state.rollRad * RadToDeg;
+        log.estimatedPitchDeg = state.pitchRad * RadToDeg;
+        log.estimatedYawDeg = state.yawRad * RadToDeg;
+        log.stateValid = BoolToFloat(state.valid);
+
+        log.controlRoll = m_lastControlOutput.roll;
+        log.controlPitch = m_lastControlOutput.pitch;
+        log.controlYaw = m_lastControlOutput.yaw;
+
+        log.motorM1 = m_lastMotorCommand.m1;
+        log.motorM2 = m_lastMotorCommand.m2;
+        log.motorM3 = m_lastMotorCommand.m3;
+        log.motorM4 = m_lastMotorCommand.m4;
+        log.motorMin = m_lastMotorCommand.Min();
+        log.motorMax = m_lastMotorCommand.Max();
+        log.motorSpan = log.motorMax - log.motorMin;
+        log.throttleLimit = m_lastThrottleLimit;
+        log.throttleLimited = m_lastLimitedThrottle;
+
+        log.PID_P_roll = rateData.rollPid.p;
+        log.PID_I_roll = rateData.rollPid.i;
+        log.PID_D_roll = rateData.rollPid.d;
+        log.PID_E_roll = rateData.rollPid.error * RadToDeg;
+        log.PID_S_roll = BoolToFloat(rateData.rollPid.saturated);
+
+        log.PID_P_pitch = rateData.pitchPid.p;
+        log.PID_I_pitch = rateData.pitchPid.i;
+        log.PID_D_pitch = rateData.pitchPid.d;
+        log.PID_E_pitch = rateData.pitchPid.error * RadToDeg;
+        log.PID_S_pitch = BoolToFloat(rateData.pitchPid.saturated);
+
+        log.PID_P_yaw = rateData.yawPid.p;
+        log.PID_I_yaw = rateData.yawPid.i;
+        log.PID_D_yaw = rateData.yawPid.d;
+        log.PID_E_yaw = rateData.yawPid.error * RadToDeg;
+        log.PID_S_yaw = BoolToFloat(rateData.yawPid.saturated);
+
+#if NOT_USE_HIL
+        const BatteryMonitor::Warnings& batteryWarnings = m_batteryMonitor.GetWarnings();
+        const BatteryMonitor::Faults& batteryFaults = m_batteryMonitor.GetFaults();
+
+        uint32_t batteryWarningBits = 0;
+        batteryWarningBits |= batteryWarnings.currentHigh ? (1U << 0U) : 0U;
+        batteryWarningBits |= batteryWarnings.capacityWarning ? (1U << 1U) : 0U;
+        batteryWarningBits |= batteryWarnings.capacityCritical ? (1U << 2U) : 0U;
+        batteryWarningBits |= batteryWarnings.sustainedCurrentHigh ? (1U << 3U) : 0U;
+        batteryWarningBits |= batteryWarnings.voltageSag ? (1U << 4U) : 0U;
+
+        uint32_t batteryFaultBits = 0;
+        batteryFaultBits |= batteryFaults.voltageSensorInvalid ? (1U << 0U) : 0U;
+        batteryFaultBits |= batteryFaults.currentSensorInvalid ? (1U << 1U) : 0U;
+        batteryFaultBits |= batteryFaults.instantOverCurrent ? (1U << 2U) : 0U;
+        batteryFaultBits |= batteryFaults.sustainedOverCurrent ? (1U << 3U) : 0U;
+
+        log.batteryVoltage = batteryData.voltage_V;
+        log.batteryCellVoltage = batteryData.cellVoltage_V;
+        log.batteryCurrent = batteryData.current_A;
+        log.batteryPercent = static_cast<float>(batteryData.percentage);
+        log.batteryState = static_cast<float>(batteryData.state);
+        log.batteryWarnings = static_cast<float>(batteryWarningBits);
+        log.batteryFaults = static_cast<float>(batteryFaultBits);
+#else
+        log.batteryVoltage = 0.0f;
+        log.batteryCellVoltage = 0.0f;
+        log.batteryCurrent = 0.0f;
+        log.batteryPercent = 0.0f;
+        log.batteryState = static_cast<float>(BatteryState::Normal);
+        log.batteryWarnings = 0.0f;
+        log.batteryFaults = 0.0f;
+#endif
 
         m_logger.SendFlightLogCsv();
 
@@ -357,7 +454,6 @@ void FlightController::RunDebugCommand(uint8_t command)
     {
         case UsbDebugConsoleCommand::Status:
         {
-            const VehicleState& vehicleState = m_stateEstimator.GetState();
             const FlightModeState& flightMode = m_flightModeManager.GetState();
 
             m_debugConsole.ShowFlightStatus(flightMode);
@@ -459,7 +555,17 @@ uint32_t FlightController::GetMicros() const
 
 void FlightController::StopMotors()
 {
+    StopMotors(ControlStopReason::None);
+}
+
+void FlightController::StopMotors(const ControlStopReason reason)
+{
     m_rateController.Reset();
+    m_lastControlOutput = {};
+    m_lastMotorCommand = {};
+    m_lastControlStopReason = reason;
+    m_lastThrottleLimit = 1.0f;
+    m_lastLimitedThrottle = 0.0f;
 #if NOT_USE_HIL
     // m_pwmMotorOutput.StopAll();
     m_dshotMotorOutput.StopAll();
@@ -496,40 +602,42 @@ void FlightController::RunControlLoop(uint32_t nowUs)
 #if NOT_USE_HIL
     if (m_batteryMonitor.HasCriticalFault())
     {
-        StopMotors();
+        StopMotors(ControlStopReason::BatteryCriticalFault);
         return;
     }
 
     if (m_batteryMonitor.ShouldStopMotorsImmediately())
     {
-        StopMotors();
+        StopMotors(ControlStopReason::BatteryImmediateStop);
         return;
     }
 #endif
 
     if (m_flightModeManager.IsFailsafe())
     {
-        StopMotors();
+        StopMotors(ControlStopReason::Failsafe);
         return;
     }
 
     if (!m_flightModeManager.IsArmed())
     {
-        StopMotors();
+        StopMotors(ControlStopReason::Disarmed);
         return;
     }
 
     if (!m_sensorsManager.IsImuReady())
     {
-        StopMotors();
+        StopMotors(ControlStopReason::ImuNotReady);
         return;
     }
 
     if (!state.valid)
     {
-        StopMotors();
+        StopMotors(ControlStopReason::StateInvalid);
         return;
     }
+
+    m_lastControlStopReason = ControlStopReason::None;
 
     ControlOutput control{};
 
@@ -546,10 +654,12 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     m_lastControlOutput = control;
 
 #if NOT_USE_HIL
-    const float limitedThrottle = rcCommand.throttle * m_batteryMonitor.GetThrottleLimit();
+    m_lastThrottleLimit = m_batteryMonitor.GetThrottleLimit();
 #else
-    const float limitedThrottle = rcCommand.throttle;
+    m_lastThrottleLimit = 1.0f;
 #endif
+    const float limitedThrottle = rcCommand.throttle * m_lastThrottleLimit;
+    m_lastLimitedThrottle = limitedThrottle;
     const MotorCommand motors = m_mixer.Mix(limitedThrottle, control);
 
     m_lastMotorCommand = motors;
@@ -691,5 +801,6 @@ void FlightController::SendMavlinkMessage(const mavlink_message_t& msg)
 {
     uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
     const uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
+    (void)len;
     // HAL_UART_Transmit(&m_serialUart, buffer, len, 100);
 }

@@ -13,13 +13,6 @@
 #include "Structs.h"
 
 NAMESPACE_BEGIN
-struct AttitudeEstimate
-{
-    double rollRad = 0.0;
-    double pitchRad = 0.0;
-    bool initialized = false;
-};
-
 class ImuHilPlugin :
     public gz::sim::System,
     public gz::sim::ISystemConfigure,
@@ -55,11 +48,6 @@ private:
 
     ImuData GetLatestImu() const;
 
-    void UpdateAttitudeEstimator(
-        const ImuData& imu,
-        double dt
-    );
-
     void SendMotorSpeeds(
         double m0,
         double m1,
@@ -84,8 +72,6 @@ private:
     mutable std::mutex m_imuMutex;
     ImuData m_latestImu;
     GroundTruthState m_latestGroundTruth;
-
-    AttitudeEstimate m_attitude;
 
     std::chrono::steady_clock::duration m_lastSimTime{0};
 

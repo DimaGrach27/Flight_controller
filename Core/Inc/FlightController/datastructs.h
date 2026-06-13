@@ -118,4 +118,14 @@ struct RateData
     float targetRollRad = 0.0f;
     float targetPitchRad = 0.0f;
     float targetYawRad = 0.0f;
+
+    float measuredRollRad = 0.0f;
+    float measuredPitchRad = 0.0f;
+    float measuredYawRad = 0.0f;
+
+    float dt = 0.0f;
+
+    PidDebugData rollPid = {};
+    PidDebugData pitchPid = {};
+    PidDebugData yawPid = {};
 };

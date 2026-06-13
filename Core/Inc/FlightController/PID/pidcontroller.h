@@ -3,6 +3,8 @@
 //
 #pragma once
 
+#include "FlightController/structs.h"
+
 class PidController
 {
 public:
@@ -17,6 +19,8 @@ public:
     void SetGains(float kp, float ki, float kd);
     void SetOutputLimit(float minOutput, float maxOutput);
     void SetIntegralLimit(float minIntegral, float maxIntegral);
+
+    const PidDebugData& GetDebugData() const;
 
 private:
     float m_kp = 0.0f;
@@ -33,4 +37,6 @@ private:
     float m_maxIntegral = 0.3f;
 
     bool m_hasPreviousError = false;
+
+    PidDebugData m_debugData{};
 };

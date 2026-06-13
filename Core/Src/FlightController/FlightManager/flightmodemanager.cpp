@@ -16,6 +16,8 @@ void FlightModeManager::Init()
     m_state.mode = FlightMode::Acro;
     m_state.armState = ArmState::Disarmed;
     m_state.failsafe = true;
+    m_state.failsafeReason = FailsafeReason::RcInvalid;
+    m_state.armDenyReason = ArmDenyReason::RcInvalid;
     m_state.throttleLow = false;
     m_state.canArm = false;
     m_state.timestampUs = 0;
@@ -35,9 +37,11 @@ void FlightModeManager::Update(const RcCommand& rcCommand, const BatteryData& ba
 {
     m_state.timestampUs = nowUs;
 
-    m_state.failsafe = rcCommand.failsafe || !rcCommand.valid;
+    m_state.failsafeReason = GetFailsafeReason(rcCommand);
+    m_state.failsafe = m_state.failsafeReason != FailsafeReason::None;
     m_state.throttleLow = IsThrottleLow(rcCommand.throttle);
     m_state.canArm = CanArmFromCommand(rcCommand) && CanArmFromBattery(batterData) && batteryValid;
+    m_state.armDenyReason = GetArmDenyReason(rcCommand, batterData, batteryValid);
 
     const bool armRisingEdge = rcCommand.armSwitch && !m_previousArmSwitch;
 
@@ -85,6 +89,7 @@ void FlightModeManager::Update(const RcCommand& rcCommand, const BatteryData& ba
     if (armRisingEdge && m_state.canArm)
     {
         m_state.armState = ArmState::Armed;
+        m_state.armDenyReason = ArmDenyReason::None;
     }
 
     m_previousArmSwitch = rcCommand.armSwitch;
@@ -151,4 +156,57 @@ bool FlightModeManager::CanArmFromBattery(const BatteryData &batterData) const
     }
 
     return true;
+}
+
+FailsafeReason FlightModeManager::GetFailsafeReason(const RcCommand& rcCommand) const
+{
+    if (!rcCommand.valid)
+    {
+        return FailsafeReason::RcInvalid;
+    }
+
+    if (rcCommand.failsafe)
+    {
+        return FailsafeReason::RcFailsafe;
+    }
+
+    return FailsafeReason::None;
+}
+
+ArmDenyReason FlightModeManager::GetArmDenyReason(
+    const RcCommand& rcCommand,
+    const BatteryData& batterData,
+    const bool batteryValid) const
+{
+    if (!rcCommand.valid)
+    {
+        return ArmDenyReason::RcInvalid;
+    }
+
+    if (rcCommand.failsafe)
+    {
+        return ArmDenyReason::RcFailsafe;
+    }
+
+    if (!rcCommand.armSwitch)
+    {
+        return ArmDenyReason::ArmSwitchLow;
+    }
+
+    if (!IsThrottleLow(rcCommand.throttle))
+    {
+        return ArmDenyReason::ThrottleHigh;
+    }
+
+    if (!batteryValid || !batterData.valid)
+    {
+        return ArmDenyReason::BatteryInvalid;
+    }
+
+    if (!CanArmFromBattery(batterData))
+    {
+        return ArmDenyReason::BatteryUnsafe;
+    }
+
+    return ArmDenyReason::None;
 }

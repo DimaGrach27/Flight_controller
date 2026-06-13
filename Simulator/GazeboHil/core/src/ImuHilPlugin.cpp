@@ -148,8 +148,6 @@ void ImuHilPlugin::PreUpdate(const gz::sim::UpdateInfo &info, gz::sim::EntityCom
         return;
     }
 
-    UpdateAttitudeEstimator(imu, dt);
-
     /*
         Тут поки мінімальна перевірка:
         всі мотори однаково.
@@ -213,8 +211,6 @@ void ImuHilPlugin::PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::En
         dt = std::chrono::duration<double>(delta).count();
         dt = std::clamp(dt, 0.0001, 0.02);
     }
-
-    UpdateAttitudeEstimator(imu, dt);
 
     if (m_lastHilSendSec < 0.0 ||
     simTimeSec - m_lastHilSendSec >= 1.0 / m_hilRateHz)

@@ -99,6 +99,7 @@ ControlOutput RateController::Update(
 
     if (dt <= 0.0f)
     {
+        m_rateData.dt = 0.0f;
         return output;
     }
 
@@ -119,6 +120,14 @@ ControlOutput RateController::Update(
 
     const float measuredYawRate_rads =
         state.yawRateRadS * m_yawFeedbackSign;
+
+    m_rateData.targetRollRad = targetRollRate_rads;
+    m_rateData.targetPitchRad = targetPitchRate_rads;
+    m_rateData.targetYawRad = targetYawRate_rads;
+    m_rateData.measuredRollRad = measuredRollRate_rads;
+    m_rateData.measuredPitchRad = measuredPitchRate_rads;
+    m_rateData.measuredYawRad = measuredYawRate_rads;
+    m_rateData.dt = dt;
 
     output.roll = m_rollPid.Update(
         targetRollRate_rads,
@@ -157,9 +166,9 @@ ControlOutput RateController::Update(
     // output.pitch = 0.0f;
     // output.yaw = 0.02f;
 
-    m_rateData.targetRollRad = targetRollRate_rads;
-    m_rateData.targetPitchRad = targetPitchRate_rads;
-    m_rateData.targetYawRad = targetYawRate_rads;
+    m_rateData.rollPid = m_rollPid.GetDebugData();
+    m_rateData.pitchPid = m_pitchPid.GetDebugData();
+    m_rateData.yawPid = m_yawPid.GetDebugData();
 
     return output;
 }
@@ -172,6 +181,7 @@ void RateController::Reset()
 
     m_lastUpdateUs = 0;
     m_hasLastUpdate = false;
+    m_rateData = {};
 }
 
 const RateData & RateController::GetRateData()

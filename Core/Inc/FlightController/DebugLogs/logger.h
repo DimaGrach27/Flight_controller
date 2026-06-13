@@ -22,5 +22,5 @@ private:
 
     FlightLogSample m_logSample;
 
-    constexpr static uint32_t LOG_PERIOD_MS = 200;
+    constexpr static uint32_t LOG_PERIOD_MS = 50;
 };

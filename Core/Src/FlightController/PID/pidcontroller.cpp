@@ -23,6 +23,9 @@ float PidController::Update(float target, float measured, float dt)
 {
     if (dt <= 0.0f)
     {
+        m_debugData = {};
+        m_debugData.target = target;
+        m_debugData.measured = measured;
         return 0.0f;
     }
 
@@ -41,12 +44,24 @@ float PidController::Update(float target, float measured, float dt)
     m_previousError = error;
     m_hasPreviousError = true;
 
-    const float output =
-        m_kp * error +
-        m_ki * m_integral +
-        m_kd * derivative;
+    const float p = m_kp * error;
+    const float i = m_ki * m_integral;
+    const float d = m_kd * derivative;
+    const float unclampedOutput = p + i + d;
+    const float output = MathUtils::Clamp(unclampedOutput, m_minOutput, m_maxOutput);
 
-    return MathUtils::Clamp(output, m_minOutput, m_maxOutput);
+    m_debugData.target = target;
+    m_debugData.measured = measured;
+    m_debugData.error = error;
+    m_debugData.p = p;
+    m_debugData.i = i;
+    m_debugData.d = d;
+    m_debugData.output = output;
+    m_debugData.unclampedOutput = unclampedOutput;
+    m_debugData.integral = m_integral;
+    m_debugData.saturated = output != unclampedOutput;
+
+    return output;
 }
 
 void PidController::Reset()
@@ -54,6 +69,7 @@ void PidController::Reset()
     m_integral = 0.0f;
     m_previousError = 0.0f;
     m_hasPreviousError = false;
+    m_debugData = {};
 }
 
 void PidController::SetGains(float kp, float ki, float kd)
@@ -73,4 +89,9 @@ void PidController::SetIntegralLimit(float minIntegral, float maxIntegral)
 {
     m_minIntegral = minIntegral;
     m_maxIntegral = maxIntegral;
+}
+
+const PidDebugData& PidController::GetDebugData() const
+{
+    return m_debugData;
 }

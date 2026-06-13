@@ -16,6 +16,24 @@ enum class ArmState : uint8_t
     Armed
 };
 
+enum class FailsafeReason : uint8_t
+{
+    None = 0,
+    RcInvalid = 1,
+    RcFailsafe = 2,
+};
+
+enum class ArmDenyReason : uint8_t
+{
+    None = 0,
+    RcInvalid = 1,
+    RcFailsafe = 2,
+    ArmSwitchLow = 3,
+    ThrottleHigh = 4,
+    BatteryInvalid = 5,
+    BatteryUnsafe = 6,
+};
+
 static const char* EnumToChar_FlightMode(const FlightMode value)
 {
     switch (value)
@@ -48,6 +66,8 @@ struct FlightModeState
     ArmState armState = ArmState::Disarmed;
 
     bool failsafe = true;
+    FailsafeReason failsafeReason = FailsafeReason::RcInvalid;
+    ArmDenyReason armDenyReason = ArmDenyReason::RcInvalid;
     bool throttleLow = false;
     bool canArm = false;
 

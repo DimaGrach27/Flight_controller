@@ -99,6 +99,7 @@ void BatteryMonitor::Update(const float batteryVoltage, const float currentA, co
 
     m_batteryData.state = EvaluateVoltageState(m_batteryData.cellVoltage_V, dtSeconds);
     EvaluateCurrentState(armed, currentA, dtSeconds);
+    EvaluateVoltageSag(m_batteryData.cellVoltage_V, currentA, dtSeconds);
 
     m_throttleLimit = CalculateThrottleLimit(currentA);
 
@@ -421,7 +422,7 @@ bool BatteryMonitor::CanArm() const
 
 bool BatteryMonitor::ShouldBlockArm() const
 {
-
+    return !CanArm();
 }
 
 bool BatteryMonitor::ShouldStopMotorsImmediately() const
@@ -432,5 +433,5 @@ bool BatteryMonitor::ShouldStopMotorsImmediately() const
 
 bool BatteryMonitor::ShouldLimitThrottle() const
 {
-
+    return GetThrottleLimit() < 0.999f;
 }

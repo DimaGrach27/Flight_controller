@@ -90,7 +90,19 @@ public:
     uint32_t GetMicros() const;
 
 private:
+    enum class ControlStopReason : uint8_t
+    {
+        None = 0,
+        BatteryCriticalFault = 1,
+        BatteryImmediateStop = 2,
+        Failsafe = 3,
+        Disarmed = 4,
+        ImuNotReady = 5,
+        StateInvalid = 6,
+    };
+
     void StopMotors();
+    void StopMotors(ControlStopReason reason);
 
     void SendTelemetry(uint32_t nowUs);
     void SendMavlinkMessage(const mavlink_message_t& msg);
@@ -158,6 +170,12 @@ private:
 
     ControlOutput m_lastControlOutput{};
     MotorCommand m_lastMotorCommand{};
+    ControlStopReason m_lastControlStopReason = ControlStopReason::None;
+    float m_lastThrottleLimit = 1.0f;
+    float m_lastLimitedThrottle = 0.0f;
+    uint32_t m_imuSeq = 0;
+    uint32_t m_controlSeq = 0;
+    uint32_t m_logSeq = 0;
 
     UART_HandleTypeDef& m_serialUart;
 #if NOT_USE_HIL

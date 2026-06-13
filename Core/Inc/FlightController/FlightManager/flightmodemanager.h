@@ -28,6 +28,11 @@ private:
     bool IsThrottleLow(float throttle) const;
     bool CanArmFromCommand(const RcCommand& rcCommand) const;
     bool CanArmFromBattery(const BatteryData& batterData) const;
+    FailsafeReason GetFailsafeReason(const RcCommand& rcCommand) const;
+    ArmDenyReason GetArmDenyReason(
+        const RcCommand& rcCommand,
+        const BatteryData& batterData,
+        bool batteryValid) const;
 
 private:
     FlightModeState m_state{};
