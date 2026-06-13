@@ -26,8 +26,8 @@ enum class UsbDebugConsoleCommand : uint8_t
 class UsbDebugConsole
 {
 public:
-    static constexpr uint16_t RxBufferSize = 512;
-    static constexpr uint16_t TxBufferSize = 1024;
+    static constexpr uint16_t RxBufferSize = 4096;
+    static constexpr uint16_t TxBufferSize = 4096;
     static constexpr uint16_t CommandBufferSize = 128;
 
     void Init();

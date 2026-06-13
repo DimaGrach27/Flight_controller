@@ -87,12 +87,21 @@ void FlightController::PreInit(
 
 void FlightController::Init()
 {
+#if NOT_USE_HIL
     m_scheduler.AddTask(TaskID::Imu, 2000);         //500 Hz
     m_scheduler.AddTask(TaskID::Rc, 2000);          //500 Hz
     m_scheduler.AddTask(TaskID::Control, 2000);     //500 Hz
     m_scheduler.AddTask(TaskID::Telemetry, 100000); //10 Hz
     m_scheduler.AddTask(TaskID::Loging, 10000);     //100 Hz
     m_scheduler.AddTask(TaskID::Battery, 100000);   //10 Hz
+#else
+    m_scheduler.AddTask(TaskID::Imu, 2000);         //500 Hz
+    m_scheduler.AddTask(TaskID::Rc, 2000);          //500 Hz
+    m_scheduler.AddTask(TaskID::Control, 2000);     //500 Hz
+    m_scheduler.AddTask(TaskID::Telemetry, 100000); //10 Hz
+    m_scheduler.AddTask(TaskID::Loging, 10000);     //100 Hz
+    m_scheduler.AddTask(TaskID::Battery, 100000);   //10 Hz
+#endif
 
 
 #if NOT_USE_HIL
@@ -162,27 +171,16 @@ void FlightController::Update()
 {
     const uint32_t nowUs = GetMicros();
 
+#if !NOT_USE_HIL
+    m_debugConsole.Update(nowUs);
+#endif
+
     m_scheduler.Update(nowUs);
 
     if (m_scheduler.ConsumeTask(TaskID::Imu))
     {
         m_sensorsManager.UpdateImu(nowUs);
-
-#if NOT_USE_HIL
         m_stateEstimator.UpdateImu(m_sensorsManager.GetImuData());
-#else
-        const ImuSample& hilImuSample = m_sensorsManager.GetImuData();
-        if (hilImuSample.valid &&
-            hilImuSample.timestampUs != m_lastHilEstimatorImuTimestampUs)
-        {
-            m_lastHilEstimatorImuTimestampUs = hilImuSample.timestampUs;
-
-            if (m_stateEstimator.UpdateImu(hilImuSample))
-            {
-                m_hasFreshHilImuForControl = true;
-            }
-        }
-#endif
     }
 
 #if NOT_USE_HIL
@@ -224,15 +222,7 @@ void FlightController::Update()
 
     if (m_scheduler.ConsumeTask(TaskID::Control))
     {
-#if !NOT_USE_HIL
-        if (m_hasFreshHilImuForControl)
-        {
-            m_hasFreshHilImuForControl = false;
-            RunControlLoop(nowUs);
-        }
-#else
         RunControlLoop(nowUs);
-#endif
     }
 
     if (m_scheduler.ConsumeTask(TaskID::Telemetry))
@@ -308,7 +298,9 @@ void FlightController::Update()
 
         m_logger.SendFlightLogCsv();
 
+#if NOT_USE_HIL
         m_debugConsole.Update(nowUs);
+#endif
     }
 }
 

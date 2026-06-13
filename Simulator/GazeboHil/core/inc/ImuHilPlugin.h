@@ -105,7 +105,7 @@ private:
     bool m_useJoystick = true;
     int m_joystickIndex = 0;
 
-    double m_hilRateHz = 100.0;
+    double m_hilRateHz = 1000.0;
     double m_manualRateHz = 10.0;
 
     double m_lastHilSendSec = -1.0;

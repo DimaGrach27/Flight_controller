@@ -365,40 +365,6 @@ ImuData ImuHilPlugin::GetLatestImu() const
     return m_latestImu;
 }
 
-void ImuHilPlugin::UpdateAttitudeEstimator(const ImuData &imu, double dt)
-{
-    const double accelRoll = std::atan2(
-       imu.accelY,
-       imu.accelZ
-   );
-
-    const double accelPitch = std::atan2(
-        -imu.accelX,
-        std::sqrt(imu.accelY * imu.accelY + imu.accelZ * imu.accelZ)
-    );
-
-    if (!m_attitude.initialized)
-    {
-        m_attitude.rollRad = accelRoll;
-        m_attitude.pitchRad = accelPitch;
-        m_attitude.initialized = true;
-        return;
-    }
-
-    m_attitude.rollRad += imu.gyroX * dt;
-    m_attitude.pitchRad += imu.gyroY * dt;
-
-    constexpr double alpha = 0.98;
-
-    m_attitude.rollRad =
-        alpha * m_attitude.rollRad +
-        (1.0 - alpha) * accelRoll;
-
-    m_attitude.pitchRad =
-        alpha * m_attitude.pitchRad +
-        (1.0 - alpha) * accelPitch;
-}
-
 void ImuHilPlugin::SendMotorSpeeds(double m0, double m1, double m2, double m3)
 {
     gz::msgs::Actuators msg;

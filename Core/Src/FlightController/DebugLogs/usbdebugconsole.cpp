@@ -8,6 +8,7 @@
 #include <cstdio>
 
 #include "FlightController/flightcontroller_entry.h"
+#include "FlightController/globaldef.h"
 #include "FlightController/Utils/fixedstring.h"
 
 extern "C"
@@ -93,6 +94,16 @@ void UsbDebugConsole::WriteBytes(const uint8_t* data, uint16_t size)
         return;
     }
 
+    const uint16_t used = m_txHead >= m_txTail
+        ? static_cast<uint16_t>(m_txHead - m_txTail)
+        : static_cast<uint16_t>(TxBufferSize - m_txTail + m_txHead);
+    const uint16_t free = static_cast<uint16_t>(TxBufferSize - used - 1U);
+
+    if (free < size)
+    {
+        return;
+    }
+
     for (uint16_t i = 0; i < size; ++i)
     {
         PushTx(data[i]);
@@ -159,6 +170,11 @@ void UsbDebugConsole::ProcessRx()
 
     while (PopRx(byte))
     {
+#if !NOT_USE_HIL
+        flight_controller_MavlinkParseByte(byte);
+        continue;
+#endif
+
         if (flight_controller_MavlinkParseByte(byte))
         {
             continue;
