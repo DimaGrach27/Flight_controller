@@ -6,12 +6,14 @@
 
 #include <string>
 #include <memory>
+#include <unordered_map>
 
 #include <sdf/Element.hh>
 
 #include <gz/sim/Joint.hh>
 #include <gz/sim/Model.hh>
 #include <gz/sim/System.hh>
+#include <gz/transport/Node.hh>
 
 #include "CsvLogger.h"
 #include "MavlinkBridge.h"
@@ -49,6 +51,16 @@ private:
     void LoadConfig(const std::shared_ptr<const sdf::Element>& sdf);
     void ConfigureJoint(gz::sim::EntityComponentManager& ecm, const std::string& jointName, gz::sim::Joint& joint);
     void LogSample(double simTimeSec, double angleRad, double angularVelocityRad);
+    void HandleBinaryLogFields(const std::unordered_map<std::string, float>& fields);
+    void PublishTelemetry(
+        double simTimeSec,
+        double rollRad,
+        double pitchRad,
+        double yawRad,
+        double rollRateRad,
+        double pitchRateRad,
+        double yawRateRad
+    );
     uint64_t SimTimeUsec(const gz::sim::UpdateInfo& info) const;
 
 private:
@@ -61,6 +73,8 @@ private:
     MavlinkBridge mavlink_;
     CsvLogger logger_;
     JoystickInput m_joystickInput;
+    gz::transport::Node m_node;
+    gz::transport::Node::Publisher m_telemetryPublisher;
 
     std::string m_rollJointName = "roll_joint";
     std::string m_pitchJointName = "pitch_joint";
@@ -68,6 +82,7 @@ private:
 
     std::string serialPortPath_ = "/dev/cu.usbmodem1103";
     std::string logPath_ = "one_axis_hil_log.csv";
+    std::string m_telemetryTopic = "/fc/telemetry/osd";
 
     int baud_ = 115200;
 
@@ -86,6 +101,7 @@ private:
 
     double hilRateHz_ = 100.0;
     double logRateHz_ = 50.0;
+    double m_telemetryRateHz = 10.0;
 
     double m_disturbanceRollTorque = 0.06;
     double m_disturbancePitchTorque = -0.05;
@@ -96,9 +112,12 @@ private:
 
     double lastHilSendSec_ = -1.0;
     double lastLogSec_ = -1.0;
+    double m_lastTelemetryPubSec = -1.0;
 
     double m_lastRollTorque = 0.0;
     double m_lastPitchTorque = 0.0;
     double m_lastYawTorque = 0.0;
+
+    std::unordered_map<std::string, float> m_currentLogFields;
 };
 NAMESPACE_END

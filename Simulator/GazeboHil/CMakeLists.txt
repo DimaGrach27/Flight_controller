@@ -3,6 +3,8 @@ project(HilPlugin LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
 
 if(APPLE)
     list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/qt@5")
@@ -27,6 +29,8 @@ else()
 endif()
 
 find_package(gz-plugin2 REQUIRED COMPONENTS register)
+find_package(gz-gui8 REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Core Qml Quick QuickControls2 Widgets)
 find_package(SDL2 REQUIRED)
 
 add_library(HilPlugin SHARED
@@ -37,6 +41,7 @@ add_library(HilPlugin SHARED
         core/src/MavlinkBridge.cpp
         core/src/CsvLogger.cpp
         core/src/JoystickInput.cpp
+        core/src/TelemetryOverlay.cpp
 )
 
 target_include_directories(HilPlugin PRIVATE
@@ -59,6 +64,33 @@ target_compile_options(HilPlugin PRIVATE
 
 set_target_properties(HilPlugin PROPERTIES
         OUTPUT_NAME "HilPlugin"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins"
+)
+
+add_library(FpvOsdOverlay SHARED
+        gui_plugins/FpvOsdOverlay.cpp
+        gui_plugins/FpvOsdOverlay.h
+        gui_plugins/FpvOsdOverlay.qrc
+)
+
+target_link_libraries(FpvOsdOverlay PRIVATE
+        gz-gui8::gz-gui8
+        gz-plugin2::register
+        Qt5::Core
+        Qt5::Qml
+        Qt5::Quick
+        Qt5::QuickControls2
+        Qt5::Widgets
+)
+
+target_compile_options(FpvOsdOverlay PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+)
+
+set_target_properties(FpvOsdOverlay PROPERTIES
+        OUTPUT_NAME "FpvOsdOverlay"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins"
 )
 # On macOS/Linux, termios is part of libc, no extra lib needed.

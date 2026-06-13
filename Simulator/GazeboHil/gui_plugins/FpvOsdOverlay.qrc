@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="/FpvOsdOverlay">
+    <file>FpvOsdOverlay.qml</file>
+  </qresource>
+</RCC>

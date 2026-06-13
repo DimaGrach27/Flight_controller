@@ -4,6 +4,8 @@
 
 #include "ImuHilPlugin.h"
 
+#include "TelemetryOverlay.h"
+
 #include <gz/plugin/Register.hh>
 #include <gz/msgs/actuators.pb.h>
 #include <gz/math/Quaternion.hh>
@@ -36,6 +38,16 @@ void ImuHilPlugin::Configure(const gz::sim::Entity &entity, const std::shared_pt
         m_motorTopic = sdf->Get<std::string>("motor_topic");
     }
 
+    if (sdf->HasElement("telemetry_topic"))
+    {
+        m_telemetryTopic = sdf->Get<std::string>("telemetry_topic");
+    }
+
+    if (sdf->HasElement("telemetry_rate_hz"))
+    {
+        m_telemetryRateHz = sdf->Get<double>("telemetry_rate_hz");
+    }
+
     if (sdf->HasElement("throttle"))
     {
         m_throttle = sdf->Get<float>("throttle");
@@ -54,6 +66,7 @@ void ImuHilPlugin::Configure(const gz::sim::Entity &entity, const std::shared_pt
         m_joystickIndex = sdf->Get<int>("joystick_index");
 
     m_motorPublisher = m_node.Advertise<gz::msgs::Actuators>(m_motorTopic);
+    m_telemetryPublisher = m_node.Advertise<gz::msgs::StringMsg>(m_telemetryTopic);
 
     if (!m_motorPublisher)
     {
@@ -67,6 +80,21 @@ void ImuHilPlugin::Configure(const gz::sim::Entity &entity, const std::shared_pt
         std::cout
             << "[ImuHilPlugin] Publishing motors to: "
             << m_motorTopic
+            << "\n";
+    }
+
+    if (!m_telemetryPublisher)
+    {
+        std::cerr
+            << "[ImuHilPlugin] Failed to advertise telemetry topic: "
+            << m_telemetryTopic
+            << "\n";
+    }
+    else
+    {
+        std::cout
+            << "[ImuHilPlugin] Publishing telemetry to: "
+            << m_telemetryTopic
             << "\n";
     }
 
@@ -280,6 +308,8 @@ void ImuHilPlugin::PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::En
             );
         }
     }
+
+    PublishTelemetry(simTimeSec, imu);
 }
 
 void ImuHilPlugin::HandleBinaryLogFields(const std::unordered_map<std::string, float>& fields)
@@ -297,6 +327,42 @@ void ImuHilPlugin::HandleBinaryLogFields(const std::unordered_map<std::string, f
     }
 
     m_csvLogger.Log(m_currentLogFields);
+}
+
+void ImuHilPlugin::PublishTelemetry(const double simTimeSec, const ImuData& imu)
+{
+    if (!m_telemetryPublisher)
+    {
+        return;
+    }
+
+    if (m_lastTelemetryPubSec >= 0.0 &&
+        simTimeSec - m_lastTelemetryPubSec < 1.0 / m_telemetryRateHz)
+    {
+        return;
+    }
+
+    m_lastTelemetryPubSec = simTimeSec;
+
+    TelemetryOverlayState state;
+    state.simTimeSec = simTimeSec;
+    state.rollRateDegSec = imu.gyroX * 57.2957795;
+    state.pitchRateDegSec = imu.gyroY * 57.2957795;
+    state.yawRateDegSec = imu.gyroZ * 57.2957795;
+
+    if (m_latestGroundTruth.valid)
+    {
+        m_currentLogFields["truth_x"] = m_latestGroundTruth.x;
+        m_currentLogFields["truth_y"] = m_latestGroundTruth.y;
+        m_currentLogFields["truth_z"] = m_latestGroundTruth.z;
+        m_currentLogFields["truth_vx"] = m_latestGroundTruth.vx;
+        m_currentLogFields["truth_vy"] = m_latestGroundTruth.vy;
+        m_currentLogFields["truth_vz"] = m_latestGroundTruth.vz;
+    }
+
+    gz::msgs::StringMsg msg;
+    msg.set_data(FormatTelemetryOverlay(m_currentLogFields, m_mavlinkBridge.Motors(), state));
+    m_telemetryPublisher.Publish(msg);
 }
 
 void ImuHilPlugin::OnImu(const gz::msgs::IMU &msg)

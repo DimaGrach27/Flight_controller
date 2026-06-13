@@ -6,6 +6,7 @@
 #include <gz/msgs/imu.pb.h>
 #include <gz/transport/Node.hh>
 #include <gz/msgs/odometry.pb.h>
+#include <gz/msgs/stringmsg.pb.h>
 
 #include "GlobalDef.h"
 #include "JoystickInput.h"
@@ -45,6 +46,7 @@ public:
 private:
     void OnImu(const gz::msgs::IMU& msg);
     void OnOdometry(const gz::msgs::Odometry& msg);
+    void PublishTelemetry(double simTimeSec, const ImuData& imu);
 
     ImuData GetLatestImu() const;
 
@@ -64,10 +66,12 @@ private:
 private:
     gz::transport::Node m_node;
     gz::transport::Node::Publisher m_motorPublisher;
+    gz::transport::Node::Publisher m_telemetryPublisher;
 
     std::string m_imuTopic = "/world/quadcopter/model/X3/link/base_link/sensor/imu_sensor/imu";
     std::string m_groundTruthTopic = "/X3/odometry";
     std::string m_motorTopic = "/X3/gazebo/command/motor_speed";
+    std::string m_telemetryTopic = "/fc/telemetry/osd";
 
     mutable std::mutex m_imuMutex;
     ImuData m_latestImu;
@@ -93,9 +97,11 @@ private:
 
     double m_hilRateHz = 1000.0;
     double m_manualRateHz = 10.0;
+    double m_telemetryRateHz = 10.0;
 
     double m_lastHilSendSec = -1.0;
     double m_lastManualSendSec = -1.0;
+    double m_lastTelemetryPubSec = -1.0;
 
 
 

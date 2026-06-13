@@ -33,5 +33,4 @@ echo "[server] Plugin path:   $GZ_SIM_SYSTEM_PLUGIN_PATH"
 echo "[server] Resource path: $GZ_SIM_RESOURCE_PATH"
 echo "[server] World:         $WORLD_FILE"
 
-gz sim -s -v 4 "$WORLD_FILE"
-# add -r to run on start
+gz sim -s -r -v 4 "$WORLD_FILE"

@@ -4,9 +4,12 @@
 #include "HilPlugin.h"
 
 #include "MathUtils.h"
+#include "TelemetryOverlay.h"
 
 #include <chrono>
 #include <iostream>
+
+#include <gz/msgs/stringmsg.pb.h>
 
 // #include <gz/plugin/Register.hh>
 
@@ -38,7 +41,24 @@ void HilPlugin::Configure(
     ConfigureJoint(ecm, m_pitchJointName, m_pitchJoint);
     ConfigureJoint(ecm, m_yawJointName, m_yawJoint);
 
-    if (mavlink_.Open(serialPortPath_, baud_, nullptr))
+    m_telemetryPublisher = m_node.Advertise<gz::msgs::StringMsg>(m_telemetryTopic);
+
+    if (!m_telemetryPublisher)
+    {
+        std::cerr << "[HilPlugin] Failed to advertise telemetry topic: " << m_telemetryTopic << std::endl;
+    }
+    else
+    {
+        std::cout << "[HilPlugin] Publishing telemetry to: " << m_telemetryTopic << std::endl;
+    }
+
+    if (mavlink_.Open(
+        serialPortPath_,
+        baud_,
+        [this](const std::unordered_map<std::string, float>& fields)
+        {
+            HandleBinaryLogFields(fields);
+        }))
     {
         std::cout << "[HilPlugin] Mavlink opened on " << serialPortPath_ << std::endl;
     }
@@ -66,6 +86,7 @@ void HilPlugin::Configure(
         << " torqueSignRoll=" << m_rollTorqueSign
         << " torqueSignPitch=" << m_pitchTorqueSign
         << " torqueSignYaw=" << m_yawTorqueSign
+        << " telemetryTopic=" << m_telemetryTopic
         << std::endl;
 }
 
@@ -112,6 +133,12 @@ void HilPlugin::LoadConfig(const std::shared_ptr<const sdf::Element>& sdf)
 
     if (sdf->HasElement("log_path"))
         logPath_ = sdf->Get<std::string>("log_path");
+
+    if (sdf->HasElement("telemetry_topic"))
+        m_telemetryTopic = sdf->Get<std::string>("telemetry_topic");
+
+    if (sdf->HasElement("telemetry_rate_hz"))
+        m_telemetryRateHz = sdf->Get<double>("telemetry_rate_hz");
 
     if (sdf->HasElement("disturbance_roll_torque"))
         m_disturbanceRollTorque = sdf->Get<double>("disturbance_roll_torque");
@@ -325,6 +352,15 @@ void HilPlugin::PostUpdate(
     }
 
     // LogSample(simTimeSec, angleRadY, angularVelocityRadY);
+    PublishTelemetry(
+        simTimeSec,
+        rollRad,
+        pitchRad,
+        yawRad,
+        rollRateRad,
+        pitchRateRad,
+        yawRateRad
+    );
 
     // std::cout
     // << "[State] "
@@ -333,6 +369,52 @@ void HilPlugin::PostUpdate(
     // << " rollRate=" << rollRateRad * 57.2957795
     // << " pitchRate=" << pitchRateRad * 57.2957795
     // << std::endl;
+}
+
+void HilPlugin::HandleBinaryLogFields(const std::unordered_map<std::string, float>& fields)
+{
+    m_currentLogFields = fields;
+}
+
+void HilPlugin::PublishTelemetry(
+    const double simTimeSec,
+    const double rollRad,
+    const double pitchRad,
+    const double yawRad,
+    const double rollRateRad,
+    const double pitchRateRad,
+    const double yawRateRad)
+{
+    if (!m_telemetryPublisher)
+    {
+        return;
+    }
+
+    if (m_lastTelemetryPubSec >= 0.0 &&
+        simTimeSec - m_lastTelemetryPubSec < 1.0 / m_telemetryRateHz)
+    {
+        return;
+    }
+
+    m_lastTelemetryPubSec = simTimeSec;
+
+    TelemetryOverlayState state;
+    state.simTimeSec = simTimeSec;
+    state.rollDeg = rollRad * 57.2957795;
+    state.pitchDeg = pitchRad * 57.2957795;
+    state.yawDeg = yawRad * 57.2957795;
+    state.rollRateDegSec = rollRateRad * 57.2957795;
+    state.pitchRateDegSec = pitchRateRad * 57.2957795;
+    state.yawRateDegSec = yawRateRad * 57.2957795;
+    state.rollTorque = m_lastRollTorque;
+    state.pitchTorque = m_lastPitchTorque;
+    state.yawTorque = m_lastYawTorque;
+    state.hasAttitude = true;
+    state.hasTorque = true;
+
+    gz::msgs::StringMsg msg;
+    msg.set_data(FormatTelemetryOverlay(m_currentLogFields, mavlink_.Motors(), state));
+    m_telemetryPublisher.Publish(msg);
 }
 
 void HilPlugin::LogSample(
