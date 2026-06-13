@@ -13,6 +13,9 @@ namespace
     constexpr float MaxRollRate_dps = 360.0f;
     constexpr float MaxPitchRate_dps = 360.0f;
     constexpr float MaxYawRate_dps = 180.0f;
+    constexpr float MaxAngleModeRoll_deg = 25.0f;
+    constexpr float MaxAngleModePitch_deg = 25.0f;
+    constexpr float AngleModeRateGain = 4.0f;
 
     constexpr float MinDtSeconds = 0.000001f;
     constexpr float MaxDtSeconds = 0.05f;
@@ -43,13 +46,13 @@ void RateController::Init()
     m_pitchPid.SetIntegralLimit(-0.25f, 0.25f);
     m_yawPid.SetIntegralLimit(-0.15f, 0.15f);
 #else
-    m_rollPid.Init(0.035f, 0.0f, 0.0f);
-    m_pitchPid.Init(0.035f, 0.0f, 0.0f);
-    m_yawPid.Init(0.015f, 0.0f, 0.0f);
+    m_rollPid.Init(0.050f, 0.0f, 0.0f);
+    m_pitchPid.Init(0.050f, 0.0f, 0.0f);
+    m_yawPid.Init(0.020f, 0.0f, 0.0f);
 
-    m_rollPid.SetOutputLimit(-0.12f, 0.12f);
-    m_pitchPid.SetOutputLimit(-0.12f, 0.12f);
-    m_yawPid.SetOutputLimit(-0.05f, 0.05f);
+    m_rollPid.SetOutputLimit(-0.16f, 0.16f);
+    m_pitchPid.SetOutputLimit(-0.16f, 0.16f);
+    m_yawPid.SetOutputLimit(-0.07f, 0.07f);
 
     m_rollPid.SetIntegralLimit(0.0f, 0.0f);
     m_pitchPid.SetIntegralLimit(0.0f, 0.0f);
@@ -95,14 +98,6 @@ ControlOutput RateController::Update(
         return output;
     }
 
-    const float dt = ComputeDtSeconds(nowUs);
-
-    if (dt <= 0.0f)
-    {
-        m_rateData.dt = 0.0f;
-        return output;
-    }
-
     const float targetRollRate_rads =
         rcCommand.roll * m_rollTargetSign * m_maxRollRate_rads;
 
@@ -111,6 +106,86 @@ ControlOutput RateController::Update(
 
     const float targetYawRate_rads =
         rcCommand.yaw * m_yawTargetSign * m_maxYawRate_rads;
+
+    return UpdateRateTargets(
+        targetRollRate_rads,
+        targetPitchRate_rads,
+        targetYawRate_rads,
+        state,
+        nowUs
+    );
+}
+
+ControlOutput RateController::UpdateAngleMode(
+    const RcCommand& rcCommand,
+    const VehicleState& state,
+    uint32_t nowUs
+)
+{
+    ControlOutput output{};
+
+    if (!rcCommand.valid || rcCommand.failsafe || !state.valid)
+    {
+        Reset();
+        return output;
+    }
+
+    const float maxRollAngle_rads = MaxAngleModeRoll_deg * DegToRad;
+    const float maxPitchAngle_rads = MaxAngleModePitch_deg * DegToRad;
+
+    const float targetRollAngle_rads =
+        rcCommand.roll * m_rollTargetSign * maxRollAngle_rads;
+
+    const float targetPitchAngle_rads =
+        rcCommand.pitch * m_pitchTargetSign * maxPitchAngle_rads;
+
+    const float measuredRollAngle_rads =
+        state.rollRad * m_rollFeedbackSign;
+
+    const float measuredPitchAngle_rads =
+        state.pitchRad * m_pitchFeedbackSign;
+
+    const float targetRollRate_rads = MathUtils::Clamp(
+        (targetRollAngle_rads - measuredRollAngle_rads) * AngleModeRateGain,
+        -m_maxRollRate_rads,
+        m_maxRollRate_rads
+    );
+
+    const float targetPitchRate_rads = MathUtils::Clamp(
+        (targetPitchAngle_rads - measuredPitchAngle_rads) * AngleModeRateGain,
+        -m_maxPitchRate_rads,
+        m_maxPitchRate_rads
+    );
+
+    const float targetYawRate_rads =
+        rcCommand.yaw * m_yawTargetSign * m_maxYawRate_rads;
+
+    return UpdateRateTargets(
+        targetRollRate_rads,
+        targetPitchRate_rads,
+        targetYawRate_rads,
+        state,
+        nowUs
+    );
+}
+
+ControlOutput RateController::UpdateRateTargets(
+    const float targetRollRate_rads,
+    const float targetPitchRate_rads,
+    const float targetYawRate_rads,
+    const VehicleState& state,
+    uint32_t nowUs
+)
+{
+    ControlOutput output{};
+
+    const float dt = ComputeDtSeconds(nowUs);
+
+    if (dt <= 0.0f)
+    {
+        m_rateData.dt = 0.0f;
+        return output;
+    }
 
     const float measuredRollRate_rads =
         state.rollRateRadS * m_rollFeedbackSign;

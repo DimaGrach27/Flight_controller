@@ -647,8 +647,7 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     }
     else
     {
-        //TODO: add angle mode
-        control = m_rateController.Update(rcCommand, state, nowUs);
+        control = m_rateController.UpdateAngleMode(rcCommand, state, nowUs);
     }
 
     m_lastControlOutput = control;

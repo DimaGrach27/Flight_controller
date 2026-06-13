@@ -22,12 +22,25 @@ public:
         uint32_t nowUs
     );
 
+    ControlOutput UpdateAngleMode(
+        const RcCommand& rcCommand,
+        const VehicleState& state,
+        uint32_t nowUs
+    );
+
     void Reset();
 
     const RateData& GetRateData();
 
 private:
     float ComputeDtSeconds(uint32_t nowUs);
+    ControlOutput UpdateRateTargets(
+        float targetRollRate_rads,
+        float targetPitchRate_rads,
+        float targetYawRate_rads,
+        const VehicleState& state,
+        uint32_t nowUs
+    );
 
 private:
     PidController m_rollPid;
