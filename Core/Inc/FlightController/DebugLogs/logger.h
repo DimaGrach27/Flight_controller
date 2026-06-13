@@ -13,7 +13,7 @@ public:
     Logger(UsbDebugConsole& debugConsole);
 
     FlightLogSample& GetLogSample();
-    void SendFlightLogCsv();
+    void SendFlightLogBinary();
 
 private:
     UsbDebugConsole& m_debugConsole;

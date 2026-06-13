@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <functional>
+#include <memory>
+#include <vector>
 #include <unordered_map>
 
 #include "CsvLogger.h"
@@ -24,9 +27,11 @@ struct MotorOutputs
 class MavlinkBridge
 {
 public:
+    using LogCallback = std::function<void(const std::unordered_map<std::string, float>&)>;
+
     MavlinkBridge();
 
-    bool Open(const std::string& port, int baud, std::function<void(const mavlink_named_value_float_t&)> callback);
+    bool Open(const std::string& port, int baud, LogCallback callback);
 
     void Poll();
 
@@ -63,7 +68,18 @@ public:
     double m_servoDtMax = 0.0;
 
 private:
+    enum class BinaryLogParseState
+    {
+        WaitSync0,
+        WaitSync1,
+        ReadFrame,
+    };
+
     void HandleMessage(const mavlink_message_t& msg);
+    void ParseRxByte(uint8_t byte);
+    void FeedMavlinkByte(uint8_t byte);
+    void ResetBinaryLogParser();
+    void TryHandleBinaryLogFrame();
 
     static double PwmToMotor(uint16_t pwm);
 
@@ -71,6 +87,10 @@ private:
     std::unique_ptr<ISerialPort> m_serial = nullptr;
     MotorOutputs motors_;
 
-    std::function<void(const mavlink_named_value_float_t&)> m_callback;
+    LogCallback m_logCallback;
+
+    BinaryLogParseState m_binaryLogParseState = BinaryLogParseState::WaitSync0;
+    std::vector<uint8_t> m_binaryLogFrame;
+    uint16_t m_expectedBinaryLogFrameSize = 0;
 };
 NAMESPACE_END

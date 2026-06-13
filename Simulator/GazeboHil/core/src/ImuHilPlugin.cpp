@@ -106,9 +106,9 @@ void ImuHilPlugin::Configure(const gz::sim::Entity &entity, const std::shared_pt
     }
 
     if (m_mavlinkBridge.Open(m_serialPortPath, m_baud,
-        [this](const mavlink_named_value_float_t& value)
+        [this](const std::unordered_map<std::string, float>& fields)
                     {
-                        HandleNamedValueFloat(value);
+                        HandleBinaryLogFields(fields);
                     }))
     {
         printf("[ImuHilPlugin] Mavlink opened on %s", m_serialPortPath.c_str());
@@ -282,44 +282,21 @@ void ImuHilPlugin::PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::En
     }
 }
 
-void ImuHilPlugin::HandleNamedValueFloat(const mavlink_named_value_float_t &value)
+void ImuHilPlugin::HandleBinaryLogFields(const std::unordered_map<std::string, float>& fields)
 {
-    std::string name(value.name, strnlen(value.name, sizeof(value.name)));
+    m_currentLogFields = fields;
 
-    if (name == "+++++")
+    if (m_latestGroundTruth.valid)
     {
-        m_currentLogFields = {};
-        m_isCollectingLogSample = true;
-        return;
+        m_currentLogFields["truth_x"] = m_latestGroundTruth.x;
+        m_currentLogFields["truth_y"] = m_latestGroundTruth.y;
+        m_currentLogFields["truth_z"] = m_latestGroundTruth.z;
+        m_currentLogFields["truth_vx"] = m_latestGroundTruth.vx;
+        m_currentLogFields["truth_vy"] = m_latestGroundTruth.vy;
+        m_currentLogFields["truth_vz"] = m_latestGroundTruth.vz;
     }
 
-    if (name == "-----")
-    {
-        if (m_isCollectingLogSample)
-        {
-            if (m_latestGroundTruth.valid)
-            {
-                m_currentLogFields["truth_x"] = m_latestGroundTruth.x;
-                m_currentLogFields["truth_y"] = m_latestGroundTruth.y;
-                m_currentLogFields["truth_z"] = m_latestGroundTruth.z;
-                m_currentLogFields["truth_vx"] = m_latestGroundTruth.vx;
-                m_currentLogFields["truth_vy"] = m_latestGroundTruth.vy;
-                m_currentLogFields["truth_vz"] = m_latestGroundTruth.vz;
-            }
-
-            m_csvLogger.Log(m_currentLogFields);
-        }
-
-        m_isCollectingLogSample = false;
-        return;
-    }
-
-    if (!m_isCollectingLogSample)
-    {
-        return;
-    }
-
-    m_currentLogFields[name] = value.value;
+    m_csvLogger.Log(m_currentLogFields);
 }
 
 void ImuHilPlugin::OnImu(const gz::msgs::IMU &msg)

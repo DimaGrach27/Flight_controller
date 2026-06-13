@@ -393,7 +393,7 @@ void FlightController::Update()
         log.batteryFaults = 0.0f;
 #endif
 
-        m_logger.SendFlightLogCsv();
+        m_logger.SendFlightLogBinary();
 
 #if NOT_USE_HIL
         m_debugConsole.Update(nowUs);

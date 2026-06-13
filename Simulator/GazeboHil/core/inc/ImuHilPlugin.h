@@ -40,7 +40,7 @@ public:
         const gz::sim::EntityComponentManager& ecm
     ) override;
 
-    void HandleNamedValueFloat(const mavlink_named_value_float_t& value);
+    void HandleBinaryLogFields(const std::unordered_map<std::string, float>& fields);
 
 private:
     void OnImu(const gz::msgs::IMU& msg);
@@ -110,6 +110,5 @@ private:
 
     CsvLogger m_csvLogger;
     std::unordered_map<std::string, float> m_currentLogFields;
-    bool m_isCollectingLogSample = false;
 };
 NAMESPACE_END

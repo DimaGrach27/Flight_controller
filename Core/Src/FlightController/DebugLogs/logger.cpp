@@ -5,10 +5,222 @@
 #include "../../../Inc/FlightController/DebugLogs/logger.h"
 
 #include <cstdint>
+#include <cstring>
 
 #include "main.h"
-#include "mavlink/mavlink_types.h"
-#include "mavlink/common/mavlink.h"
+
+namespace
+{
+    constexpr uint16_t LogSync = 0xA55A;
+    constexpr uint8_t LogVersion = 1;
+    constexpr uint8_t LogTypeFlightSample = 1;
+
+#pragma pack(push, 1)
+    struct BinaryLogHeader
+    {
+        uint16_t sync = LogSync;
+        uint8_t version = LogVersion;
+        uint8_t type = LogTypeFlightSample;
+        uint16_t length = 0;
+        uint32_t sequence = 0;
+    };
+
+    struct BinaryFlightLogSampleV1
+    {
+        uint32_t timeMs = 0;
+        uint32_t imuSeq = 0;
+        uint32_t controlSeq = 0;
+        uint32_t logSeq = 0;
+
+        float flightMode = 0.0f;
+        float armed = 0.0f;
+        float failsafe = 0.0f;
+        float failsafeReason = 0.0f;
+        float armDenyReason = 0.0f;
+        float controlStopReason = 0.0f;
+
+        float dt = 0.0f;
+        float imuDt = 0.0f;
+        float halDt = 0.0f;
+        float controlDt = 0.0f;
+
+        float rcThrottle = 0.0f;
+        float rcRoll = 0.0f;
+        float rcPitch = 0.0f;
+        float rcYaw = 0.0f;
+        float rcAgeMs = 0.0f;
+        float rcValid = 0.0f;
+        float rcArmSwitch = 0.0f;
+        float rcAngleSwitch = 0.0f;
+
+        float targetRollRateDegSec = 0.0f;
+        float targetPitchRateDegSec = 0.0f;
+        float targetYawRateDegSec = 0.0f;
+        float gyroRollDegSec = 0.0f;
+        float gyroPitchDegSec = 0.0f;
+        float gyroYawDegSec = 0.0f;
+        float accelRoll = 0.0f;
+        float accelPitch = 0.0f;
+        float accelYaw = 0.0f;
+        float correctedRoll = 0.0f;
+        float correctedPitch = 0.0f;
+        float correctedYaw = 0.0f;
+        float angleErrorRoll = 0.0f;
+        float angleErrorPitch = 0.0f;
+        float angleErrorYaw = 0.0f;
+        float estimatedRollDeg = 0.0f;
+        float estimatedPitchDeg = 0.0f;
+        float estimatedYawDeg = 0.0f;
+        float stateValid = 0.0f;
+
+        float controlRoll = 0.0f;
+        float controlPitch = 0.0f;
+        float controlYaw = 0.0f;
+        float motorM1 = 0.0f;
+        float motorM2 = 0.0f;
+        float motorM3 = 0.0f;
+        float motorM4 = 0.0f;
+        float motorMin = 0.0f;
+        float motorMax = 0.0f;
+        float motorSpan = 0.0f;
+        float throttleLimit = 0.0f;
+        float throttleLimited = 0.0f;
+
+        float PID_P_roll = 0.0f;
+        float PID_I_roll = 0.0f;
+        float PID_D_roll = 0.0f;
+        float PID_E_roll = 0.0f;
+        float PID_S_roll = 0.0f;
+        float PID_P_pitch = 0.0f;
+        float PID_I_pitch = 0.0f;
+        float PID_D_pitch = 0.0f;
+        float PID_E_pitch = 0.0f;
+        float PID_S_pitch = 0.0f;
+        float PID_P_yaw = 0.0f;
+        float PID_I_yaw = 0.0f;
+        float PID_D_yaw = 0.0f;
+        float PID_E_yaw = 0.0f;
+        float PID_S_yaw = 0.0f;
+
+        float batteryVoltage = 0.0f;
+        float batteryCellVoltage = 0.0f;
+        float batteryCurrent = 0.0f;
+        float batteryPercent = 0.0f;
+        float batteryState = 0.0f;
+        float batteryWarnings = 0.0f;
+        float batteryFaults = 0.0f;
+    };
+#pragma pack(pop)
+
+    uint16_t Crc16Ccitt(const uint8_t* data, uint16_t size)
+    {
+        uint16_t crc = 0xFFFF;
+
+        for (uint16_t i = 0; i < size; ++i)
+        {
+            crc ^= static_cast<uint16_t>(data[i]) << 8U;
+
+            for (uint8_t bit = 0; bit < 8U; ++bit)
+            {
+                crc = (crc & 0x8000U) != 0U
+                    ? static_cast<uint16_t>((crc << 1U) ^ 0x1021U)
+                    : static_cast<uint16_t>(crc << 1U);
+            }
+        }
+
+        return crc;
+    }
+
+    BinaryFlightLogSampleV1 ToBinarySample(const FlightLogSample& sample)
+    {
+        BinaryFlightLogSampleV1 binary{};
+
+        binary.timeMs = sample.timeMs;
+        binary.imuSeq = sample.imuSeq;
+        binary.controlSeq = sample.controlSeq;
+        binary.logSeq = sample.logSeq;
+
+        binary.flightMode = sample.flightMode;
+        binary.armed = sample.armed;
+        binary.failsafe = sample.failsafe;
+        binary.failsafeReason = sample.failsafeReason;
+        binary.armDenyReason = sample.armDenyReason;
+        binary.controlStopReason = sample.controlStopReason;
+
+        binary.dt = sample.dt;
+        binary.imuDt = sample.imuDt;
+        binary.halDt = sample.halDt;
+        binary.controlDt = sample.controlDt;
+
+        binary.rcThrottle = sample.rcThrottle;
+        binary.rcRoll = sample.rcRoll;
+        binary.rcPitch = sample.rcPitch;
+        binary.rcYaw = sample.rcYaw;
+        binary.rcAgeMs = sample.rcAgeMs;
+        binary.rcValid = sample.rcValid;
+        binary.rcArmSwitch = sample.rcArmSwitch;
+        binary.rcAngleSwitch = sample.rcAngleSwitch;
+
+        binary.targetRollRateDegSec = sample.targetRollRateDegSec;
+        binary.targetPitchRateDegSec = sample.targetPitchRateDegSec;
+        binary.targetYawRateDegSec = sample.targetYawRateDegSec;
+        binary.gyroRollDegSec = sample.gyroRollDegSec;
+        binary.gyroPitchDegSec = sample.gyroPitchDegSec;
+        binary.gyroYawDegSec = sample.gyroYawDegSec;
+        binary.accelRoll = sample.accelRoll;
+        binary.accelPitch = sample.accelPitch;
+        binary.accelYaw = sample.accelYaw;
+        binary.correctedRoll = sample.correctedRoll;
+        binary.correctedPitch = sample.correctedPitch;
+        binary.correctedYaw = sample.correctedYaw;
+        binary.angleErrorRoll = sample.angleErrorRoll;
+        binary.angleErrorPitch = sample.angleErrorPitch;
+        binary.angleErrorYaw = sample.angleErrorYaw;
+        binary.estimatedRollDeg = sample.estimatedRollDeg;
+        binary.estimatedPitchDeg = sample.estimatedPitchDeg;
+        binary.estimatedYawDeg = sample.estimatedYawDeg;
+        binary.stateValid = sample.stateValid;
+
+        binary.controlRoll = sample.controlRoll;
+        binary.controlPitch = sample.controlPitch;
+        binary.controlYaw = sample.controlYaw;
+        binary.motorM1 = sample.motorM1;
+        binary.motorM2 = sample.motorM2;
+        binary.motorM3 = sample.motorM3;
+        binary.motorM4 = sample.motorM4;
+        binary.motorMin = sample.motorMin;
+        binary.motorMax = sample.motorMax;
+        binary.motorSpan = sample.motorSpan;
+        binary.throttleLimit = sample.throttleLimit;
+        binary.throttleLimited = sample.throttleLimited;
+
+        binary.PID_P_roll = sample.PID_P_roll;
+        binary.PID_I_roll = sample.PID_I_roll;
+        binary.PID_D_roll = sample.PID_D_roll;
+        binary.PID_E_roll = sample.PID_E_roll;
+        binary.PID_S_roll = sample.PID_S_roll;
+        binary.PID_P_pitch = sample.PID_P_pitch;
+        binary.PID_I_pitch = sample.PID_I_pitch;
+        binary.PID_D_pitch = sample.PID_D_pitch;
+        binary.PID_E_pitch = sample.PID_E_pitch;
+        binary.PID_S_pitch = sample.PID_S_pitch;
+        binary.PID_P_yaw = sample.PID_P_yaw;
+        binary.PID_I_yaw = sample.PID_I_yaw;
+        binary.PID_D_yaw = sample.PID_D_yaw;
+        binary.PID_E_yaw = sample.PID_E_yaw;
+        binary.PID_S_yaw = sample.PID_S_yaw;
+
+        binary.batteryVoltage = sample.batteryVoltage;
+        binary.batteryCellVoltage = sample.batteryCellVoltage;
+        binary.batteryCurrent = sample.batteryCurrent;
+        binary.batteryPercent = sample.batteryPercent;
+        binary.batteryState = sample.batteryState;
+        binary.batteryWarnings = sample.batteryWarnings;
+        binary.batteryFaults = sample.batteryFaults;
+
+        return binary;
+    }
+}
 
 Logger::Logger(UsbDebugConsole& debugConsole)
     : m_debugConsole(debugConsole)
@@ -21,7 +233,7 @@ FlightLogSample& Logger::GetLogSample()
     return m_logSample;
 }
 
-void Logger::SendFlightLogCsv()
+void Logger::SendFlightLogBinary()
 {
     const uint32_t nowMs = HAL_GetTick();
 
@@ -32,100 +244,27 @@ void Logger::SendFlightLogCsv()
 
     m_lastDebugMs = nowMs;
 
-    mavlink_message_t msg;
-    uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+    const BinaryFlightLogSampleV1 payload = ToBinarySample(m_logSample);
+    BinaryLogHeader header{};
+    header.length = sizeof(payload);
+    header.sequence = m_logSample.logSeq;
 
-    auto sendNamed = [&](const char* name, float value)
-    {
-        mavlink_msg_named_value_float_pack(
-            1,
-            1,
-            &msg,
-            nowMs,
-            name,
-            value
-        );
+    constexpr uint16_t FrameSize =
+        sizeof(BinaryLogHeader) +
+        sizeof(BinaryFlightLogSampleV1) +
+        sizeof(uint16_t);
 
-        const uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
-        // HAL_UART_Transmit(&m_huart2, buffer, len, 100);
-        m_debugConsole.WriteBytes(buffer, len);
-    };
+    uint8_t frame[FrameSize]{};
+    uint16_t offset = 0;
 
-    sendNamed("+++++", 1); //start log
-    sendNamed("f_mode", m_logSample.flightMode);
-    sendNamed("armed", m_logSample.armed);
-    sendNamed("fs", m_logSample.failsafe);
-    sendNamed("fs_rsn", m_logSample.failsafeReason);
-    sendNamed("arm_deny", m_logSample.armDenyReason);
-    sendNamed("stop_rsn", m_logSample.controlStopReason);
-    sendNamed("time_ms", static_cast<float>(m_logSample.timeMs));
-    sendNamed("imu_seq", static_cast<float>(m_logSample.imuSeq));
-    sendNamed("cont_seq", static_cast<float>(m_logSample.controlSeq));
-    sendNamed("log_seq", static_cast<float>(m_logSample.logSeq));
-    sendNamed("dt", m_logSample.dt);
-    sendNamed("imu_dt", m_logSample.imuDt);
-    sendNamed("hal_dt", m_logSample.halDt);
-    sendNamed("ctrl_dt", m_logSample.controlDt);
-    sendNamed("rc_thr", m_logSample.rcThrottle);
-    sendNamed("rc_roll", m_logSample.rcRoll);
-    sendNamed("rc_pitch", m_logSample.rcPitch);
-    sendNamed("rc_yaw", m_logSample.rcYaw);
-    sendNamed("rc_age", m_logSample.rcAgeMs);
-    sendNamed("rc_valid", m_logSample.rcValid);
-    sendNamed("rc_arm", m_logSample.rcArmSwitch);
-    sendNamed("rc_angle", m_logSample.rcAngleSwitch);
-    sendNamed("t_roll", m_logSample.targetRollRateDegSec);
-    sendNamed("t_pitch", m_logSample.targetPitchRateDegSec);
-    sendNamed("t_yaw", m_logSample.targetYawRateDegSec);
-    sendNamed("g_roll", m_logSample.gyroRollDegSec);
-    sendNamed("g_pitch", m_logSample.gyroPitchDegSec);
-    sendNamed("g_yaw", m_logSample.gyroYawDegSec);
-    sendNamed("a_roll", m_logSample.accelRoll);
-    sendNamed("a_pitch", m_logSample.accelPitch);
-    sendNamed("a_yaw", m_logSample.accelYaw);
-    sendNamed("cor_roll", m_logSample.correctedRoll);
-    sendNamed("cor_pitch", m_logSample.correctedPitch);
-    sendNamed("cor_yaw", m_logSample.correctedYaw);
-    sendNamed("err_roll", m_logSample.angleErrorRoll);
-    sendNamed("err_pitch", m_logSample.angleErrorPitch);
-    sendNamed("err_yaw", m_logSample.angleErrorYaw);
-    sendNamed("est_roll", m_logSample.estimatedRollDeg);
-    sendNamed("est_pitch", m_logSample.estimatedPitchDeg);
-    sendNamed("est_yaw", m_logSample.estimatedYawDeg);
-    sendNamed("st_valid", m_logSample.stateValid);
-    sendNamed("c_roll", m_logSample.controlRoll);
-    sendNamed("c_pitch", m_logSample.controlPitch);
-    sendNamed("c_yaw", m_logSample.controlYaw);
-    sendNamed("m1", m_logSample.motorM1);
-    sendNamed("m2", m_logSample.motorM2);
-    sendNamed("m3", m_logSample.motorM3);
-    sendNamed("m4", m_logSample.motorM4);
-    sendNamed("m_min", m_logSample.motorMin);
-    sendNamed("m_max", m_logSample.motorMax);
-    sendNamed("m_span", m_logSample.motorSpan);
-    sendNamed("thr_lim", m_logSample.throttleLimit);
-    sendNamed("thr_out", m_logSample.throttleLimited);
-    sendNamed("rp", m_logSample.PID_P_roll);
-    sendNamed("ri", m_logSample.PID_I_roll);
-    sendNamed("rd", m_logSample.PID_D_roll);
-    sendNamed("re", m_logSample.PID_E_roll);
-    sendNamed("rs", m_logSample.PID_S_roll);
-    sendNamed("pp", m_logSample.PID_P_pitch);
-    sendNamed("pi", m_logSample.PID_I_pitch);
-    sendNamed("pd", m_logSample.PID_D_pitch);
-    sendNamed("pe", m_logSample.PID_E_pitch);
-    sendNamed("ps", m_logSample.PID_S_pitch);
-    sendNamed("yp", m_logSample.PID_P_yaw);
-    sendNamed("yi", m_logSample.PID_I_yaw);
-    sendNamed("yd", m_logSample.PID_D_yaw);
-    sendNamed("ye", m_logSample.PID_E_yaw);
-    sendNamed("ys", m_logSample.PID_S_yaw);
-    sendNamed("bat_v", m_logSample.batteryVoltage);
-    sendNamed("cell_v", m_logSample.batteryCellVoltage);
-    sendNamed("bat_a", m_logSample.batteryCurrent);
-    sendNamed("bat_pct", m_logSample.batteryPercent);
-    sendNamed("bat_st", m_logSample.batteryState);
-    sendNamed("bat_warn", m_logSample.batteryWarnings);
-    sendNamed("bat_flt", m_logSample.batteryFaults);
-    sendNamed("-----", 0); //end log
+    std::memcpy(&frame[offset], &header, sizeof(header));
+    offset += sizeof(header);
+
+    std::memcpy(&frame[offset], &payload, sizeof(payload));
+    offset += sizeof(payload);
+
+    const uint16_t crc = Crc16Ccitt(frame, offset);
+    std::memcpy(&frame[offset], &crc, sizeof(crc));
+
+    m_debugConsole.WriteBytes(frame, sizeof(frame));
 }
