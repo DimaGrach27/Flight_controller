@@ -246,9 +246,7 @@ void UsbDebugConsole::ProcessCommand(const char* command)
 
     if (std::strcmp(command, "imu") == 0)
     {
-        // Потім сюди підставиш реальні значення з IMU.
-        WriteLine("gyro: 0.00 0.00 0.00 dps");
-        WriteLine("accel: 0.00 0.00 1.00 g");
+        UsbDebugConsole_RunDebugCommand(static_cast<uint8_t>(UsbDebugConsoleCommand::IMU_Status));
         return;
     }
 

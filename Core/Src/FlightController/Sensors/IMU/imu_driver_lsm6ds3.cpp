@@ -131,8 +131,24 @@ bool IMU_Lsm6ds3::HasError() const
 
 bool IMU_Lsm6ds3::ReadRaw(ImuRawData& outRawData, const uint32_t nowUs)
 {
+    if (m_spiBus.HasError())
+    {
+        m_spiBus.ResetState();
+
+        if (!StartReadRaw())
+        {
+            outRawData.valid = false;
+            return false;
+        }
+    }
+
     if (!m_spiBus.IsDone())
     {
+        if (!m_spiBus.IsBusy())
+        {
+            StartReadRaw();
+        }
+
         outRawData.valid = false;
         return false;
     }

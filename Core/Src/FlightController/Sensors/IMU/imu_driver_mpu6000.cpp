@@ -5,6 +5,7 @@
 #include "FlightController/Sensors/IMU/imu_driver_mpu6000.h"
 
 #include <cstdint>
+#include <cstring>
 
 namespace
 {
@@ -60,14 +61,19 @@ bool IMU_MPU6000::Init()
 
     HAL_Delay(100);
 
-    if (!m_spiBus.WriteRegister(PowerManagement1, ClockSourcePllXGyro, SpiWriteMask))
+    if (!CheckDeviceId())
+    {
+        return false;
+    }
+
+    if (!WriteAndVerify(PowerManagement1, ClockSourcePllXGyro))
     {
         return false;
     }
 
     HAL_Delay(10);
 
-    if (!m_spiBus.WriteRegister(UserControl, DisableI2cInterface, SpiWriteMask))
+    if (!WriteAndVerify(UserControl, DisableI2cInterface))
     {
         return false;
     }
@@ -79,20 +85,12 @@ bool IMU_MPU6000::Init()
 
     HAL_Delay(100);
 
-    if (!CheckDeviceId())
-    {
-        return false;
-    }
-
     if (!ConfigureDevice())
     {
         return false;
     }
 
-    if (!StartReadRaw())
-    {
-        return false;
-    }
+    ReadDebugRegisters();
 
     m_accelScale_mps2 = AccelSensitivity_gPerLsb * G;
     m_gyroScale_rads = GyroSensitivity_dpsPerLsb * DegToRad;
@@ -132,13 +130,38 @@ bool IMU_MPU6000::HasError() const
 
 bool IMU_MPU6000::ReadRaw(ImuRawData& outRawData, const uint32_t nowUs)
 {
-    if (!m_spiBus.IsDone())
+    if (m_spiBus.IsBusy())
     {
+        ++m_debugInfo.readFailCount;
+        outRawData.valid = false;
+        return false;
+    }
+
+    m_spiBus.ResetState();
+
+    m_txBuffer[0] = AccelXoutH | SpiReadBit;
+
+    for (uint8_t i = 1; i < SpiFrameSize; ++i)
+    {
+        m_txBuffer[i] = 0x00;
+    }
+
+    if (!m_spiBus.TransmitReceiveBlocking(m_txBuffer, m_rxBuffer, SpiFrameSize))
+    {
+        ++m_debugInfo.readFailCount;
         outRawData.valid = false;
         return false;
     }
 
     const uint8_t* data = &m_rxBuffer[1];
+
+    if (m_hasLastRawFrame && std::memcmp(m_lastRawFrame, data, RawFrameSize) == 0)
+    {
+        ++m_debugInfo.repeatedFrameCount;
+    }
+
+    std::memcpy(m_lastRawFrame, data, RawFrameSize);
+    m_hasLastRawFrame = true;
 
     outRawData.rawAccelX = MakeInt16(data[0], data[1]);
     outRawData.rawAccelY = MakeInt16(data[2], data[3]);
@@ -148,16 +171,11 @@ bool IMU_MPU6000::ReadRaw(ImuRawData& outRawData, const uint32_t nowUs)
     outRawData.rawGyroY = MakeInt16(data[10], data[11]);
     outRawData.rawGyroZ = MakeInt16(data[12], data[13]);
 
-    m_spiBus.ResetState();
-
-    if (!StartReadRaw())
-    {
-        outRawData.valid = false;
-        return false;
-    }
-
     outRawData.timestampUs = nowUs;
     outRawData.valid = true;
+
+    ++m_debugInfo.readOkCount;
+    m_debugInfo.lastRaw = outRawData;
 
     return true;
 }
@@ -186,7 +204,7 @@ bool IMU_MPU6000::Read(ImuSample& outData, const uint32_t nowUs)
     return true;
 }
 
-bool IMU_MPU6000::CheckDeviceId() const
+bool IMU_MPU6000::CheckDeviceId()
 {
     uint8_t whoAmI = 0;
 
@@ -195,32 +213,39 @@ bool IMU_MPU6000::CheckDeviceId() const
         return false;
     }
 
+    m_debugInfo.whoAmI = whoAmI;
+
     return whoAmI == WhoAmIExpected;
+}
+
+const IMU_MPU6000::DebugInfo& IMU_MPU6000::GetDebugInfo() const
+{
+    return m_debugInfo;
 }
 
 bool IMU_MPU6000::ConfigureDevice()
 {
-    if (!m_spiBus.WriteRegister(Config, Dlpf98Hz, SpiWriteMask))
+    if (!WriteAndVerify(Config, Dlpf98Hz))
     {
         return false;
     }
 
-    if (!m_spiBus.WriteRegister(SampleRateDivider, SampleRate1Khz, SpiWriteMask))
+    if (!WriteAndVerify(SampleRateDivider, SampleRate1Khz))
     {
         return false;
     }
 
-    if (!m_spiBus.WriteRegister(GyroConfig, GyroRange2000Dps, SpiWriteMask))
+    if (!WriteAndVerify(GyroConfig, GyroRange2000Dps))
     {
         return false;
     }
 
-    if (!m_spiBus.WriteRegister(AccelConfig, AccelRange8G, SpiWriteMask))
+    if (!WriteAndVerify(AccelConfig, AccelRange8G))
     {
         return false;
     }
 
-    if (!m_spiBus.WriteRegister(PowerManagement2, EnableAllAxes, SpiWriteMask))
+    if (!WriteAndVerify(PowerManagement2, EnableAllAxes))
     {
         return false;
     }
@@ -228,6 +253,35 @@ bool IMU_MPU6000::ConfigureDevice()
     HAL_Delay(50);
 
     return true;
+}
+
+bool IMU_MPU6000::WriteAndVerify(uint8_t reg, uint8_t value)
+{
+    if (!m_spiBus.WriteRegister(reg, value, SpiWriteMask))
+    {
+        return false;
+    }
+
+    HAL_Delay(1);
+
+    uint8_t readBack = 0;
+    if (!m_spiBus.ReadRegisters(reg, &readBack, 1, SpiReadBit))
+    {
+        return false;
+    }
+
+    return readBack == value;
+}
+
+void IMU_MPU6000::ReadDebugRegisters()
+{
+    m_spiBus.ReadRegisters(SampleRateDivider, &m_debugInfo.sampleRateDivider, 1, SpiReadBit);
+    m_spiBus.ReadRegisters(Config, &m_debugInfo.config, 1, SpiReadBit);
+    m_spiBus.ReadRegisters(GyroConfig, &m_debugInfo.gyroConfig, 1, SpiReadBit);
+    m_spiBus.ReadRegisters(AccelConfig, &m_debugInfo.accelConfig, 1, SpiReadBit);
+    m_spiBus.ReadRegisters(UserControl, &m_debugInfo.userControl, 1, SpiReadBit);
+    m_spiBus.ReadRegisters(PowerManagement1, &m_debugInfo.powerManagement1, 1, SpiReadBit);
+    m_spiBus.ReadRegisters(PowerManagement2, &m_debugInfo.powerManagement2, 1, SpiReadBit);
 }
 
 void IMU_MPU6000::Reset()

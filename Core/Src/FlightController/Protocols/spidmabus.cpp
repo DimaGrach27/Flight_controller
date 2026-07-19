@@ -47,6 +47,33 @@ bool SpiDmaBus::TransmitReceive(uint8_t* txBuffer, uint8_t* rxBuffer, uint16_t s
     return true;
 }
 
+bool SpiDmaBus::TransmitReceiveBlocking(uint8_t* txBuffer, uint8_t* rxBuffer, uint16_t size)
+{
+    if (m_spi == nullptr || txBuffer == nullptr || rxBuffer == nullptr || size == 0)
+    {
+        return false;
+    }
+
+    if (m_state == State::Busy)
+    {
+        return false;
+    }
+
+    Select();
+
+    const HAL_StatusTypeDef status = HAL_SPI_TransmitReceive(
+        m_spi,
+        txBuffer,
+        rxBuffer,
+        size,
+        m_timeoutMs
+    );
+
+    Deselect();
+
+    return status == HAL_OK;
+}
+
 bool SpiDmaBus::WriteRegister(uint8_t reg, uint8_t value, const uint8_t writeMask)
 {
     const uint8_t txBuffer[2] = {
@@ -75,27 +102,27 @@ bool SpiDmaBus::ReadRegisters(uint8_t startReg, uint8_t *buffer, uint16_t size, 
         return false;
     }
 
-    const uint8_t command = static_cast<uint8_t>(startReg | spiReadBit);
+    uint8_t txBuffer[32]{};
+    uint8_t rxBuffer[32]{};
 
-    Select();
-
-    HAL_StatusTypeDef status = HAL_SPI_Transmit(m_spi,
-        const_cast<uint8_t*>(&command),
-        1,
-        m_timeoutMs
-    );
-
-    if (status != HAL_OK)
+    if (size + 1U > sizeof(txBuffer))
     {
-        Deselect();
         return false;
     }
 
-    status = HAL_SPI_Receive(m_spi, buffer, size, m_timeoutMs);
+    txBuffer[0] = static_cast<uint8_t>(startReg | spiReadBit);
 
-    Deselect();
+    if (!TransmitReceiveBlocking(txBuffer, rxBuffer, static_cast<uint16_t>(size + 1U)))
+    {
+        return false;
+    }
 
-    return status == HAL_OK;
+    for (uint16_t i = 0; i < size; ++i)
+    {
+        buffer[i] = rxBuffer[i + 1U];
+    }
+
+    return true;
 }
 
 void SpiDmaBus::OnDmaComplete(SPI_HandleTypeDef* spi)

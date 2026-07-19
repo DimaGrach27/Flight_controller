@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 #include "main.h"
 #include "FlightController/RcInput/rcchannelutils.h"
@@ -32,7 +33,7 @@ FlightController::FlightController(
     )
     : m_scheduler()
     , m_debugConsole()
-    , m_dmaBusImu(&spiImuHandler, CS_SPI2_GPIO_Port, CS_SPI2_Pin)
+    , m_dmaBusImu(&spiImuHandler, IMU_CS_GPIO_Port, IMU_CS_Pin)
     , m_stm32UartRxDmaCrsfRc(rcUart)
     , m_stm32UartTxDmaCrsfRc(rcUart)
     , m_uartByteStream(m_stm32UartRxDmaCrsfRc, m_stm32UartTxDmaCrsfRc)
@@ -160,6 +161,8 @@ void FlightController::Init()
 #endif
 
     m_debugConsole.Init();
+
+    HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_SET);
 }
 
 void FlightController::Heartbeat()
@@ -462,6 +465,60 @@ void FlightController::RunDebugCommand(uint8_t command)
 
         case UsbDebugConsoleCommand::IMU_Status:
         {
+#if NOT_USE_HIL
+            const ImuSample& imu = m_sensorsManager.GetImuData();
+
+            char line[160]{};
+            std::snprintf(
+                line,
+                sizeof(line),
+                "IMU sample: valid=%u ts=%lu accel=%.3f %.3f %.3f gyro=%.3f %.3f %.3f temp=%.2f",
+                imu.valid ? 1U : 0U,
+                static_cast<unsigned long>(imu.timestampUs),
+                static_cast<double>(imu.accel_mps2.x),
+                static_cast<double>(imu.accel_mps2.y),
+                static_cast<double>(imu.accel_mps2.z),
+                static_cast<double>(imu.gyro_rads.x),
+                static_cast<double>(imu.gyro_rads.y),
+                static_cast<double>(imu.gyro_rads.z),
+                static_cast<double>(imu.temperature_C));
+            m_debugConsole.WriteLine(line);
+
+#if FC_IMU_USE_MPU6000
+            const IMU_MPU6000::DebugInfo& debug = m_realImuDriver.GetDebugInfo();
+            std::snprintf(
+                line,
+                sizeof(line),
+                "MPU6000: who=0x%02X ok=%lu fail=%lu repeat=%lu rawA=%d %d %d rawG=%d %d %d rawT=%d",
+                debug.whoAmI,
+                static_cast<unsigned long>(debug.readOkCount),
+                static_cast<unsigned long>(debug.readFailCount),
+                static_cast<unsigned long>(debug.repeatedFrameCount),
+                debug.lastRaw.rawAccelX,
+                debug.lastRaw.rawAccelY,
+                debug.lastRaw.rawAccelZ,
+                debug.lastRaw.rawGyroX,
+                debug.lastRaw.rawGyroY,
+                debug.lastRaw.rawGyroZ,
+                debug.lastRaw.temperature);
+            m_debugConsole.WriteLine(line);
+
+            std::snprintf(
+                line,
+                sizeof(line),
+                "MPU6000 cfg: smpl=%02X cfg=%02X gyro=%02X accel=%02X user=%02X pwr1=%02X pwr2=%02X",
+                debug.sampleRateDivider,
+                debug.config,
+                debug.gyroConfig,
+                debug.accelConfig,
+                debug.userControl,
+                debug.powerManagement1,
+                debug.powerManagement2);
+            m_debugConsole.WriteLine(line);
+#endif
+#else
+            m_debugConsole.WriteLine("IMU: HIL mode");
+#endif
             break;
         }
 

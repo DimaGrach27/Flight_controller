@@ -23,6 +23,7 @@ public:
               uint16_t csPin);
 
     bool TransmitReceive(uint8_t* txBuffer, uint8_t* rxBuffer, uint16_t size);
+    bool TransmitReceiveBlocking(uint8_t* txBuffer, uint8_t* rxBuffer, uint16_t size);
     bool WriteRegister(uint8_t reg, uint8_t value, const uint8_t writeMask);
     bool ReadRegisters(uint8_t startReg, uint8_t* buffer, uint16_t size, const uint8_t spiReadBit);
 

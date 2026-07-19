@@ -65,12 +65,16 @@ bool Imu_Sensor::Update(uint32_t nowUs)
 
     if (!m_driver.Read(sample, nowUs))
     {
+        m_data = {};
+        m_data.timestampUs = nowUs;
         m_data.valid = false;
         return false;
     }
 
     if (!ValidateSample(sample))
     {
+        m_data = {};
+        m_data.timestampUs = nowUs;
         m_data.valid = false;
         return false;
     }
