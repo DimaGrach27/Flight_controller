@@ -26,10 +26,9 @@ public:
         Speed speed = Speed::DShot300;
 
         /*
-            Для NUCLEO-F411RE часто timer clock = 84 MHz,
-            якщо APB timer clock налаштований стандартно.
+            0 = auto-detect from the active STM32 clock tree.
         */
-        uint32_t timerClockHz = 84000000U;
+        uint32_t timerClockHz = 0U;
 
         /*
             Bidirectional DShot telemetry тут поки не реалізована.

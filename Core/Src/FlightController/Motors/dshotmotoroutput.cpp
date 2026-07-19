@@ -6,6 +6,43 @@
 
 #include "FlightController/Utils/mathutils.h"
 
+namespace
+{
+    bool IsApb2Timer(const TIM_TypeDef* timer)
+    {
+        return timer == TIM1
+            || timer == TIM8
+#if defined(TIM9)
+            || timer == TIM9
+#endif
+#if defined(TIM10)
+            || timer == TIM10
+#endif
+#if defined(TIM11)
+            || timer == TIM11
+#endif
+            ;
+    }
+
+    uint32_t GetTimerClockHz(const TIM_HandleTypeDef* timer)
+    {
+        if (timer == nullptr)
+        {
+            return 0U;
+        }
+
+        const bool apb2Timer = IsApb2Timer(timer->Instance);
+        const uint32_t pclk = apb2Timer
+            ? HAL_RCC_GetPCLK2Freq()
+            : HAL_RCC_GetPCLK1Freq();
+        const uint32_t prescalerMask = apb2Timer
+            ? (RCC->CFGR & RCC_CFGR_PPRE2)
+            : (RCC->CFGR & RCC_CFGR_PPRE1);
+
+        return prescalerMask == 0U ? pclk : pclk * 2U;
+    }
+}
+
 DshotMotorOutput::DshotMotorOutput(
     TIM_HandleTypeDef* timer,
     const Config& config
@@ -24,23 +61,22 @@ bool DshotMotorOutput::Init()
     }
 
     const uint32_t dshotBitrate = static_cast<uint32_t>(m_config.speed);
+    const uint32_t timerClockHz = m_config.timerClockHz != 0U
+        ? m_config.timerClockHz
+        : GetTimerClockHz(m_timer);
 
-    if (dshotBitrate == 0U || m_config.timerClockHz == 0U)
+    if (dshotBitrate == 0U || timerClockHz == 0U)
     {
         m_initialized = false;
         return false;
     }
 
     /*
-        DShot300:
-            84 MHz / 300 kHz = 280 ticks per bit
-            ARR = 279
-
-        DShot600:
-            84 MHz / 600 kHz = 140 ticks per bit
-            ARR = 139
+        DShot300 on the current F405 TIM8 clock:
+            168 MHz / 300 kHz = 560 ticks per bit
+            ARR = 559
     */
-    m_bitPeriodTicks = m_config.timerClockHz / dshotBitrate;
+    m_bitPeriodTicks = timerClockHz / dshotBitrate;
 
     if (m_bitPeriodTicks < 10U)
     {
@@ -57,7 +93,7 @@ bool DshotMotorOutput::Init()
     m_oneHighTicks = (m_bitPeriodTicks * 6U) / 8U;
 
     /*
-        TIM3 має бути:
+        Timer має бути:
             Prescaler = 0
             ARR = m_bitPeriodTicks - 1
     */
