@@ -31,12 +31,13 @@ FlightController::FlightController(
     // std::array<MotorChannel, 4> motorChannels
     )
     : m_scheduler()
+    , m_debugConsole()
     , m_dmaBusImu(&spiImuHandler, CS_SPI2_GPIO_Port, CS_SPI2_Pin)
     , m_stm32UartRxDmaCrsfRc(rcUart)
     , m_stm32UartTxDmaCrsfRc(rcUart)
     , m_uartByteStream(m_stm32UartRxDmaCrsfRc, m_stm32UartTxDmaCrsfRc)
-    , m_imuLsm6ds3(m_dmaBusImu)
-    , m_imuDriver(m_imuLsm6ds3)
+    , m_realImuDriver(m_dmaBusImu)
+    , m_imuDriver(m_realImuDriver)
     , m_imuSensor(m_imuDriver)
     , m_analogInputs(batterAdc)
     , m_currentSensor()
@@ -55,8 +56,7 @@ FlightController::FlightController(
     // , m_pwmMotorOutput(motorChannels)
     , m_serialUart(serialUart)
     , m_rcUart(rcUart)
-    , m_logger(serialUart)
-    , m_debugConsole()
+    , m_logger(m_debugConsole)
 {
 }
 #else

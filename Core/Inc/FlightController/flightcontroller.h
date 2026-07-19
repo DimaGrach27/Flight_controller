@@ -33,7 +33,7 @@
 #include "Sensors/Battery/currentsensor.h"
 
 #if NOT_USE_HIL
-#include "Sensors/IMU/imu_driver_lsm6ds3.h"
+#include "Sensors/IMU/imu_driver.h"
 #include "Motors/pwmmotoroutput.h"
 #include "Motors/motorchannel.h"
 #include "RcInput/crsfrcreceiver.h"
@@ -125,7 +125,7 @@ private:
     Stm32UartDmaRxStream m_stm32UartRxDmaCrsfRc;
     Stm32UartDmaTxStream m_stm32UartTxDmaCrsfRc;
     UartByteStream m_uartByteStream;
-    IMU_Lsm6ds3 m_imuLsm6ds3;
+    RealImuDriver m_realImuDriver;
 #else
     IMU_Driver_Hil m_imuDriverHil;
     uint32_t m_lastHilEstimatorImuTimestampUs = 0;

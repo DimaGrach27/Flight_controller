@@ -6,8 +6,8 @@
 
 
 #if NOT_USE_HIL
-Imu_Driver::Imu_Driver(IMU_Lsm6ds3& imu_lsm6_ds3)
-    : m_driverReal(imu_lsm6_ds3)
+Imu_Driver::Imu_Driver(RealImuDriver& realImuDriver)
+    : m_driverReal(realImuDriver)
 {
 
 }
