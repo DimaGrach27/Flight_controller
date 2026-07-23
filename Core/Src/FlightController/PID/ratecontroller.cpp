@@ -4,6 +4,8 @@
 
 #include "FlightController/PID/ratecontroller.h"
 
+#include <algorithm>
+
 #include "FlightController/Utils/mathutils.h"
 
 namespace
@@ -24,12 +26,6 @@ RateController::RateController()
 
 void RateController::Init()
 {
-    /*
-        Стартові PID gains дуже обережні.
-
-        Для реального дрона ці значення треба тюнити.
-        Для симулятора вони теж можуть бути іншими.
-    */
     m_rollPid.Init(0.065f, 0.045f, 0.0015f);
     m_pitchPid.Init(0.065f, 0.045f, 0.0015f);
     m_yawPid.Init(0.090f, 0.025f, 0.0000f);
@@ -49,15 +45,46 @@ void RateController::Init()
     Reset();
 }
 
+RateSetpoint RateController::CreateAcroSetpoint(const RcCommand& rcCommand) const
+{
+    RateSetpoint setpoint{};
+
+    if (!rcCommand.valid || rcCommand.failsafe)
+    {
+        return setpoint;
+    }
+
+    setpoint.rollRadS = std::clamp(
+        rcCommand.roll * m_maxRollRate_rads,
+        -m_maxRollRate_rads,
+        m_maxRollRate_rads
+    );
+
+    setpoint.pitchRadS = std::clamp(
+        rcCommand.pitch * m_maxPitchRate_rads,
+        -m_maxPitchRate_rads,
+        m_maxPitchRate_rads
+    );
+
+    setpoint.yawRadS = std::clamp(
+        rcCommand.yaw * m_maxYawRate_rads,
+        -m_maxYawRate_rads,
+        m_maxYawRate_rads
+    );
+
+    setpoint.valid = true;
+    return setpoint;
+}
+
 ControlOutput RateController::Update(
-    const RcCommand& rcCommand,
+    const RateSetpoint& setpoint,
     const VehicleState& state,
     uint32_t nowUs
 )
 {
     ControlOutput output{};
 
-    if (!rcCommand.valid || rcCommand.failsafe || !state.valid)
+    if (!setpoint.valid || !state.valid)
     {
         Reset();
         return output;
@@ -70,50 +97,52 @@ ControlOutput RateController::Update(
         return output;
     }
 
-    const float targetRollRate_rads =
-        rcCommand.roll * m_maxRollRate_rads;
+    const float targetRollRateRadS = std::clamp(
+        setpoint.rollRadS,
+        -m_maxRollRate_rads,
+        m_maxRollRate_rads
+    );
 
-    const float targetPitchRate_rads =
-        rcCommand.pitch * m_maxPitchRate_rads;
+    const float targetPitchRateRadS = std::clamp(
+        setpoint.pitchRadS,
+        -m_maxPitchRate_rads,
+        m_maxPitchRate_rads
+    );
 
-    const float targetYawRate_rads =
-        rcCommand.yaw * m_maxYawRate_rads;
+    const float targetYawRateRadS = std::clamp(
+        setpoint.yawRadS,
+        -m_maxYawRate_rads,
+        m_maxYawRate_rads
+    );
 
     output.roll = m_rollPid.Update(
-        targetRollRate_rads,
+        targetRollRateRadS,
         state.rollRateRadS,
         dt
     );
 
     output.pitch = m_pitchPid.Update(
-        targetPitchRate_rads,
+        targetPitchRateRadS,
         state.pitchRateRadS,
         dt
     );
 
     output.yaw = m_yawPid.Update(
-        targetYawRate_rads,
+        targetYawRateRadS,
         state.yawRateRadS,
         dt
     );
 
-    constexpr float ROLL_PITCH_DEADBAND = 0.015f;
-    constexpr float YAW_DEADBAND = 0.005f;
+    constexpr float RollPitchDeadband = 0.015f;
+    constexpr float YawDeadband = 0.005f;
 
-    output.roll = MathUtils::ApplyDeadband(output.roll, ROLL_PITCH_DEADBAND);
-    output.pitch = MathUtils::ApplyDeadband(output.pitch, ROLL_PITCH_DEADBAND);
-    output.yaw = MathUtils::ApplyDeadband(output.yaw, YAW_DEADBAND);
+    output.roll = MathUtils::ApplyDeadband(output.roll, RollPitchDeadband);
+    output.pitch = MathUtils::ApplyDeadband(output.pitch, RollPitchDeadband);
+    output.yaw = MathUtils::ApplyDeadband(output.yaw, YawDeadband);
 
-    // output.roll = -output.roll;
-    // output.pitch = -output.pitch;
-    // output.yaw = -output.yaw;
-    // output.roll = 0.0f;
-    // output.pitch = 0.0f;
-    // output.yaw = 0.02f;
-
-    m_rateData.targetRollRad = targetRollRate_rads;
-    m_rateData.targetPitchRad = targetPitchRate_rads;
-    m_rateData.targetYawRad = targetYawRate_rads;
+    m_rateData.targetRollRad = targetRollRateRadS;
+    m_rateData.targetPitchRad = targetPitchRateRadS;
+    m_rateData.targetYawRad = targetYawRateRadS;
 
     return output;
 }
@@ -126,9 +155,10 @@ void RateController::Reset()
 
     m_lastUpdateUs = 0;
     m_hasLastUpdate = false;
+    m_rateData = {};
 }
 
-const RateData & RateController::GetRateData()
+const RateData& RateController::GetRateData()
 {
     return m_rateData;
 }
