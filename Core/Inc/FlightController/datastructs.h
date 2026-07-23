@@ -113,6 +113,15 @@ struct VehicleState
     bool valid = false;
 };
 
+struct RateSetpoint
+{
+    float rollRadS = 0.0f;
+    float pitchRadS = 0.0f;
+    float yawRadS = 0.0f;
+
+    bool valid = false;
+};
+
 struct RateData
 {
     float targetRollRad = 0.0f;
