@@ -19,6 +19,7 @@
 #include "Motors/dshotmotoroutput.h"
 #include "Motors/imotoroutput.h"
 #include "Motors/mixer.h"
+#include "PID/anglecontroller.h"
 #include "PID/ratecontroller.h"
 #include "Protocols/stm32spibus.h"
 #include "Protocols/stm32uartdmarxstream.h"
@@ -136,6 +137,7 @@ private:
     BatteryMonitor m_batteryMonitor;
     FlightModeManager m_flightModeManager;
 
+    AngleController m_angleController;
     RateController m_rateController;
     Mixer m_mixer;
 
