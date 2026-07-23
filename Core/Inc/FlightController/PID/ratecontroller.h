@@ -16,8 +16,10 @@ public:
 
     void Init();
 
+    RateSetpoint CreateAcroSetpoint(const RcCommand& rcCommand) const;
+
     ControlOutput Update(
-        const RcCommand& rcCommand,
+        const RateSetpoint& setpoint,
         const VehicleState& state,
         uint32_t nowUs
     );
