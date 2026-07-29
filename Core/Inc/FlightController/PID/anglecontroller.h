@@ -1,5 +1,5 @@
 //
-// Created by Dmytro Hrachov on 11.05.2026.
+// Created by Dmytro Hrachov on 29.07.2026.
 //
 #pragma once
 
@@ -7,30 +7,23 @@
 
 #include "pidcontroller.h"
 #include "FlightController/datastructs.h"
-#include "FlightController/structs.h"
 
-class RateController
+class AngleController
 {
 public:
-    RateController();
+    AngleController();
 
     void Init();
 
-    ControlOutput Update(
+    RateTargets Update(
         const RcCommand& rcCommand,
-        const VehicleState& state,
-        uint32_t nowUs
-    );
-
-    ControlOutput UpdateRateTargets(
-        const RateTargets& rateTargets,
         const VehicleState& state,
         uint32_t nowUs
     );
 
     void Reset();
 
-    const RateData& GetRateData();
+    const AngleData& GetAngleData() const;
 
 private:
     float ComputeDtSeconds(uint32_t nowUs);
@@ -38,14 +31,15 @@ private:
 private:
     PidController m_rollPid;
     PidController m_pitchPid;
-    PidController m_yawPid;
 
     uint32_t m_lastUpdateUs = 0;
     bool m_hasLastUpdate = false;
 
-    float m_maxRollRate_rads = 0.0f;
-    float m_maxPitchRate_rads = 0.0f;
-    float m_maxYawRate_rads = 0.0f;
+    float m_maxRollAngleRad = 0.0f;
+    float m_maxPitchAngleRad = 0.0f;
+    float m_maxRollRateRadS = 0.0f;
+    float m_maxPitchRateRadS = 0.0f;
+    float m_maxYawRateRadS = 0.0f;
 
     int m_rollTargetSign = 1;
     int m_pitchTargetSign = 1;
@@ -53,7 +47,6 @@ private:
 
     int m_rollFeedbackSign = 1;
     int m_pitchFeedbackSign = 1;
-    int m_yawFeedbackSign = 1;
 
-    RateData m_rateData;
+    AngleData m_angleData;
 };

@@ -51,6 +51,7 @@ FlightController::FlightController(
     , m_stateEstimator()
     , m_batteryMonitor(4)
     , m_flightModeManager()
+    , m_angleController()
     , m_rateController()
     , m_mixer()
     , m_dshotMotorOutput(&dshotTimer, m_dshotMotorOutputConfig)
@@ -73,6 +74,7 @@ FlightController::FlightController(UART_HandleTypeDef& serialUart, ADC_HandleTyp
     , m_rcInput(m_rcReceiver)
     , m_stateEstimator()
     , m_flightModeManager()
+    , m_angleController()
     , m_rateController()
     , m_mixer()
     , m_hilMotorOutput(m_debugConsole)
@@ -147,6 +149,7 @@ void FlightController::Init()
 #endif
 
     m_flightModeManager.Init();
+    m_angleController.Init();
     m_rateController.Init();
     m_mixer.Init();
 
@@ -618,6 +621,7 @@ void FlightController::StopMotors()
 void FlightController::StopMotors(const ControlStopReason reason)
 {
     m_rateController.Reset();
+    m_angleController.Reset();
     m_lastControlOutput = {};
     m_lastMotorCommand = {};
     m_lastControlStopReason = reason;
@@ -704,7 +708,8 @@ void FlightController::RunControlLoop(uint32_t nowUs)
     }
     else
     {
-        control = m_rateController.UpdateAngleMode(rcCommand, state, nowUs);
+        const RateTargets rateTargets = m_angleController.Update(rcCommand, state, nowUs);
+        control = m_rateController.UpdateRateTargets(rateTargets, state, nowUs);
     }
 
     m_lastControlOutput = control;

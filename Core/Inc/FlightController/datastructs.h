@@ -113,6 +113,14 @@ struct VehicleState
     bool valid = false;
 };
 
+struct RateTargets
+{
+    float rollRateRadS = 0.0f;
+    float pitchRateRadS = 0.0f;
+    float yawRateRadS = 0.0f;
+    bool valid = false;
+};
+
 struct RateData
 {
     float targetRollRad = 0.0f;
@@ -128,4 +136,18 @@ struct RateData
     PidDebugData rollPid = {};
     PidDebugData pitchPid = {};
     PidDebugData yawPid = {};
+};
+
+struct AngleData
+{
+    float targetRollRad = 0.0f;
+    float targetPitchRad = 0.0f;
+
+    float measuredRollRad = 0.0f;
+    float measuredPitchRad = 0.0f;
+
+    float dt = 0.0f;
+
+    PidDebugData rollPid = {};
+    PidDebugData pitchPid = {};
 };

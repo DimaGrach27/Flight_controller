@@ -13,9 +13,6 @@ namespace
     constexpr float MaxRollRate_dps = 360.0f;
     constexpr float MaxPitchRate_dps = 360.0f;
     constexpr float MaxYawRate_dps = 180.0f;
-    constexpr float MaxAngleModeRoll_deg = 25.0f;
-    constexpr float MaxAngleModePitch_deg = 25.0f;
-    constexpr float AngleModeRateGain = 4.0f;
 
     constexpr float MinDtSeconds = 0.000001f;
     constexpr float MaxDtSeconds = 0.05f;
@@ -107,77 +104,28 @@ ControlOutput RateController::Update(
     const float targetYawRate_rads =
         rcCommand.yaw * m_yawTargetSign * m_maxYawRate_rads;
 
-    return UpdateRateTargets(
-        targetRollRate_rads,
-        targetPitchRate_rads,
-        targetYawRate_rads,
-        state,
-        nowUs
-    );
+    RateTargets rateTargets{};
+    rateTargets.rollRateRadS = targetRollRate_rads;
+    rateTargets.pitchRateRadS = targetPitchRate_rads;
+    rateTargets.yawRateRadS = targetYawRate_rads;
+    rateTargets.valid = true;
+
+    return UpdateRateTargets(rateTargets, state, nowUs);
 }
 
-ControlOutput RateController::UpdateAngleMode(
-    const RcCommand& rcCommand,
+ControlOutput RateController::UpdateRateTargets(
+    const RateTargets& rateTargets,
     const VehicleState& state,
     uint32_t nowUs
 )
 {
     ControlOutput output{};
 
-    if (!rcCommand.valid || rcCommand.failsafe || !state.valid)
+    if (!rateTargets.valid || !state.valid)
     {
         Reset();
         return output;
     }
-
-    const float maxRollAngle_rads = MaxAngleModeRoll_deg * DegToRad;
-    const float maxPitchAngle_rads = MaxAngleModePitch_deg * DegToRad;
-
-    const float targetRollAngle_rads =
-        rcCommand.roll * m_rollTargetSign * maxRollAngle_rads;
-
-    const float targetPitchAngle_rads =
-        rcCommand.pitch * m_pitchTargetSign * maxPitchAngle_rads;
-
-    const float measuredRollAngle_rads =
-        state.rollRad * m_rollFeedbackSign;
-
-    const float measuredPitchAngle_rads =
-        state.pitchRad * m_pitchFeedbackSign;
-
-    const float targetRollRate_rads = MathUtils::Clamp(
-        (targetRollAngle_rads - measuredRollAngle_rads) * AngleModeRateGain,
-        -m_maxRollRate_rads,
-        m_maxRollRate_rads
-    );
-
-    const float targetPitchRate_rads = MathUtils::Clamp(
-        (targetPitchAngle_rads - measuredPitchAngle_rads) * AngleModeRateGain,
-        -m_maxPitchRate_rads,
-        m_maxPitchRate_rads
-    );
-
-    const float targetYawRate_rads =
-        rcCommand.yaw * m_yawTargetSign * m_maxYawRate_rads;
-
-    return UpdateRateTargets(
-        targetRollRate_rads,
-        targetPitchRate_rads,
-        targetYawRate_rads,
-        state,
-        nowUs
-    );
-}
-
-ControlOutput RateController::UpdateRateTargets(
-    const float targetRollRate_rads,
-    const float targetPitchRate_rads,
-    const float targetYawRate_rads,
-    const VehicleState& state,
-    uint32_t nowUs
-)
-{
-    ControlOutput output{};
 
     const float dt = ComputeDtSeconds(nowUs);
 
@@ -196,28 +144,28 @@ ControlOutput RateController::UpdateRateTargets(
     const float measuredYawRate_rads =
         state.yawRateRadS * m_yawFeedbackSign;
 
-    m_rateData.targetRollRad = targetRollRate_rads;
-    m_rateData.targetPitchRad = targetPitchRate_rads;
-    m_rateData.targetYawRad = targetYawRate_rads;
+    m_rateData.targetRollRad = rateTargets.rollRateRadS;
+    m_rateData.targetPitchRad = rateTargets.pitchRateRadS;
+    m_rateData.targetYawRad = rateTargets.yawRateRadS;
     m_rateData.measuredRollRad = measuredRollRate_rads;
     m_rateData.measuredPitchRad = measuredPitchRate_rads;
     m_rateData.measuredYawRad = measuredYawRate_rads;
     m_rateData.dt = dt;
 
     output.roll = m_rollPid.Update(
-        targetRollRate_rads,
+        rateTargets.rollRateRadS,
         measuredRollRate_rads,
         dt
     );
 
     output.pitch = m_pitchPid.Update(
-        targetPitchRate_rads,
+        rateTargets.pitchRateRadS,
         measuredPitchRate_rads,
         dt
     );
 
     output.yaw = m_yawPid.Update(
-        targetYawRate_rads,
+        rateTargets.yawRateRadS,
         measuredYawRate_rads,
         dt
     );
