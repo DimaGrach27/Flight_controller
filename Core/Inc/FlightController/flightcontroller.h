@@ -7,6 +7,8 @@
 #include <cstdint>
 
 #include "crsftelemetry.h"
+#include "Config/flashconfigstorage.h"
+#include "Config/pidconfig.h"
 #include "DebugLogs/logger.h"
 #include "main.h"
 
@@ -80,6 +82,7 @@ public:
     void OnUsbReceived(const uint8_t* data, uint32_t size);
     void OnTransmitUsbComplete();
     void RunDebugCommand(uint8_t command);
+    void RunDebugTextCommand(const char* command);
 
     void SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi);
     void SPI_ErrorCallback(SPI_HandleTypeDef* hspi);
@@ -113,6 +116,13 @@ private:
     void MavlinkHandleMessage(const mavlink_message_t* msg);
     void HandleHilSensor(const mavlink_message_t* msg);
     void HandleRcCommand(const mavlink_message_t* msg);
+
+    void LoadPidConfig();
+    void ApplyPidConfig();
+    void ShowPidConfig();
+    void HandlePidCommand(const char* command);
+    bool SetPidAxis(const char* group, const char* axis, float kp, float ki, float kd);
+    void ResetPidConfigToDefaults();
 
 private:
     Scheduler m_scheduler;
@@ -157,6 +167,9 @@ private:
 #endif
 
     FlightModeManager m_flightModeManager;
+
+    FlashConfigStorage m_flashConfigStorage;
+    PidConfig m_pidConfig{};
 
     AngleController m_angleController;
     RateController m_rateController;

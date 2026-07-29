@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 #include "main.h"
 #include "FlightController/RcInput/rcchannelutils.h"
@@ -151,6 +152,7 @@ void FlightController::Init()
     m_flightModeManager.Init();
     m_angleController.Init();
     m_rateController.Init();
+    LoadPidConfig();
     m_mixer.Init();
 
 #if NOT_USE_HIL
@@ -191,6 +193,12 @@ void FlightController::Update()
 
 #if !NOT_USE_HIL
     m_debugConsole.Update(nowUs);
+#else
+    const FlightModeState& state = m_flightModeManager.GetState();
+    if (state.armState != ArmState::Armed)
+    {
+        m_debugConsole.Update(nowUs);
+    }
 #endif
 
     m_scheduler.Update(nowUs);
@@ -552,6 +560,210 @@ void FlightController::RunDebugCommand(uint8_t command)
         default:
             break;
     }
+}
+
+void FlightController::RunDebugTextCommand(const char* command)
+{
+    if (command == nullptr)
+    {
+        return;
+    }
+
+    if (std::strcmp(command, "pid") == 0 || std::strncmp(command, "pid ", 4) == 0)
+    {
+        HandlePidCommand(command);
+    }
+}
+
+void FlightController::LoadPidConfig()
+{
+    ResetPidConfigToDefaults();
+
+    PidConfig storedConfig{};
+    if (m_flashConfigStorage.LoadPidConfig(storedConfig) == FlashConfigStorage::Status::Ok)
+    {
+        m_pidConfig = storedConfig;
+    }
+
+    ApplyPidConfig();
+}
+
+void FlightController::ApplyPidConfig()
+{
+    m_angleController.ApplyPidConfig(m_pidConfig);
+    m_rateController.ApplyPidConfig(m_pidConfig);
+}
+
+void FlightController::ShowPidConfig()
+{
+    char line[128]{};
+
+    std::snprintf(
+        line,
+        sizeof(line),
+        "rate roll: %.6f %.6f %.6f",
+        static_cast<double>(m_pidConfig.rateRoll.kp),
+        static_cast<double>(m_pidConfig.rateRoll.ki),
+        static_cast<double>(m_pidConfig.rateRoll.kd));
+    m_debugConsole.WriteLine(line);
+
+    std::snprintf(
+        line,
+        sizeof(line),
+        "rate pitch: %.6f %.6f %.6f",
+        static_cast<double>(m_pidConfig.ratePitch.kp),
+        static_cast<double>(m_pidConfig.ratePitch.ki),
+        static_cast<double>(m_pidConfig.ratePitch.kd));
+    m_debugConsole.WriteLine(line);
+
+    std::snprintf(
+        line,
+        sizeof(line),
+        "rate yaw: %.6f %.6f %.6f",
+        static_cast<double>(m_pidConfig.rateYaw.kp),
+        static_cast<double>(m_pidConfig.rateYaw.ki),
+        static_cast<double>(m_pidConfig.rateYaw.kd));
+    m_debugConsole.WriteLine(line);
+
+    std::snprintf(
+        line,
+        sizeof(line),
+        "angle roll: %.6f %.6f %.6f",
+        static_cast<double>(m_pidConfig.angleRoll.kp),
+        static_cast<double>(m_pidConfig.angleRoll.ki),
+        static_cast<double>(m_pidConfig.angleRoll.kd));
+    m_debugConsole.WriteLine(line);
+
+    std::snprintf(
+        line,
+        sizeof(line),
+        "angle pitch: %.6f %.6f %.6f",
+        static_cast<double>(m_pidConfig.anglePitch.kp),
+        static_cast<double>(m_pidConfig.anglePitch.ki),
+        static_cast<double>(m_pidConfig.anglePitch.kd));
+    m_debugConsole.WriteLine(line);
+}
+
+void FlightController::HandlePidCommand(const char* command)
+{
+    if (std::strcmp(command, "pid") == 0 || std::strcmp(command, "pid show") == 0)
+    {
+        ShowPidConfig();
+        return;
+    }
+
+    if (std::strcmp(command, "pid save") == 0)
+    {
+        if (m_flightModeManager.GetState().armState == ArmState::Armed)
+        {
+            m_debugConsole.WriteLine("PID save denied: controller is armed");
+            return;
+        }
+
+        const FlashConfigStorage::Status status = m_flashConfigStorage.SavePidConfig(m_pidConfig);
+        m_debugConsole.WriteLine(status == FlashConfigStorage::Status::Ok
+            ? "PID config saved to flash"
+            : "PID config save failed");
+        return;
+    }
+
+    if (std::strcmp(command, "pid load") == 0)
+    {
+        LoadPidConfig();
+        m_debugConsole.WriteLine("PID config loaded");
+        ShowPidConfig();
+        return;
+    }
+
+    if (std::strcmp(command, "pid defaults") == 0)
+    {
+        ResetPidConfigToDefaults();
+        ApplyPidConfig();
+        m_debugConsole.WriteLine("PID defaults applied to RAM");
+        ShowPidConfig();
+        return;
+    }
+
+    char action[8]{};
+    char group[8]{};
+    char axis[8]{};
+    float kp = 0.0f;
+    float ki = 0.0f;
+    float kd = 0.0f;
+
+    if (std::sscanf(command, "pid %7s %7s %7s %f %f %f", action, group, axis, &kp, &ki, &kd) == 6 &&
+        std::strcmp(action, "set") == 0)
+    {
+        if (SetPidAxis(group, axis, kp, ki, kd))
+        {
+            ApplyPidConfig();
+            m_debugConsole.WriteLine("PID updated in RAM; use 'pid save' to persist");
+        }
+        else
+        {
+            m_debugConsole.WriteLine("PID set failed: use rate roll|pitch|yaw or angle roll|pitch");
+        }
+
+        return;
+    }
+
+    m_debugConsole.WriteLine("Usage:");
+    m_debugConsole.WriteLine("  pid show");
+    m_debugConsole.WriteLine("  pid set <rate|angle> <axis> <kp> <ki> <kd>");
+    m_debugConsole.WriteLine("  pid save");
+    m_debugConsole.WriteLine("  pid load");
+    m_debugConsole.WriteLine("  pid defaults");
+}
+
+bool FlightController::SetPidAxis(const char* group, const char* axis, float kp, float ki, float kd)
+{
+    PidAxisGains* gains = nullptr;
+
+    if (std::strcmp(group, "rate") == 0)
+    {
+        if (std::strcmp(axis, "roll") == 0)
+        {
+            gains = &m_pidConfig.rateRoll;
+        }
+        else if (std::strcmp(axis, "pitch") == 0)
+        {
+            gains = &m_pidConfig.ratePitch;
+        }
+        else if (std::strcmp(axis, "yaw") == 0)
+        {
+            gains = &m_pidConfig.rateYaw;
+        }
+    }
+    else if (std::strcmp(group, "angle") == 0)
+    {
+        if (std::strcmp(axis, "roll") == 0)
+        {
+            gains = &m_pidConfig.angleRoll;
+        }
+        else if (std::strcmp(axis, "pitch") == 0)
+        {
+            gains = &m_pidConfig.anglePitch;
+        }
+    }
+
+    if (gains == nullptr || !std::isfinite(kp) || !std::isfinite(ki) || !std::isfinite(kd))
+    {
+        return false;
+    }
+
+    gains->kp = kp;
+    gains->ki = ki;
+    gains->kd = kd;
+    return true;
+}
+
+void FlightController::ResetPidConfigToDefaults()
+{
+    m_pidConfig = m_rateController.GetDefaultPidConfig();
+
+    const PidConfig angleDefaults = m_angleController.GetDefaultPidConfig();
+    m_pidConfig.angleRoll = angleDefaults.angleRoll;
+    m_pidConfig.anglePitch = angleDefaults.anglePitch;
 }
 
 void FlightController::SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)

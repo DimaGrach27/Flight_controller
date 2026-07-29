@@ -6,6 +6,7 @@
 #include <cstdint>
 
 #include "pidcontroller.h"
+#include "FlightController/Config/pidconfig.h"
 #include "FlightController/datastructs.h"
 #include "FlightController/structs.h"
 
@@ -31,6 +32,9 @@ public:
     void Reset();
 
     const RateData& GetRateData();
+
+    PidConfig GetDefaultPidConfig() const;
+    void ApplyPidConfig(const PidConfig& config);
 
 private:
     float ComputeDtSeconds(uint32_t nowUs);

@@ -16,6 +16,16 @@ namespace
 
     constexpr float MinDtSeconds = 0.000001f;
     constexpr float MaxDtSeconds = 0.05f;
+
+#if NOT_USE_HIL
+    constexpr PidAxisGains DefaultRateRoll{0.065f, 0.045f, 0.0015f};
+    constexpr PidAxisGains DefaultRatePitch{0.065f, 0.045f, 0.0015f};
+    constexpr PidAxisGains DefaultRateYaw{0.090f, 0.025f, 0.0000f};
+#else
+    constexpr PidAxisGains DefaultRateRoll{0.050f, 0.0f, 0.0f};
+    constexpr PidAxisGains DefaultRatePitch{0.050f, 0.0f, 0.0f};
+    constexpr PidAxisGains DefaultRateYaw{0.020f, 0.0f, 0.0f};
+#endif
 }
 
 RateController::RateController()
@@ -31,9 +41,9 @@ void RateController::Init()
         Для симулятора вони теж можуть бути іншими.
     */
 #if NOT_USE_HIL
-    m_rollPid.Init(0.065f, 0.045f, 0.0015f);
-    m_pitchPid.Init(0.065f, 0.045f, 0.0015f);
-    m_yawPid.Init(0.090f, 0.025f, 0.0000f);
+    m_rollPid.Init(DefaultRateRoll.kp, DefaultRateRoll.ki, DefaultRateRoll.kd);
+    m_pitchPid.Init(DefaultRatePitch.kp, DefaultRatePitch.ki, DefaultRatePitch.kd);
+    m_yawPid.Init(DefaultRateYaw.kp, DefaultRateYaw.ki, DefaultRateYaw.kd);
 
     m_rollPid.SetOutputLimit(-0.65f, 0.65f);
     m_pitchPid.SetOutputLimit(-0.65f, 0.65f);
@@ -43,9 +53,9 @@ void RateController::Init()
     m_pitchPid.SetIntegralLimit(-0.25f, 0.25f);
     m_yawPid.SetIntegralLimit(-0.15f, 0.15f);
 #else
-    m_rollPid.Init(0.050f, 0.0f, 0.0f);
-    m_pitchPid.Init(0.050f, 0.0f, 0.0f);
-    m_yawPid.Init(0.020f, 0.0f, 0.0f);
+    m_rollPid.Init(DefaultRateRoll.kp, DefaultRateRoll.ki, DefaultRateRoll.kd);
+    m_pitchPid.Init(DefaultRatePitch.kp, DefaultRatePitch.ki, DefaultRatePitch.kd);
+    m_yawPid.Init(DefaultRateYaw.kp, DefaultRateYaw.ki, DefaultRateYaw.kd);
 
     m_rollPid.SetOutputLimit(-0.16f, 0.16f);
     m_pitchPid.SetOutputLimit(-0.16f, 0.16f);
@@ -210,6 +220,23 @@ void RateController::Reset()
 const RateData & RateController::GetRateData()
 {
     return m_rateData;
+}
+
+PidConfig RateController::GetDefaultPidConfig() const
+{
+    PidConfig config{};
+    config.rateRoll = DefaultRateRoll;
+    config.ratePitch = DefaultRatePitch;
+    config.rateYaw = DefaultRateYaw;
+    return config;
+}
+
+void RateController::ApplyPidConfig(const PidConfig& config)
+{
+    m_rollPid.SetGains(config.rateRoll.kp, config.rateRoll.ki, config.rateRoll.kd);
+    m_pitchPid.SetGains(config.ratePitch.kp, config.ratePitch.ki, config.ratePitch.kd);
+    m_yawPid.SetGains(config.rateYaw.kp, config.rateYaw.ki, config.rateYaw.kd);
+    Reset();
 }
 
 float RateController::ComputeDtSeconds(uint32_t nowUs)

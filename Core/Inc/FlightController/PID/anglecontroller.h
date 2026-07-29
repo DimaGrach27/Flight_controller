@@ -6,6 +6,7 @@
 #include <cstdint>
 
 #include "pidcontroller.h"
+#include "FlightController/Config/pidconfig.h"
 #include "FlightController/datastructs.h"
 
 class AngleController
@@ -24,6 +25,9 @@ public:
     void Reset();
 
     const AngleData& GetAngleData() const;
+
+    PidConfig GetDefaultPidConfig() const;
+    void ApplyPidConfig(const PidConfig& config);
 
 private:
     float ComputeDtSeconds(uint32_t nowUs);

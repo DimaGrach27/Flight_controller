@@ -230,7 +230,18 @@ void UsbDebugConsole::ProcessCommand(const char* command)
         WriteLine("  status");
         WriteLine("  imu");
         WriteLine("  battery");
+        WriteLine("  pid show");
+        WriteLine("  pid set <rate|angle> <axis> <kp> <ki> <kd>");
+        WriteLine("  pid save");
+        WriteLine("  pid load");
+        WriteLine("  pid defaults");
         WriteLine("  reboot");
+        return;
+    }
+
+    if (std::strcmp(command, "pid") == 0 || std::strncmp(command, "pid ", 4) == 0)
+    {
+        UsbDebugConsole_RunDebugTextCommand(command);
         return;
     }
 

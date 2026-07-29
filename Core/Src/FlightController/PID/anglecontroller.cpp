@@ -17,6 +17,8 @@ namespace
     constexpr float MaxAngleModePitch_deg = 25.0f;
 
     constexpr float AngleModeRateGain = 4.0f;
+    constexpr PidAxisGains DefaultAngleRoll{AngleModeRateGain, 0.0f, 0.0f};
+    constexpr PidAxisGains DefaultAnglePitch{AngleModeRateGain, 0.0f, 0.0f};
 
     constexpr float MinDtSeconds = 0.000001f;
     constexpr float MaxDtSeconds = 0.05f;
@@ -28,8 +30,8 @@ AngleController::AngleController()
 
 void AngleController::Init()
 {
-    m_rollPid.Init(AngleModeRateGain, 0.0f, 0.0f);
-    m_pitchPid.Init(AngleModeRateGain, 0.0f, 0.0f);
+    m_rollPid.Init(DefaultAngleRoll.kp, DefaultAngleRoll.ki, DefaultAngleRoll.kd);
+    m_pitchPid.Init(DefaultAnglePitch.kp, DefaultAnglePitch.ki, DefaultAnglePitch.kd);
 
     m_maxRollAngleRad = MaxAngleModeRoll_deg * DegToRad;
     m_maxPitchAngleRad = MaxAngleModePitch_deg * DegToRad;
@@ -136,6 +138,21 @@ void AngleController::Reset()
 const AngleData& AngleController::GetAngleData() const
 {
     return m_angleData;
+}
+
+PidConfig AngleController::GetDefaultPidConfig() const
+{
+    PidConfig config{};
+    config.angleRoll = DefaultAngleRoll;
+    config.anglePitch = DefaultAnglePitch;
+    return config;
+}
+
+void AngleController::ApplyPidConfig(const PidConfig& config)
+{
+    m_rollPid.SetGains(config.angleRoll.kp, config.angleRoll.ki, config.angleRoll.kd);
+    m_pitchPid.SetGains(config.anglePitch.kp, config.anglePitch.ki, config.anglePitch.kd);
+    Reset();
 }
 
 float AngleController::ComputeDtSeconds(uint32_t nowUs)

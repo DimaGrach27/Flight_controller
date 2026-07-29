@@ -38,6 +38,7 @@ void UsbDebugConsole_OnReceived(uint8_t* data, uint32_t size);
 void UsbDebugConsole_OnTransmitComplete();
 
 void UsbDebugConsole_RunDebugCommand(uint8_t command);
+void UsbDebugConsole_RunDebugTextCommand(const char* command);
 //debug block end
 #ifdef __cplusplus
 }

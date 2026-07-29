@@ -103,6 +103,11 @@ extern "C" void UsbDebugConsole_RunDebugCommand(uint8_t command)
     GetFlightController(&g_FlightControllerHandler)->RunDebugCommand(command);
 }
 
+extern "C" void UsbDebugConsole_RunDebugTextCommand(const char* command)
+{
+    GetFlightController(&g_FlightControllerHandler)->RunDebugTextCommand(command);
+}
+
 //INTERAPT CALLBACKS from HAL
 extern "C" void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
