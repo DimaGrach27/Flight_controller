@@ -13,12 +13,12 @@ public:
         Vector3 tempAccel = raw;
         Vector3 accel = {};
 
-        accel.x = tempAccel.y;
-        accel.y = tempAccel.x;
+        accel.x = tempAccel.x;
+        accel.y = tempAccel.y;
         accel.z = tempAccel.z;
 
-        accel.x *= -1;
-        accel.y *= -1;
+        accel.x *= 1;
+        accel.y *= 1;
         accel.z *= 1;
 
         return accel;

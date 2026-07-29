@@ -36,6 +36,13 @@ MotorCommand Mixer::Mix(float throttle, const ControlOutput& control) const
 
     MotorCommand motors{};
 
+    // motors.m1 = 0.05f;
+    // motors.m2 = 0.00f;
+    // motors.m3 = 0.05f;
+    // motors.m4 = 0.00f;
+    //
+    // return motors;
+
     /*
         Motor layout:
 
@@ -75,9 +82,9 @@ MotorCommand Mixer::Mix(float throttle, const ControlOutput& control) const
     float correction[4] =
     {
         -roll + pitch + yaw,
-         roll - pitch + yaw,
+        -roll - pitch - yaw,
          roll + pitch - yaw,
-        -roll - pitch - yaw
+         roll - pitch + yaw
     };
 
     //find max correction
