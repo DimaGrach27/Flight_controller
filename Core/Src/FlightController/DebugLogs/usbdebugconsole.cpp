@@ -9,7 +9,6 @@
 
 #include "FlightController/flightcontroller_entry.h"
 #include "FlightController/globaldef.h"
-#include "FlightController/Utils/fixedstring.h"
 
 extern "C"
 {
@@ -27,9 +26,9 @@ void UsbDebugConsole::Init()
     m_commandLength = 0;
     m_txBusy = false;
 
-    HAL_Delay(1000);
     WriteLine("\r\nUSB debug console ready");
     WriteLine("Type: help");
+    Write("> ");
 }
 
 void UsbDebugConsole::Update(uint32_t nowUs)
@@ -62,7 +61,6 @@ void UsbDebugConsole::OnUsbReceived(const uint8_t* data, uint32_t size)
 void UsbDebugConsole::OnTransmitComplete()
 {
     m_txBusy = false;
-    TryStartTransmit();
 }
 
 void UsbDebugConsole::Write(const char* text)
@@ -114,54 +112,33 @@ void UsbDebugConsole::WriteBytes(const uint8_t* data, uint16_t size)
 
 void UsbDebugConsole::ShowFlightStatus(const FlightModeState &state)
 {
-    FixedString128 message;
+    char line[160]{};
+    std::snprintf(
+        line,
+        sizeof(line),
+        "Status: FM=%s ARM=%s FS=%u CanArm=%u",
+        EnumToChar_FlightMode(state.mode),
+        EnumToChar_ArmState(state.armState),
+        state.failsafe ? 1U : 0U,
+        state.canArm ? 1U : 0U);
 
-    message.Append("Status: \r");
-    message.Append("FM: ");
-    message.Append(EnumToChar_FlightMode(state.mode));
-    message.Append('\r');
-    message.Append("ARM: ");
-    message.Append(EnumToChar_ArmState(state.armState));
-    message.Append('\r');
-    message.Append("FS: ");
-    message.Append(static_cast<char>('0' + state.failsafe));
-    message.Append('\r');
-    message.Append("CanArm: ");
-    message.Append(static_cast<char>('0' + state.canArm));
-    message.Append('\n');
-    message.Append('\r');
-
-    if (!message.IsEmpty())
-    {
-        Write(message.CStr());
-    }
+    WriteLine(line);
 }
 
 void UsbDebugConsole::ShowBatteryStatus(const BatteryData &batteryData)
 {
-    FixedString128 message;
+    char line[160]{};
+    std::snprintf(
+        line,
+        sizeof(line),
+        "Battery: %.2f V; %.2f A; %u%%; cell %.2f V; status=%s",
+        static_cast<double>(batteryData.voltage_V),
+        static_cast<double>(batteryData.current_A),
+        static_cast<unsigned>(batteryData.percentage),
+        static_cast<double>(batteryData.cellVoltage_V),
+        EnumToChar_BatteryState(batteryData.state));
 
-    message.Append("Battery: \r");
-    message.Append(static_cast<char>('0' + batteryData.voltage_V));
-    message.Append(" V; ");
-    message.Append(static_cast<char>('0' + batteryData.current_A));
-    message.Append(" A\r");
-    message.Append("Pers: ");
-    message.Append(static_cast<char>('0' + batteryData.percentage));
-    message.Append('\r');
-    message.Append("Cell: ");
-    message.Append(static_cast<char>('0' + batteryData.cellVoltage_V));
-    message.Append(" V;");
-    message.Append('\r');
-    message.Append("Status: ");
-    message.Append(EnumToChar_BatteryState(batteryData.state));
-    message.Append('\n');
-    message.Append('\r');
-
-    if (!message.IsEmpty())
-    {
-        Write(message.CStr());
-    }
+    WriteLine(line);
 }
 
 void UsbDebugConsole::ProcessRx()
@@ -174,11 +151,6 @@ void UsbDebugConsole::ProcessRx()
         flight_controller_MavlinkParseByte(byte);
         continue;
 #endif
-
-        if (flight_controller_MavlinkParseByte(byte))
-        {
-            continue;
-        }
 
         if (byte == '\r' || byte == '\n')
         {
@@ -230,6 +202,9 @@ void UsbDebugConsole::ProcessCommand(const char* command)
         WriteLine("  status");
         WriteLine("  imu");
         WriteLine("  battery");
+        WriteLine("  log status");
+        WriteLine("  log start");
+        WriteLine("  log stop");
         WriteLine("  pid show");
         WriteLine("  pid set <rate|angle> <axis> <kp> <ki> <kd>");
         WriteLine("  pid save");
@@ -240,6 +215,12 @@ void UsbDebugConsole::ProcessCommand(const char* command)
     }
 
     if (std::strcmp(command, "pid") == 0 || std::strncmp(command, "pid ", 4) == 0)
+    {
+        UsbDebugConsole_RunDebugTextCommand(command);
+        return;
+    }
+
+    if (std::strcmp(command, "log") == 0 || std::strncmp(command, "log ", 4) == 0)
     {
         UsbDebugConsole_RunDebugTextCommand(command);
         return;

@@ -233,8 +233,23 @@ FlightLogSample& Logger::GetLogSample()
     return m_logSample;
 }
 
+void Logger::SetBinaryUsbEnabled(bool enabled)
+{
+    m_binaryUsbEnabled = enabled;
+}
+
+bool Logger::IsBinaryUsbEnabled() const
+{
+    return m_binaryUsbEnabled;
+}
+
 void Logger::SendFlightLogBinary()
 {
+    if (!m_binaryUsbEnabled)
+    {
+        return;
+    }
+
     const uint32_t nowMs = HAL_GetTick();
 
     if (nowMs - m_lastDebugMs < LOG_PERIOD_MS)

@@ -64,16 +64,25 @@ extern "C" void flight_controller_Destroy()
 
 extern "C" void flight_controller_Init()
 {
+    if (!g_FlightControllerHandler.constructed)
+        return;
+
     GetFlightController(&g_FlightControllerHandler)->Init();
 }
 
 extern "C" void flight_controller_Heartbeat(void)
 {
+    if (!g_FlightControllerHandler.constructed)
+        return;
+
     GetFlightController(&g_FlightControllerHandler)->Heartbeat();
 }
 
 extern "C" bool flight_controller_MavlinkParseByte(uint8_t byte)
 {
+    if (!g_FlightControllerHandler.constructed)
+        return false;
+
     return GetFlightController(&g_FlightControllerHandler)->MavlinkParseByte(byte);
 }
 
@@ -84,27 +93,42 @@ extern "C" void flight_controller_ParseRcCommandByte(uint8_t byte)
 
 extern "C" void flight_controller_Update()
 {
+    if (!g_FlightControllerHandler.constructed)
+        return;
+
     GetFlightController(&g_FlightControllerHandler)->Update();
 }
 
 //USB_DEBUG_CONSOL
 extern "C" void UsbDebugConsole_OnReceived(uint8_t* data, uint32_t size)
 {
+    if (!g_FlightControllerHandler.constructed)
+        return;
+
     GetFlightController(&g_FlightControllerHandler)->OnUsbReceived(data, size);
 }
 
 extern "C" void UsbDebugConsole_OnTransmitComplete()
 {
+    if (!g_FlightControllerHandler.constructed)
+        return;
+
     GetFlightController(&g_FlightControllerHandler)->OnTransmitUsbComplete();
 }
 
 extern "C" void UsbDebugConsole_RunDebugCommand(uint8_t command)
 {
+    if (!g_FlightControllerHandler.constructed)
+        return;
+
     GetFlightController(&g_FlightControllerHandler)->RunDebugCommand(command);
 }
 
 extern "C" void UsbDebugConsole_RunDebugTextCommand(const char* command)
 {
+    if (!g_FlightControllerHandler.constructed)
+        return;
+
     GetFlightController(&g_FlightControllerHandler)->RunDebugTextCommand(command);
 }
 

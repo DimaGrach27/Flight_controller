@@ -121,6 +121,7 @@ private:
     void ApplyPidConfig();
     void ShowPidConfig();
     void HandlePidCommand(const char* command);
+    void HandleLogCommand(const char* command);
     bool SetPidAxis(const char* group, const char* axis, float kp, float ki, float kd);
     void ResetPidConfigToDefaults();
 

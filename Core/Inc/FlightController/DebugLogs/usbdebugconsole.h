@@ -78,8 +78,6 @@ private:
     char m_commandBuffer[CommandBufferSize]{};
     uint16_t m_commandLength = 0;
 
-    bool m_txBusy = false;
+    volatile bool m_txBusy = false;
     uint8_t m_usbTxChunk[64]{};
-
-    uint32_t m_lastStatusUs = 0;
 };

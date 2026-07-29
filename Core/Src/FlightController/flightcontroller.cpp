@@ -407,10 +407,20 @@ void FlightController::Update()
         log.batteryFaults = 0.0f;
 #endif
 
+#if NOT_USE_HIL
+        if (flightModeState.armState != ArmState::Armed)
+        {
+            m_logger.SendFlightLogBinary();
+        }
+#else
         m_logger.SendFlightLogBinary();
+#endif
 
 #if NOT_USE_HIL
-        m_debugConsole.Update(nowUs);
+        if (flightModeState.armState != ArmState::Armed)
+        {
+            m_debugConsole.Update(nowUs);
+        }
 #endif
     }
 }
@@ -572,7 +582,51 @@ void FlightController::RunDebugTextCommand(const char* command)
     if (std::strcmp(command, "pid") == 0 || std::strncmp(command, "pid ", 4) == 0)
     {
         HandlePidCommand(command);
+        return;
     }
+
+    if (std::strcmp(command, "log") == 0 || std::strncmp(command, "log ", 4) == 0)
+    {
+        HandleLogCommand(command);
+    }
+}
+
+void FlightController::HandleLogCommand(const char* command)
+{
+    if (std::strcmp(command, "log") == 0 || std::strcmp(command, "log status") == 0)
+    {
+        m_debugConsole.WriteLine(m_logger.IsBinaryUsbEnabled()
+            ? "USB binary log: enabled"
+            : "USB binary log: disabled");
+        return;
+    }
+
+    if (std::strcmp(command, "log start") == 0)
+    {
+#if NOT_USE_HIL
+        if (m_flightModeManager.GetState().armState == ArmState::Armed)
+        {
+            m_debugConsole.WriteLine("USB binary log denied: controller is armed");
+            return;
+        }
+#endif
+
+        m_logger.SetBinaryUsbEnabled(true);
+        m_debugConsole.WriteLine("USB binary log enabled");
+        return;
+    }
+
+    if (std::strcmp(command, "log stop") == 0)
+    {
+        m_logger.SetBinaryUsbEnabled(false);
+        m_debugConsole.WriteLine("USB binary log disabled");
+        return;
+    }
+
+    m_debugConsole.WriteLine("Usage:");
+    m_debugConsole.WriteLine("  log status");
+    m_debugConsole.WriteLine("  log start");
+    m_debugConsole.WriteLine("  log stop");
 }
 
 void FlightController::LoadPidConfig()
